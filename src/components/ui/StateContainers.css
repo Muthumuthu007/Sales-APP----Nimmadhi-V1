@@ -1,0 +1,83 @@
+.state-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8);
+  text-align: center;
+  height: 100%;
+  min-height: 200px;
+}
+
+.loading {
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+  margin-bottom: var(--space-4);
+  color: #fbbf24;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.error {
+  color: #f87171;
+}
+
+.error-icon {
+  margin-bottom: var(--space-4);
+  color: #ef4444;
+}
+
+.error-msg {
+  font-weight: 600;
+  margin-bottom: var(--space-4);
+}
+
+.retry-btn {
+  padding: 0.5rem var(--space-5);
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+  transition: all 0.25s ease;
+  outline: none;
+}
+
+.retry-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(239, 68, 68, 0.3);
+}
+
+.retry-btn:active {
+  transform: translateY(0);
+}
+
+.empty {
+  color: var(--color-text-muted);
+}
+
+.empty-icon {
+  color: rgba(255, 255, 255, 0.1);
+  margin-bottom: var(--space-4);
+}
+
+.empty h4 {
+  margin: 0 0 var(--space-2);
+  color: var(--color-text-main);
+  font-weight: 700;
+}
+
+.empty p {
+  margin: 0;
+  font-size: 0.875rem;
+}

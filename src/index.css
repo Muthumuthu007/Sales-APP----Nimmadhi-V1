@@ -1,0 +1,115 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  /* Premium Twilight Sleep Colors */
+  --color-primary: #fbbf24;       /* Glowing gold */
+  --color-primary-light: #f59e0b; /* Warm gradient orange-gold */
+  --color-secondary: rgba(255, 255, 255, 0.05); /* Translucent layers */
+  --color-bg: #090c15;            /* Fallback deep slate */
+  --color-bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #311042 100%);
+  --color-surface: rgba(255, 255, 255, 0.03); /* Sleek glassmorphism backdrop */
+  --color-text-main: #f1f5f9;     /* Ultra premium light text */
+  --color-text-muted: #94a3b8;    /* Soothing twilight grey */
+  --color-border: rgba(255, 255, 255, 0.08); /* Sophisticated glass border */
+
+  /* Accents / Badges (Optimized for dark mode) */
+  --color-orange: #fbbf24; /* Pending */
+  --color-yellow: #eab308; /* Partial */
+  --color-green: #10b981;  /* Approved */
+  --color-red: #ef4444;    /* Rejected / Dead Stock */
+
+  /* Shadows */
+  --shadow-sm: 0 2px 4px 0 rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 8px 16px -2px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.4);
+
+  /* Border Radius */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+
+  /* Spacing */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background: var(--color-bg-gradient);
+  background-attachment: fixed;
+  color: var(--color-text-main);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  color: var(--color-text-main);
+}
+
+a {
+  text-decoration: none;
+  color: var(--color-primary);
+}
+
+button {
+  cursor: pointer;
+  font-family: inherit;
+}
+
+/* Utilities */
+.text-muted {
+  color: var(--color-text-muted);
+}
+.font-semibold {
+  font-weight: 600;
+}
+.flex {
+  display: flex;
+}
+.items-center {
+  align-items: center;
+}
+.justify-between {
+  justify-content: space-between;
+}
+.gap-2 {
+  gap: var(--space-2);
+}
+.gap-4 {
+  gap: var(--space-4);
+}
+.w-full {
+  width: 100%;
+}
+.h-full {
+  height: 100%;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-primary);
+}

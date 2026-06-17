@@ -1,0 +1,122 @@
+.topbar {
+  height: 70px;
+  background: rgba(10, 15, 30, 0.35);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-6);
+  flex-shrink: 0;
+  z-index: 9;
+}
+
+.topbar-left .page-title {
+  font-size: 1.25rem;
+  color: var(--color-text-main);
+  margin: 0;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+}
+
+.role-switch {
+  background-color: rgba(255, 255, 255, 0.03);
+  color: var(--color-text-main);
+  border: 1px solid var(--color-border);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.role-switch:hover {
+  background-color: rgba(251, 191, 36, 0.1);
+  border-color: #fbbf24;
+  color: #fbbf24;
+  box-shadow: 0 0 12px rgba(251, 191, 36, 0.15);
+  transform: translateY(-1px);
+}
+
+.role-switch:active {
+  transform: translateY(0);
+}
+
+.icon-btn {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease;
+}
+
+.icon-btn:hover {
+  color: var(--color-primary);
+}
+
+.badge-dot {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 8px;
+  height: 8px;
+  background-color: var(--color-red);
+  border-radius: 50%;
+  border: 2px solid rgba(15, 23, 42, 0.8);
+}
+
+.user-profile {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  cursor: pointer;
+}
+
+.avatar {
+  width: 36px;
+  height: 36px;
+  background-color: rgba(251, 191, 36, 0.08);
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.25);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.25s ease;
+}
+
+.user-profile:hover .avatar {
+  transform: scale(1.08);
+  border-color: #fbbf24;
+  box-shadow: 0 0 10px rgba(251, 191, 36, 0.25);
+}
+
+.user-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.user-name {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text-main);
+  line-height: 1.2;
+}
+
+.user-role {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
