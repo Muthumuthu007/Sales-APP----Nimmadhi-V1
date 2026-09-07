@@ -36,6 +36,18 @@ export const AuthProvider = ({ children }) => {
   }, [token, role, outletId, username, empId, empName]);
 
   const loginContext = (data) => {
+    // Persist the session before navigation. Dashboard requests run immediately
+    // after login and must be able to attach this token on their first request.
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('role', data.role);
+    localStorage.setItem('username', data.username || '');
+    if (data.outletId) localStorage.setItem('outletId', data.outletId);
+    else localStorage.removeItem('outletId');
+    if (data.empId) localStorage.setItem('empId', data.empId);
+    else localStorage.removeItem('empId');
+    if (data.empName) localStorage.setItem('empName', data.empName);
+    else localStorage.removeItem('empName');
+
     setToken(data.token);
     setRole(data.role);
     setUsername(data.username);
