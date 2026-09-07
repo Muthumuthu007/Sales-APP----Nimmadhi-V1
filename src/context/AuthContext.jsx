@@ -1,4 +1,5 @@
 import React, { createContext, useState, useEffect } from 'react';
+import { persistSession } from '../auth/session';
 
 // The context and provider intentionally share this module for the small app shell.
 // eslint-disable-next-line react-refresh/only-export-components
@@ -38,28 +39,14 @@ export const AuthProvider = ({ children }) => {
   const loginContext = (data) => {
     // Persist the session before navigation. Dashboard requests run immediately
     // after login and must be able to attach this token on their first request.
-    localStorage.setItem('token', data.token);
-    localStorage.setItem('role', data.role);
-    localStorage.setItem('username', data.username || '');
-    if (data.outletId) localStorage.setItem('outletId', data.outletId);
-    else localStorage.removeItem('outletId');
-    if (data.empId) localStorage.setItem('empId', data.empId);
-    else localStorage.removeItem('empId');
-    if (data.empName) localStorage.setItem('empName', data.empName);
-    else localStorage.removeItem('empName');
+    persistSession(localStorage, data);
 
     setToken(data.token);
     setRole(data.role);
     setUsername(data.username);
-    if (data.outletId) {
-      setOutletId(data.outletId);
-    }
-    if (data.empId) {
-      setEmpId(data.empId);
-    }
-    if (data.empName) {
-      setEmpName(data.empName);
-    }
+    setOutletId(data.outletId || null);
+    setEmpId(data.empId || null);
+    setEmpName(data.empName || null);
   };
 
   const logoutContext = () => {
