@@ -7,8 +7,8 @@ import { Button } from '../components/ui/Button';
 import { Input, Select } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
 import { LoadingState, ErrorState } from '../components/ui/StateContainers';
-import { fetchAllOrders, approveOrder, fetchLoadPlans, rejectOrder } from '../api/manager';
-import axios from 'axios';
+import { fetchAllOrders, approveOrder, rejectOrder } from '../api/manager';
+import api from '../api/axios';
 
 const OrderDetails = () => {
   const { id } = useParams(); // refers to orderId
@@ -57,8 +57,8 @@ const OrderDetails = () => {
     async function loadProducts() {
       try {
         // Safe relative internal call to api
-        const res = await axios.get(import.meta.env.VITE_API_BASE_URL.replace('/api', '') + '/api/products');
-        const list = res.data?.products || [];
+        const res = await api.get('/products');
+        const list = res?.products || [];
         const options = [{ label: 'Select product...', value: '' }, ...list.map(p => {
           if (typeof p === 'object' && p) {
             const pid = p.id || p.product_id || p.uuid;
@@ -68,7 +68,7 @@ const OrderDetails = () => {
           return { label: String(p), value: String(p) };
         })];
         if (isMounted) setProductOptions(options);
-      } catch (err) {
+      } catch {
         if (isMounted) setProductOptions([{ label: 'Product List Unavailable', value: '' }]);
       }
     }
@@ -212,8 +212,8 @@ const OrderDetails = () => {
   const isEditable = order.status === 'PENDING' || order.status === 'PARTIALLY_APPROVED' || order.status === 'PARTIAL';
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+    <div className="page-stack">
+      <div className="page-header" style={{ justifyContent: 'flex-start' }}>
         <button onClick={() => navigate('/orders')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)' }}>
           <ArrowLeft size={24} />
         </button>
@@ -233,7 +233,7 @@ const OrderDetails = () => {
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 3fr', gap: '1.5rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 1fr) minmax(0, 3fr)', gap: '1.5rem' }}>
         <Card style={{ alignSelf: 'start' }}>
           <CardHeader title="Order Metadata" />
           <CardContent style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -257,20 +257,20 @@ const OrderDetails = () => {
           <CardHeader title="Dynamic Iterative Approval" />
           <CardContent style={{ padding: 0 }}>
             {/* Custom Table Interface */}
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+            <div className="approval-table-wrapper">
+              <table className="approval-table">
                 <thead>
-                  <tr style={{ backgroundColor: 'var(--color-secondary)' }}>
-                    <th style={{ padding: '1rem' }}>Product Name</th>
-                    <th style={{ padding: '1rem', textAlign: 'center' }}>Ordered / Pending</th>
-                    {isEditable && <th style={{ padding: '1rem', textAlign: 'center' }}>Approve Qty</th>}
-                    <th style={{ padding: '1rem' }}>Free Items</th>
+                  <tr>
+                    <th>Product</th>
+                    <th style={{ textAlign: 'center' }}>Ordered / Pending</th>
+                    {isEditable && <th style={{ textAlign: 'center' }}>Approve Qty</th>}
+                    <th>Free Items</th>
                   </tr>
                 </thead>
                 <tbody>
                   {approvalItems.map((item, idx) => (
-                    <tr key={idx} style={{ borderBottom: '1px solid var(--color-border)' }}>
-                      <td style={{ padding: '1rem' }}>
+                    <tr key={idx}>
+                      <td>
                         <div className="font-semibold">{item.productName}</div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>ID: {item.product_id}</div>
                         {item.maxProduce !== undefined && (
@@ -278,14 +278,14 @@ const OrderDetails = () => {
                         )}
                       </td>
                       
-                      <td style={{ padding: '1rem', textAlign: 'center' }}>
+                      <td style={{ textAlign: 'center' }}>
                         <div><strong>{item.orderedQty}</strong> initially</div>
                         <div style={{ color: 'var(--color-red)' }}><strong>{item.pendingQty}</strong> pending</div>
                         {item.approvedQty > 0 && <div style={{ fontSize: '0.75rem', color: 'var(--color-green)' }}>({item.approvedQty} previously approved)</div>}
                       </td>
 
                       {isEditable && (
-                        <td style={{ padding: '1rem', textAlign: 'center' }}>
+                        <td style={{ textAlign: 'center' }}>
                           <input 
                             type="number" 
                             min="0" 
@@ -307,7 +307,7 @@ const OrderDetails = () => {
                         </td>
                       )}
 
-                      <td style={{ padding: '1rem' }}>
+                      <td>
                         {item.freeItems.length > 0 && (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '0.5rem' }}>
                             {item.freeItems.map((fItem, fIdx) => (

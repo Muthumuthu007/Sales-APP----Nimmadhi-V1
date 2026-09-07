@@ -1,0 +1,102 @@
+.load-plans-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.load-plans-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+
+.load-plans-toolbar h2 {
+  margin: 0;
+  font-size: 1.75rem;
+  letter-spacing: -0.025em;
+}
+
+.load-plans-toolbar p {
+  margin-top: var(--space-1);
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+.load-plan-tabs,
+.load-plan-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.load-plan-actions {
+  justify-content: flex-end;
+}
+
+.load-plans-table {
+  min-width: 1080px;
+  table-layout: fixed;
+}
+
+.load-plans-table .id-column { width: 155px; }
+.load-plans-table .outlet-column { width: 88px; }
+.load-plans-table .product-column { width: 250px; }
+.load-plans-table .quantity-column { width: 72px; }
+.load-plans-table .capacity-column { width: 92px; }
+.load-plans-table .created-column { width: 155px; }
+.load-plans-table .action-column { width: 116px; }
+
+.load-plans-table th,
+.load-plans-table td {
+  padding: 0.9rem 1rem;
+}
+
+.load-plans-table td {
+  line-height: 1.4;
+}
+
+.load-plans-table .id-column {
+  color: var(--color-text-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.78rem;
+  overflow-wrap: anywhere;
+}
+
+.load-plans-table .product-column {
+  font-weight: 500;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.load-plans-table .outlet-column,
+.load-plans-table .quantity-column,
+.load-plans-table .capacity-column {
+  white-space: nowrap;
+}
+
+.dispatch-button {
+  min-width: 88px;
+  white-space: nowrap;
+  font-size: 0.78rem !important;
+  padding: 0.48rem 0.7rem !important;
+}
+
+@media (max-width: 720px) {
+  .load-plans-toolbar,
+  .load-plans-toolbar > div:first-child {
+    align-items: stretch;
+  }
+
+  .load-plans-toolbar {
+    flex-direction: column;
+  }
+
+  .load-plan-tabs {
+    width: 100%;
+  }
+
+  .load-plan-tabs button {
+    flex: 1;
+  }
+}

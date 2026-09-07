@@ -46,5 +46,11 @@
 .layout-content {
   flex: 1;
   overflow-y: auto;
-  padding: var(--space-6);
+  padding: clamp(1rem, 2.2vw, 2rem);
+}
+
+@media (max-width: 760px) {
+  .layout-content {
+    padding: 1rem;
+  }
 }

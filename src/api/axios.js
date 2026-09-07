@@ -1,8 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  // Hard-coded to exactly 8001 to resolve Vite Environment Variable caching without requiring a complete server restart
-  baseURL: 'http://127.0.0.1:8001/api',
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',

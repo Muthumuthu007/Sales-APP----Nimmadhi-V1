@@ -5,6 +5,22 @@ import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 import { LoadingState, ErrorState } from '../components/ui/StateContainers';
 import { fetchLoadPlans, dispatchLoadPlan, downloadLoadPlansExcel } from '../api/manager';
+import './LoadPlans.css';
+
+const compactId = (value) => {
+  if (!value) return '—';
+  const text = String(value);
+  return text.length > 18 ? `${text.slice(0, 8)}…${text.slice(-6)}` : text;
+};
+
+const formatDateTime = (value) => {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat('en-IN', {
+    day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  }).format(date);
+};
 
 const LoadPlans = () => {
   const [activeTab, setActiveTab] = useState('APPROVED'); // APPROVED or PENDING
@@ -100,7 +116,7 @@ const LoadPlans = () => {
       // Cleanup DOM
       link.remove();
       window.URL.revokeObjectURL(url);
-    } catch (err) {
+    } catch {
       setError('Failed to download the Excel representation. Please try again.');
     } finally {
       setIsDownloading(false);
@@ -108,22 +124,22 @@ const LoadPlans = () => {
   };
 
   const columns = [
-    { key: 'orderId', label: 'Order ID' },
-    { key: 'loadPlanId', label: 'Load Plan ID', render: (row) => row.loadPlanId || '-' },
-    { key: 'outletId', label: 'Outlet' },
-    { key: 'productName', label: 'Product Name', render: (row) => row.productName || (row.items && row.items[0]?.productName) || 'Multiple' },
-    { key: 'quantity', label: 'Quantity', align: 'center', render: (row) => row.quantity || (row.items && row.items[0]?.quantity) || '-' },
-    { key: 'maxProduce', label: 'Max Capacity', align: 'center', render: (row) => row.maxProduce || '-' },
-    { key: 'createdAt', label: 'Created At' },
-    { key: 'actions', label: 'Actions', align: 'right', render: (row) => (
-      <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+    { key: 'orderDisplayId', label: 'Order Ref', className: 'id-column', render: (row) => <span title={row.orderId}>{row.orderDisplayId || '—'}</span> },
+    { key: 'displayId', label: 'Plan Ref', className: 'id-column', render: (row) => <span title={row.loadPlanId}>{row.displayId || compactId(row.loadPlanId)}</span> },
+    { key: 'outletId', label: 'Outlet', className: 'outlet-column', render: (row) => row.outletId || '—' },
+    { key: 'productName', label: 'Product', className: 'product-column', render: (row) => row.productName || (row.items && row.items[0]?.productName) || 'Multiple products' },
+    { key: 'quantity', label: 'Qty', className: 'quantity-column', align: 'center', render: (row) => row.quantity ?? (row.items && row.items[0]?.quantity) ?? '—' },
+    { key: 'maxProduce', label: 'Capacity', className: 'capacity-column', align: 'center', render: (row) => row.maxProduce ?? '—' },
+    { key: 'createdAt', label: 'Created', className: 'created-column', render: (row) => <span title={row.createdAt}>{formatDateTime(row.createdAt)}</span> },
+    { key: 'actions', label: 'Action', className: 'action-column', align: 'right', render: (row) => (
+      <div className="load-plan-actions">
         {activeTab === 'APPROVED' ? (
           <Button 
             variant="primary" 
-            style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+            className="dispatch-button"
             onClick={() => handleDispatchPrompt(row)}
           >
-            Mark as Dispatched
+            Dispatch
           </Button>
         ) : (
           <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>-</span>
@@ -133,9 +149,12 @@ const LoadPlans = () => {
   ];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2 style={{ margin: 0 }}>Production Load Plans</h2>
+    <div className="load-plans-page">
+      <div className="load-plans-toolbar">
+        <div>
+          <h2>Production Load Plans</h2>
+          <p>Review approved production plans and dispatch them to outlets.</p>
+        </div>
         <Button 
           variant="secondary" 
           onClick={handleDownloadExcel} 
@@ -155,7 +174,7 @@ const LoadPlans = () => {
       <Card>
         <CardHeader 
           action={
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <div className="load-plan-tabs">
               <Button 
                 variant={activeTab === 'APPROVED' ? 'primary' : 'secondary'} 
                 onClick={() => setActiveTab('APPROVED')}
@@ -181,6 +200,7 @@ const LoadPlans = () => {
             <Table 
               columns={columns} 
               data={plans} 
+              className="load-plans-table"
               emptyStateMessage={`No load plans found for ${activeTab.toLowerCase()} status.`} 
             />
           </CardContent>

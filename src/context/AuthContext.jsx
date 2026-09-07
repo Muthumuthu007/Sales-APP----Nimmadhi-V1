@@ -1,5 +1,7 @@
 import React, { createContext, useState, useEffect } from 'react';
 
+// The context and provider intentionally share this module for the small app shell.
+// eslint-disable-next-line react-refresh/only-export-components
 export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {

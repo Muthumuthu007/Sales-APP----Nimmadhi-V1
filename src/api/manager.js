@@ -1,69 +1,34 @@
 import api from './axios';
-import axios from 'axios';
 
 export async function fetchOrders(status) {
-  const token = localStorage.getItem('token');
-  const response = await axios.get(`http://127.0.0.1:8000/api/manager/orders?status=${status}`, {
-    headers: { 'Authorization': `Bearer ${token}` }
-  });
-  return response.data;
+  return api.get(`/manager/orders?status=${status}`);
 }
 
 export async function fetchAllOrders() {
-  const token = localStorage.getItem('token');
-  const response = await axios.get('http://127.0.0.1:8000/api/manager/orders/all', {
-    headers: { 'Authorization': `Bearer ${token}` }
-  });
-  return response.data;
+  return api.get('/manager/orders/all');
 }
 
 export async function approveOrder(orderId, payload) {
-  const token = localStorage.getItem('token');
-  const response = await axios.post(`http://127.0.0.1:8000/api/manager/orders/${orderId}/approve`, payload, {
-    headers: { 'Authorization': `Bearer ${token}` }
-  });
-  return response.data;
+  return api.post(`/manager/orders/${orderId}/approve`, payload);
 }
 
 export async function rejectOrder(orderId, payload) {
-  const token = localStorage.getItem('token');
-  const response = await axios.post(`http://127.0.0.1:8000/api/manager/orders/${orderId}/reject`, payload, {
-    headers: { 'Authorization': `Bearer ${token}` }
-  });
-  return response.data;
+  return api.post(`/manager/orders/${orderId}/reject`, payload);
 }
 
 export async function fetchLoadPlans(type) {
-  const token = localStorage.getItem('token');
-  const response = await axios.get(`http://127.0.0.1:8000/api/load-plans?type=${type}`, {
-    headers: { 'Authorization': `Bearer ${token}` }
-  });
-  return response.data;
+  return api.get(`/load-plans?type=${type}`);
 }
 
 export async function dispatchLoadPlan(loadPlanId, payload) {
-  const token = localStorage.getItem('token');
-  const response = await axios.post(`http://127.0.0.1:8000/api/factory/loadplans/${loadPlanId}/dispatch`, payload, {
-    headers: { 'Authorization': `Bearer ${token}` }
-  });
-  return response.data;
+  return api.post(`/factory/loadplans/${loadPlanId}/dispatch`, payload);
 }
 
 export async function downloadLoadPlansExcel(type) {
-  const token = localStorage.getItem('token');
   const endpoint = type === 'APPROVED' ? 'approved' : 'pending';
-  
-  const response = await axios.get(`http://127.0.0.1:8000/api/load-plans/${endpoint}/download`, {
-    headers: { 'Authorization': `Bearer ${token}` },
-    responseType: 'blob' // Required to parse binary Excel file securely
-  });
-  return response.data;
+  return api.get(`/load-plans/${endpoint}/download`, { responseType: 'blob' });
 }
 
 export async function fetchDashboardSummary() {
-  const token = localStorage.getItem('token');
-  const response = await axios.get(`http://127.0.0.1:8000/api/dashboard/summary`, {
-    headers: { 'Authorization': `Bearer ${token}` }
-  });
-  return response.data;
+  return api.get('/dashboard/summary');
 }

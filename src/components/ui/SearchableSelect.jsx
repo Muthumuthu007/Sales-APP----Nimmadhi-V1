@@ -22,6 +22,13 @@ export const SearchableSelect = ({ label, options, value, onChange, error, place
     opt.label.toLowerCase().includes(search.toLowerCase())
   );
 
+  const groupedOptions = filteredOptions.reduce((groups, option) => {
+    const group = option.group || 'Other products';
+    if (!groups[group]) groups[group] = [];
+    groups[group].push(option);
+    return groups;
+  }, {});
+
   const selectedOption = options.find(opt => opt.value === value);
 
   return (
@@ -52,18 +59,25 @@ export const SearchableSelect = ({ label, options, value, onChange, error, place
             </div>
             <ul className="select-options-list">
               {filteredOptions.length > 0 ? (
-                filteredOptions.map((opt, i) => (
-                  <li 
-                    key={i} 
-                    className={`select-option ${value === opt.value ? 'selected' : ''}`}
-                    onClick={() => {
-                      onChange(opt.value);
-                      setIsOpen(false);
-                      setSearch('');
-                    }}
-                  >
-                    {opt.label}
-                  </li>
+                Object.entries(groupedOptions).map(([group, groupOptions]) => (
+                  <React.Fragment key={group}>
+                    {groupOptions.some(option => option.group) && (
+                      <li className="select-group-label" aria-hidden="true">{group}</li>
+                    )}
+                    {groupOptions.map((opt, i) => (
+                      <li 
+                        key={`${group}-${opt.value}-${i}`} 
+                        className={`select-option ${value === opt.value ? 'selected' : ''}`}
+                        onClick={() => {
+                          onChange(opt.value);
+                          setIsOpen(false);
+                          setSearch('');
+                        }}
+                      >
+                        {opt.label}
+                      </li>
+                    ))}
+                  </React.Fragment>
                 ))
               ) : (
                 <li className="select-no-results">No products match your search</li>

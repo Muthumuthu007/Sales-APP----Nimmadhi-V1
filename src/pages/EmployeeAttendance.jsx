@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
-import axios from 'axios';
+import api from '../api/axios';
 import { Card, CardHeader, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { AuthContext } from '../context/AuthContext';
 import { Camera, MapPin, CheckCircle, Clock, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 
 const EmployeeAttendance = () => {
-  const { empId, empName, outletId, token, username } = useContext(AuthContext);
+  const { empId, empName, outletId, username } = useContext(AuthContext);
 
   // Time & Date States
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -48,6 +48,7 @@ const EmployeeAttendance = () => {
       if (savedAttendance) {
         try {
           const parsed = JSON.parse(savedAttendance);
+          // eslint-disable-next-line react-hooks/set-state-in-effect
           setSuccessDetails({
             checkInTime: parsed.checkIn,
             distance: parsed.distance,
@@ -189,15 +190,7 @@ const EmployeeAttendance = () => {
         photo: rawBase64
       };
 
-      // API call to endpoint running on port 8001
-      const response = await axios.post('http://localhost:8001/api/outlet/attendance/selfie', payload, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      const data = response.data;
+      const data = await api.post('/outlet/attendance/selfie', payload);
       
       // Save details to state
       const successData = {

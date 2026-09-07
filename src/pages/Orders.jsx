@@ -55,7 +55,7 @@ const Orders = () => {
   }, [activeTab]);
 
   const columns = [
-    { key: 'orderId', label: 'Order ID' },
+    { key: 'displayId', label: 'Order Ref', render: (row) => <span title={row.orderId}>{row.displayId || row.orderId}</span> },
     { key: 'outletId', label: 'Outlet ID' },
     { key: 'createdAt', label: 'Created At' },
     { key: 'status', label: 'Status', render: (row) => (

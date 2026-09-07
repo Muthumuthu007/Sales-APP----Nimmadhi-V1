@@ -1,79 +1,35 @@
-import axios from 'axios';
+import api from './axios';
 
 export async function createOrder(data) {
-  // Bypassing the default API instance to target the original Orders microservice strictly on Port 8000
-  const response = await axios.post('http://127.0.0.1:8000/api/orders', data, {
-    headers: {
-      'Authorization': `Bearer ${localStorage.getItem('token')}`
-    }
-  });
-  return response.data; 
+  return api.post('/orders', data);
 }
 
 export async function fetchOutletOrders(outletId) {
-  const response = await axios.get(`http://127.0.0.1:8000/api/outlet/orders?outletId=${outletId}`, {
-    headers: {
-      'Authorization': `Bearer ${localStorage.getItem('token')}`
-    }
-  });
-  return response.data;
+  return api.get(`/outlet/orders?outletId=${outletId}`);
 }
 
 export async function fetchOutletStock(outletId) {
-  const response = await axios.get(`http://127.0.0.1:8000/api/outlet/products?outletId=${outletId}`, {
-    headers: {
-      'Authorization': `Bearer ${localStorage.getItem('token')}`
-    }
-  });
-  return response.data;
+  return api.get(`/outlet/products?outletId=${outletId}`);
 }
 
 export async function receiveOrder(loadPlanId, data) {
-  const response = await axios.post(`http://127.0.0.1:8000/api/outlet/loadplans/${loadPlanId}/receive`, data, {
-    headers: {
-      'Authorization': `Bearer ${localStorage.getItem('token')}`
-    }
-  });
-  return response.data;
+  return api.post(`/outlet/loadplans/${loadPlanId}/receive`, data);
 }
 
 export async function fetchOutletProductNames(outletId) {
-  const response = await axios.get(`http://127.0.0.1:8000/api/outlet/product-names?outletId=${outletId}`, {
-    headers: {
-      'Authorization': `Bearer ${localStorage.getItem('token')}`
-    }
-  });
-  return response.data;
+  return api.get(`/outlet/product-names?outletId=${outletId}`);
 }
 
 export async function recordSales(data) {
-  const response = await axios.post(`http://127.0.0.1:8000/api/outlet/sales`, data, {
-    headers: {
-      'Authorization': `Bearer ${localStorage.getItem('token')}`
-    }
-  });
-  return response.data;
+  return api.post('/outlet/sales', data);
 }
 
 export async function fetchReportData(type, date, outletId) {
-  const url = `http://127.0.0.1:8000/api/reports/sales?type=${type}&date=${date}&outletId=${outletId}`;
-  const response = await axios.get(url, {
-    headers: {
-      'Authorization': `Bearer ${localStorage.getItem('token')}`
-    }
-  });
-  return response.data;
+  return api.get(`/reports/sales?type=${type}&date=${date}&outletId=${outletId}`);
 }
 
 export async function downloadSalesReport(type, date, outletId) {
-  const url = `http://127.0.0.1:8000/api/reports/sales?type=${type}&date=${date}&outletId=${outletId}`;
-  const response = await axios.get(url, {
-    headers: {
-      'Authorization': `Bearer ${localStorage.getItem('token')}`
-    }
-  });
-
-  const data = response.data;
+  const data = await api.get(`/reports/sales?type=${type}&date=${date}&outletId=${outletId}`);
   let csvContent = "";
   
   if (Array.isArray(data)) {

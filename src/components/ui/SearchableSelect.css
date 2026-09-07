@@ -96,6 +96,20 @@
   transition: all 0.2s ease;
 }
 
+.select-group-label {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 0.6rem var(--space-4) 0.4rem;
+  color: #fbbf24;
+  background: #111827;
+  border-bottom: 1px solid rgba(251, 191, 36, 0.16);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
 .select-option:hover {
   background-color: rgba(255, 255, 255, 0.04);
   color: #ffffff;

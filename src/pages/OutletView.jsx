@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { Calendar, FileText, MapPin } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import api from '../api/axios';
+import { Calendar, FileText, Layers3, MapPin, PackageSearch, Plus, ShoppingBag, Trash2 } from 'lucide-react';
 import { Card, CardHeader, CardContent } from '../components/ui/Card';
 import { Table } from '../components/ui/Table';
 import { Input, Select } from '../components/ui/Input';
@@ -14,6 +14,7 @@ import { fetchOutletEmployees, createOutletEmployee, updateEmployeeSalary } from
 import { getOutletLocation, updateOutletLocation } from '../api/location';
 
 import { AuthContext } from '../context/AuthContext';
+import './OutletView.css';
 
 const OutletView = () => {
   const [activeTab, setActiveTab] = useState('CREATE_ORDER');
@@ -35,15 +36,19 @@ const OutletView = () => {
   useEffect(() => {
     async function fetchProducts() {
       try {
-        const response = await axios.get('http://127.0.0.1:8001/api/products');
-        const list = response.data?.products || [];
+        const response = await api.get('/products');
+        const list = response?.products || [];
         const options = [
           { label: 'Select a product...', value: '' },
           ...list.map(p => {
             if (typeof p === 'object' && p !== null) {
               const id = p.id || p.product_id || p._id || p.uuid;
               const name = p.name || p.product_name || p.productName || p.title || p.description;
-              return { label: name || id || 'Unknown Product', value: id || name };
+              return {
+                label: name || id || 'Unknown Product',
+                value: id || name,
+                group: p.group_name || p.groupName || 'Ungrouped'
+              };
             }
             return { label: String(p), value: String(p) };
           })
@@ -64,18 +69,36 @@ const OutletView = () => {
       fetchOutletProductNames(outletId).then(response => {
         const list = Array.isArray(response) ? response : (response?.products || []);
         setOutletProductNames(list);
-      }).catch(err => {
+      }).catch((err) => {
         console.error('Failed to fetch outlet product names:', err);
       });
     }
   }, [outletId]);
 
   const [items, setItems] = useState([]);
+  const [selectedProductGroup, setSelectedProductGroup] = useState('');
   const [selectedProduct, setSelectedProduct] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiError, setApiError] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
+
+  const productGroups = useMemo(() => (
+    [...new Set(
+      productOptions
+        .filter(option => option.value && option.group)
+        .map(option => option.group)
+    )].sort((left, right) => left.localeCompare(right))
+  ), [productOptions]);
+
+  const visibleProductOptions = useMemo(() => {
+    const placeholder = productOptions.find(option => !option.value) || { label: 'Select a product...', value: '' };
+    const products = productOptions.filter(option => option.value);
+    return [
+      placeholder,
+      ...products.filter(option => !selectedProductGroup || option.group === selectedProductGroup)
+    ];
+  }, [productOptions, selectedProductGroup]);
 
   // --- My Orders State ---
   const [myOrders, setMyOrders] = useState([]);
@@ -588,7 +611,7 @@ const OutletView = () => {
           ];
           setSalesProductOptions(options);
         }
-      }).catch(err => {
+      }).catch(() => {
         if (isMounted) {
            setSalesProductOptions([{ label: 'Error loading options', value: '' }]);
         }
@@ -716,52 +739,61 @@ const OutletView = () => {
 
       <div>
         {activeTab === 'CREATE_ORDER' && (
-          <Card style={{ maxWidth: '600px' }}>
-            <CardHeader title="New Order Form" />
-            <CardContent style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <Card className="order-builder-card">
+            <CardHeader title="Create a new order" action={<span className="order-builder-step">Build your order</span>} />
+            <CardContent className="order-builder-content">
+              <div className="order-builder-intro">
+                <div className="order-builder-intro-icon"><ShoppingBag size={20} /></div>
+                <div><h3>Choose products by production group</h3><p>Select a group first, then add the product and quantity to your order.</p></div>
+              </div>
               
               {apiError && (
-                <div style={{ padding: '0.75rem', backgroundColor: 'var(--color-red)', color: 'white', borderRadius: '4px', fontSize: '0.875rem' }}>
+                <div className="order-builder-alert order-builder-alert-error">
                   {apiError}
                 </div>
               )}
 
               {successMsg && (
-                <div style={{ padding: '0.75rem', backgroundColor: 'var(--color-green)', color: 'white', borderRadius: '4px', fontSize: '0.875rem' }}>
+                <div className="order-builder-alert order-builder-alert-success">
                   {successMsg}
                 </div>
               )}
 
-              <SearchableSelect 
-                label="Select Product" 
-                options={productOptions} 
-                value={selectedProduct}
-                onChange={(val) => setSelectedProduct(val)}
-              />
-              <Input 
-                label="Quantity" 
-                type="number" 
-                min="1"
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
-              />
-              <Button style={{ alignSelf: 'flex-start' }} onClick={handleAddItem} disabled={isSubmitting}>
-                Add to Order
-              </Button>
+              <div className="order-builder-workspace">
+                <section className="order-builder-groups">
+                  <div className="order-builder-section-label"><span>1</span><div><strong>Production group</strong><small>Start with a collection</small></div></div>
+                  <div className="order-builder-group-grid">
+                    <button type="button" className={`order-builder-group ${!selectedProductGroup ? 'selected' : ''}`} onClick={() => { setSelectedProductGroup(''); setSelectedProduct(''); }}><Layers3 size={17} /><span>All products</span><small>{productOptions.filter(option => option.value).length}</small></button>
+                    {productGroups.map(group => {
+                      const count = productOptions.filter(option => option.group === group).length;
+                      return <button type="button" key={group} className={`order-builder-group ${selectedProductGroup === group ? 'selected' : ''}`} onClick={() => { setSelectedProductGroup(group); setSelectedProduct(''); }}><span>{group}</span><small>{count}</small></button>;
+                    })}
+                  </div>
+                </section>
+                <section className="order-builder-selection">
+                  <div className="order-builder-section-label"><span>2</span><div><strong>Product and quantity</strong><small>{selectedProductGroup ? `${selectedProductGroup} products` : 'All production groups'}</small></div></div>
+                  <SearchableSelect label="Select product" options={visibleProductOptions} value={selectedProduct} onChange={(val) => setSelectedProduct(val)} placeholder={selectedProductGroup ? `Select a ${selectedProductGroup} product...` : 'Search all products...'} />
+                  <div className="order-builder-add-row">
+                    <Input label="Quantity" type="number" min="1" value={quantity} onChange={(e) => setQuantity(e.target.value)} />
+                    <Button className="order-builder-add-button" onClick={handleAddItem} disabled={isSubmitting}><Plus size={18} /> Add item</Button>
+                  </div>
+                </section>
+              </div>
               
-              <div style={{ marginTop: '1rem' }}>
-                <h4 style={{ marginBottom: '0.5rem' }}>Current Items</h4>
+              <div className="order-builder-summary">
+                <div className="order-builder-summary-heading"><PackageSearch size={19} /><div><h4>Order summary</h4><span>{items.length} {items.length === 1 ? 'product' : 'products'} selected</span></div></div>
                 {items.length === 0 ? (
-                  <div style={{ padding: '1rem', border: '1px dashed var(--color-border)', borderRadius: '4px', textAlign: 'center' }}>
-                    No items added yet.
+                  <div className="order-builder-empty">
+                    Select a group and add products to begin your order.
                   </div>
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <div className="order-builder-items">
                     {items.map((item, idx) => (
-                      <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem', backgroundColor: 'var(--color-secondary)', borderRadius: '4px' }}>
-                        <span><strong>{item.quantity}x</strong> {getProductName(item.product_id)}</span>
-                        <Button variant="danger" style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }} onClick={() => removeItem(idx)} disabled={isSubmitting}>
-                          Remove
+                      <div key={idx} className="order-builder-item">
+                        <span className="order-builder-item-quantity">{item.quantity}</span>
+                        <span className="order-builder-item-name">{getProductName(item.product_id)}</span>
+                        <Button variant="secondary" className="order-builder-remove" onClick={() => removeItem(idx)} disabled={isSubmitting} aria-label={`Remove ${getProductName(item.product_id)}`}>
+                          <Trash2 size={16} />
                         </Button>
                       </div>
                     ))}
@@ -769,13 +801,8 @@ const OutletView = () => {
                 )}
               </div>
               
-              <Button 
-                variant="primary" 
-                style={{ marginTop: '1rem' }} 
-                onClick={handleSubmitOrder} 
-                disabled={isSubmitting || items.length === 0}
-              >
-                {isSubmitting ? 'Creating...' : 'Submit Full Order'}
+              <Button className="order-builder-submit" onClick={handleSubmitOrder} disabled={isSubmitting || items.length === 0}>
+                <ShoppingBag size={18} /> {isSubmitting ? 'Submitting order…' : 'Submit order'}
               </Button>
             </CardContent>
           </Card>
@@ -848,58 +875,55 @@ const OutletView = () => {
         )}
 
         {activeTab === 'SALES' && (
-          <Card style={{ maxWidth: '600px' }}>
-            <CardHeader title="Record Daily Sales" />
-            <CardContent style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <Card className="sales-builder-card">
+            <CardHeader title="Record daily sales" action={<span className="sales-builder-step">Sales entry</span>} />
+            <CardContent className="sales-builder-content">
+              <div className="sales-builder-intro">
+                <div className="sales-builder-intro-icon"><Calendar size={20} /></div>
+                <div><h3>Capture today’s sales</h3><p>Add each sold product, review the summary, then submit one complete record.</p></div>
+              </div>
               
               {salesError && (
-                <div style={{ padding: '0.75rem', backgroundColor: 'var(--color-red)', color: 'white', borderRadius: '4px', fontSize: '0.875rem' }}>
+                <div className="order-builder-alert order-builder-alert-error">
                   {salesError}
                 </div>
               )}
 
               {salesSuccess && (
-                <div style={{ padding: '0.75rem', backgroundColor: 'var(--color-green)', color: 'white', borderRadius: '4px', fontSize: '0.875rem' }}>
+                <div className="order-builder-alert order-builder-alert-success">
                   {salesSuccess}
                 </div>
               )}
 
-              <Input 
-                type="date" 
-                label="Date of Sale" 
-                value={salesDate} 
-                onChange={(e) => setSalesDate(e.target.value)} 
-              />
-              <SearchableSelect 
-                label="Product" 
-                options={salesProductOptions} 
-                value={salesProduct}
-                onChange={(val) => setSalesProduct(val)}
-              />
-              <Input 
-                type="number" 
-                label="Quantity Sold" 
-                min="1"
-                value={salesQuantity}
-                onChange={(e) => setSalesQuantity(e.target.value)} 
-              />
-              <Button style={{ alignSelf: 'flex-start' }} onClick={handleAddSalesItem} disabled={isSubmittingSales}>
-                Add to Sales
-              </Button>
+              <div className="sales-builder-workspace">
+                <section className="sales-builder-date-card">
+                  <div className="order-builder-section-label"><span>1</span><div><strong>Sales date</strong><small>Choose the date for this entry</small></div></div>
+                  <Input type="date" label="Date of sale" value={salesDate} onChange={(e) => setSalesDate(e.target.value)} />
+                </section>
+                <section className="sales-builder-entry-card">
+                  <div className="order-builder-section-label"><span>2</span><div><strong>Sold product</strong><small>Only products available at this outlet are listed</small></div></div>
+                  <SearchableSelect label="Select product" options={salesProductOptions} value={salesProduct} onChange={(val) => setSalesProduct(val)} placeholder="Search available products..." />
+                  <div className="sales-builder-add-row">
+                    <Input label="Quantity sold" type="number" min="1" value={salesQuantity} onChange={(e) => setSalesQuantity(e.target.value)} />
+                    <Button className="order-builder-add-button" onClick={handleAddSalesItem} disabled={isSubmittingSales}><Plus size={18} /> Add sale</Button>
+                  </div>
+                </section>
+              </div>
 
-              <div style={{ marginTop: '1rem' }}>
-                <h4 style={{ marginBottom: '0.5rem' }}>Current Sales Items</h4>
+              <div className="order-builder-summary">
+                <div className="order-builder-summary-heading"><PackageSearch size={19} /><div><h4>Sales summary</h4><span>{salesItems.length} {salesItems.length === 1 ? 'product' : 'products'} added</span></div></div>
                 {salesItems.length === 0 ? (
-                  <div style={{ padding: '1rem', border: '1px dashed var(--color-border)', borderRadius: '4px', textAlign: 'center' }}>
-                    No items added yet.
+                  <div className="order-builder-empty">
+                    Add sold products to prepare today’s sales record.
                   </div>
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <div className="order-builder-items">
                     {salesItems.map((item, idx) => (
-                      <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem', backgroundColor: 'var(--color-secondary)', borderRadius: '4px' }}>
-                        <span><strong>{item.quantity}x</strong> {salesProductOptions.find(o => o.value === item.product_id)?.label || item.product_id}</span>
-                        <Button variant="danger" style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }} onClick={() => removeSalesItem(idx)} disabled={isSubmittingSales}>
-                          Remove
+                      <div key={idx} className="order-builder-item">
+                        <span className="order-builder-item-quantity">{item.quantity}</span>
+                        <span className="order-builder-item-name">{salesProductOptions.find(o => o.value === item.product_id)?.label || item.product_id}</span>
+                        <Button variant="secondary" className="order-builder-remove" onClick={() => removeSalesItem(idx)} disabled={isSubmittingSales} aria-label="Remove sales item">
+                          <Trash2 size={16} />
                         </Button>
                       </div>
                     ))}
@@ -907,13 +931,8 @@ const OutletView = () => {
                 )}
               </div>
 
-              <Button 
-                variant="primary" 
-                style={{ marginTop: '1rem' }} 
-                onClick={handleRecordSalesSubmit} 
-                disabled={isSubmittingSales || salesItems.length === 0}
-              >
-                {isSubmittingSales ? 'Recording...' : 'Submit Sales Record'}
+              <Button className="order-builder-submit" onClick={handleRecordSalesSubmit} disabled={isSubmittingSales || salesItems.length === 0}>
+                <ShoppingBag size={18} /> {isSubmittingSales ? 'Recording sales…' : 'Submit sales record'}
               </Button>
             </CardContent>
           </Card>

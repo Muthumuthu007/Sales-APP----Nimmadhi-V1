@@ -28,9 +28,17 @@ const Dispatch = () => {
   }, []);
 
   const columns = [
-    { key: 'orderId', label: 'Order ID' },
+    {
+      key: 'displayId',
+      label: 'Order Ref',
+      render: (row) => <span title={row.orderId}>{row.displayId || '—'}</span>,
+    },
     { key: 'outletId', label: 'Destination Outlet' },
-    { key: 'createdAt', label: 'Registered Date' },
+    {
+      key: 'createdAt',
+      label: 'Registered Date',
+      render: (row) => row.createdAt ? new Date(row.createdAt).toLocaleString() : '—',
+    },
     { key: 'dispatchedAt', label: 'Dispatch Timestamp', render: (row) => row.dispatchedAt || '-' },
     { key: 'status', label: 'Transit Status', render: (row) => <Badge status={row.status || 'DISPATCHED'} /> },
   ];

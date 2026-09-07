@@ -5,7 +5,7 @@ import api from './axios';
  * @param {string} outletId
  */
 export async function fetchOutletEmployees(outletId) {
-  return api.get(`/outlet/employees?outletId=${outletId}`);
+  return api.post('/outlet/employees/list', { outletId });
 }
 
 /**
@@ -32,4 +32,3 @@ export async function updateEmployeeSalary(empId, salaryData) {
 export async function fetchEmployeesWithSalary(outletId) {
   return api.post('/outlet/employees/list', { outletId });
 }
-
