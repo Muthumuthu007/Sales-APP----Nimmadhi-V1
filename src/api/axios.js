@@ -24,7 +24,9 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response.data,
   (error) => {
-    if (error.response && error.response.status === 401) {
+    const isLoginRequest = error.config?.url?.replace(/\/$/, '') === '/login';
+
+    if (error.response && error.response.status === 401 && !isLoginRequest) {
       console.warn('Unauthorized - clearing token and redirecting to login');
       localStorage.removeItem('token');
       localStorage.removeItem('role');
