@@ -2,6 +2,7 @@
   width: 100%;
   overflow-x: auto;
   overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: var(--radius-md);
   background: rgba(255, 255, 255, 0.01);
@@ -11,14 +12,14 @@
 
 .table {
   width: 100%;
-  min-width: 760px;
+  min-width: 640px;
   border-collapse: collapse;
   font-size: 0.9rem;
   line-height: 1.45;
 }
 
 .table th, .table td {
-  padding: 0.9rem 1rem;
+  padding: 0.85rem 1rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
@@ -26,8 +27,7 @@
   background-color: rgba(255, 255, 255, 0.03);
   color: #fbbf24;
   font-weight: 700;
-  text-align: left;
-  white-space: normal;
+  white-space: nowrap;
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -37,7 +37,7 @@
 .table td {
   color: var(--color-text-main);
   vertical-align: middle;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
 }
 
 .table-container thead th {
@@ -65,11 +65,11 @@
 
 @media (max-width: 720px) {
   .table {
-    min-width: 680px;
+    min-width: 520px;
     font-size: 0.84rem;
   }
 
   .table th, .table td {
-    padding: 0.75rem;
+    padding: 0.7rem 0.75rem;
   }
 }

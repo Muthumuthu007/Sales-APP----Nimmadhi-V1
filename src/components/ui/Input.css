@@ -1,9 +1,10 @@
 .input-group {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1.5);
+  gap: var(--space-1);
   margin-bottom: var(--space-4);
   width: 100%;
+  min-width: 0;
 }
 
 .input-label {
@@ -24,6 +25,17 @@
   transition: all 0.25s ease;
   outline: none;
   font-family: inherit;
+  width: 100%;
+  min-height: 44px;
+  touch-action: manipulation;
+  /* Prevent iOS zoom on focus (font-size must be >= 16px on iOS) */
+  font-size: max(0.875rem, 16px);
+}
+
+@supports not (font-size: max(1rem, 1rem)) {
+  .input {
+    font-size: 1rem;
+  }
 }
 
 .input:focus {

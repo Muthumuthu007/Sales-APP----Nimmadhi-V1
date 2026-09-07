@@ -466,12 +466,13 @@ const OutletView = () => {
 
   const handleOpenSalaryConfig = (employee) => {
     setSelectedEmployeeForSalary(employee);
-    setConfigSalaryModel(employee.salaryModel || 'MONTHLY');
-    setConfigBasicSalary(employee.basicSalary !== undefined && employee.basicSalary !== null ? String(employee.basicSalary) : '');
-    setConfigPerDayRate(employee.perDayRate !== undefined && employee.perDayRate !== null ? String(employee.perDayRate) : '');
-    setConfigOvertimeRate(employee.overtimeRate !== undefined && employee.overtimeRate !== null ? String(employee.overtimeRate) : '');
-    setConfigAllowancesDefault(employee.allowancesDefault !== undefined && employee.allowancesDefault !== null ? String(employee.allowancesDefault) : '');
-    setConfigDeductionsDefault(employee.deductionsDefault !== undefined && employee.deductionsDefault !== null ? String(employee.deductionsDefault) : '');
+    const sal = employee.salary || {};
+    setConfigSalaryModel(sal.salaryModel || 'MONTHLY');
+    setConfigBasicSalary(sal.basicSalary !== undefined && sal.basicSalary !== null ? String(sal.basicSalary) : '');
+    setConfigPerDayRate(sal.perDayRate !== undefined && sal.perDayRate !== null ? String(sal.perDayRate) : '');
+    setConfigOvertimeRate(sal.overtimeRate !== undefined && sal.overtimeRate !== null ? String(sal.overtimeRate) : '');
+    setConfigAllowancesDefault(sal.allowancesDefault !== undefined && sal.allowancesDefault !== null ? String(sal.allowancesDefault) : '');
+    setConfigDeductionsDefault(sal.deductionsDefault !== undefined && sal.deductionsDefault !== null ? String(sal.deductionsDefault) : '');
     
     setSalaryConfigError(null);
     setSalaryConfigSuccess(null);
@@ -718,18 +719,12 @@ const OutletView = () => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       {!(activeTab === 'REPORTS' && reportView !== 'list') && (
-        <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', gap: '2rem' }}>
+        <div className="outlet-tab-nav">
           {tabs.map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              style={{
-                background: 'none', border: 'none', padding: '1rem 0',
-                fontWeight: activeTab === tab.id ? '600' : '500',
-                color: activeTab === tab.id ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                borderBottom: activeTab === tab.id ? '2px solid var(--color-primary)' : '2px solid transparent',
-                cursor: 'pointer'
-              }}
+              className={`outlet-tab-btn${activeTab === tab.id ? ' outlet-tab-btn--active' : ''}`}
             >
               {tab.label}
             </button>
@@ -1147,10 +1142,10 @@ const OutletView = () => {
                     { key: 'name', label: 'Name' },
                     { key: 'phone', label: 'Phone' },
                     { key: 'designation', label: 'Designation', render: (row) => row.designation || row.role },
-                    { key: 'salaryModel', label: 'Salary Model', render: (row) => row.salaryModel === 'MONTHLY' ? 'Monthly' : 'Daily / Per Day' },
-                    { key: 'basicSalary', label: 'Basic Salary', align: 'right', render: (row) => row.salaryModel === 'MONTHLY' ? `₹${Number(row.basicSalary || 0).toLocaleString()}` : '-' },
-                    { key: 'perDayRate', label: 'Per Day Rate', align: 'right', render: (row) => row.salaryModel === 'PER_DAY' || row.salaryModel === 'DAILY' ? `₹${Number(row.perDayRate || 0).toLocaleString()}` : '-' },
-                    { key: 'overtimeRate', label: 'OT Rate / Hr', align: 'right', render: (row) => `₹${Number(row.overtimeRate || 0).toLocaleString()}` },
+                    { key: 'salaryModel', label: 'Salary Model', render: (row) => (row.salary?.salaryModel === 'MONTHLY' ? 'Monthly' : 'Daily / Per Day') },
+                    { key: 'basicSalary', label: 'Basic Salary', align: 'right', render: (row) => row.salary?.salaryModel === 'MONTHLY' ? `₹${Number(row.salary?.basicSalary || 0).toLocaleString()}` : '-' },
+                    { key: 'perDayRate', label: 'Per Day Rate', align: 'right', render: (row) => row.salary?.salaryModel === 'PER_DAY' || row.salary?.salaryModel === 'DAILY' ? `₹${Number(row.salary?.perDayRate || 0).toLocaleString()}` : '-' },
+                    { key: 'overtimeRate', label: 'OT Rate / Hr', align: 'right', render: (row) => `₹${Number(row.salary?.overtimeRate || 0).toLocaleString()}` },
                     { 
                       key: 'actions', 
                       label: 'Actions', 

@@ -9,6 +9,7 @@
   justify-content: space-between;
   align-items: flex-start;
   gap: var(--space-4);
+  flex-wrap: wrap;
 }
 
 .load-plans-toolbar h2 {
@@ -35,7 +36,7 @@
 }
 
 .load-plans-table {
-  min-width: 1080px;
+  min-width: 900px;
   table-layout: fixed;
 }
 
@@ -86,6 +87,8 @@
   .load-plans-toolbar,
   .load-plans-toolbar > div:first-child {
     align-items: stretch;
+    flex-direction: column;
+    width: 100%;
   }
 
   .load-plans-toolbar {
@@ -94,9 +97,23 @@
 
   .load-plan-tabs {
     width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .load-plan-tabs button {
     flex: 1;
+    min-height: 44px;
+    white-space: nowrap;
+  }
+
+  .load-plan-actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .load-plan-actions .btn {
+    flex: 1;
+    justify-content: center;
   }
 }

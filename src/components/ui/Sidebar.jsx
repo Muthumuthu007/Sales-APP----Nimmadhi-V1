@@ -4,7 +4,7 @@ import { LayoutDashboard, ShoppingCart, CalendarDays, Truck, PackageX, Users, Cl
 import { AuthContext } from '../../context/AuthContext';
 import './Sidebar.css';
 
-const Sidebar = () => {
+const Sidebar = ({ isOpen, onClose }) => {
   const { role } = useContext(AuthContext);
 
   const managerLinks = [
@@ -27,7 +27,7 @@ const Sidebar = () => {
   const links = role === 'MANAGER' ? managerLinks : (role === 'EMPLOYEE' ? employeeLinks : outletLinks);
 
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar${isOpen ? ' sidebar--open' : ''}`}>
       <div className="sidebar-header">
         <div className="logo-icon">✨</div>
         <div className="logo-text-group">
@@ -42,6 +42,7 @@ const Sidebar = () => {
             to={link.to}
             className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
             end={link.to === '/'}
+            onClick={onClose}
           >
             {link.icon}
             <span>{link.label}</span>

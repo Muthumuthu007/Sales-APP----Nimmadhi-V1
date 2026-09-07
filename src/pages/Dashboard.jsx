@@ -31,7 +31,7 @@ const Dashboard = () => {
             approved: summaryResponse.approvedOrders || 0,
             approvedNotDispatched: summaryResponse.approvedNotDispatched || 0,
             deadStock: summaryResponse.deadStockItems || 0,
-            todaySales: `$${summaryResponse.todaySales || 0}`
+            todaySales: `₹${summaryResponse.todaySales || 0}`
           });
           
           const list = Array.isArray(pendingResponse) ? pendingResponse : (pendingResponse?.orders || []);
@@ -41,7 +41,7 @@ const Dashboard = () => {
       } catch (err) {
         console.error("Dashboard pull failed", err);
         if (isMounted) {
-          setStats({ pending: 0, partial: 0, approved: 0, approvedNotDispatched: 0, deadStock: 0, todaySales: '$0' });
+          setStats({ pending: 0, partial: 0, approved: 0, approvedNotDispatched: 0, deadStock: 0, todaySales: '₹0' });
           setPendingOrders([]);
           setLoading(false);
         }

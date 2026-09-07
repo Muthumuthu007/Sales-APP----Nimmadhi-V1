@@ -1,5 +1,5 @@
 .topbar {
-  height: 70px;
+  height: 60px;
   background: rgba(10, 15, 30, 0.35);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
@@ -7,23 +7,56 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 var(--space-6);
+  padding: 0 var(--space-5);
   flex-shrink: 0;
   z-index: 9;
+  gap: var(--space-4);
+}
+
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
 }
 
 .topbar-left .page-title {
-  font-size: 1.25rem;
+  font-size: clamp(0.95rem, 2vw, 1.25rem);
   color: var(--color-text-main);
   margin: 0;
   font-weight: 700;
   letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Hamburger button — hidden on desktop */
+.hamburger-btn {
+  display: none;
+  background: none;
+  border: none;
+  color: var(--color-text-main);
+  align-items: center;
+  justify-content: center;
+  padding: 0.4rem;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+  min-width: 44px;
+  min-height: 44px;
+  touch-action: manipulation;
+  transition: background 0.2s;
+}
+
+.hamburger-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .topbar-right {
   display: flex;
   align-items: center;
-  gap: var(--space-6);
+  gap: var(--space-4);
+  flex-shrink: 0;
 }
 
 .role-switch {
@@ -38,6 +71,9 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  min-height: 44px;
+  touch-action: manipulation;
+  white-space: nowrap;
 }
 
 .role-switch:hover {
@@ -61,6 +97,9 @@
   align-items: center;
   justify-content: center;
   transition: color 0.2s ease;
+  min-width: 44px;
+  min-height: 44px;
+  touch-action: manipulation;
 }
 
 .icon-btn:hover {
@@ -69,8 +108,8 @@
 
 .badge-dot {
   position: absolute;
-  top: 2px;
-  right: 2px;
+  top: 6px;
+  right: 6px;
   width: 8px;
   height: 8px;
   background-color: var(--color-red);
@@ -96,6 +135,7 @@
   align-items: center;
   justify-content: center;
   transition: all 0.25s ease;
+  flex-shrink: 0;
 }
 
 .user-profile:hover .avatar {
@@ -114,9 +154,55 @@
   font-weight: 600;
   color: var(--color-text-main);
   line-height: 1.2;
+  white-space: nowrap;
 }
 
 .user-role {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   color: var(--color-text-muted);
+  white-space: nowrap;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Tablet ── */
+@media (max-width: 900px) {
+  .topbar-right {
+    gap: var(--space-3);
+  }
+  .user-info {
+    display: none;
+  }
+}
+
+/* ── Mobile ── */
+@media (max-width: 768px) {
+  .topbar {
+    padding: 0 var(--space-4);
+    height: 56px;
+  }
+
+  .hamburger-btn {
+    display: flex;
+  }
+
+  .logout-label {
+    display: none;
+  }
+
+  .topbar-right {
+    gap: var(--space-2);
+  }
+}
+
+/* ── Small mobile ── */
+@media (max-width: 400px) {
+  .icon-btn {
+    display: none;
+  }
+
+  .topbar-left .page-title {
+    font-size: 0.9rem;
+  }
 }

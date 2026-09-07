@@ -11,6 +11,10 @@
   border: 1px solid transparent;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   outline: none;
+  min-height: 44px;
+  touch-action: manipulation;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .btn:disabled {
@@ -58,4 +62,12 @@
 }
 .btn-danger:active:not(:disabled) {
   transform: translateY(0);
+}
+
+/* ── Mobile — slightly compact buttons ── */
+@media (max-width: 480px) {
+  .btn {
+    padding: 0.55rem var(--space-4);
+    font-size: 0.82rem;
+  }
 }

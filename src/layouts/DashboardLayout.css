@@ -41,16 +41,33 @@
   overflow: hidden;
   position: relative;
   z-index: 1;
+  min-width: 0;
 }
 
 .layout-content {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: clamp(1rem, 2.2vw, 2rem);
 }
 
-@media (max-width: 760px) {
+/* Mobile overlay backdrop */
+.sidebar-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 19;
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+
+@media (max-width: 768px) {
   .layout-content {
     padding: 1rem;
+  }
+
+  .sidebar-backdrop {
+    display: block;
   }
 }

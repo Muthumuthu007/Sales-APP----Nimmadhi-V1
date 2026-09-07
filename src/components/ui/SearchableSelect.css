@@ -1,13 +1,14 @@
 .searchable-select {
   position: relative;
   width: 100%;
+  min-width: 0;
 }
 
 .select-trigger {
   padding: 0.65rem 1rem;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius-md);
-  font-size: 0.875rem;
+  font-size: max(0.875rem, 16px);
   color: #ffffff;
   background-color: rgba(255, 255, 255, 0.03);
   cursor: pointer;
@@ -17,6 +18,8 @@
   user-select: none;
   min-height: 44px;
   transition: all 0.25s ease;
+  touch-action: manipulation;
+  width: 100%;
 }
 
 .select-trigger.open {
@@ -27,11 +30,16 @@
 
 .placeholder-text {
   color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 .trigger-icon {
   color: var(--color-text-muted);
   transition: transform 0.2s ease;
+  flex-shrink: 0;
 }
 
 .select-trigger.open .trigger-icon {
@@ -44,20 +52,22 @@
   top: calc(100% + 6px);
   left: 0;
   right: 0;
-  background-color: rgba(15, 23, 42, 0.95);
+  background-color: rgba(15, 23, 42, 0.98);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: var(--radius-md);
   box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
-  z-index: 100;
+  z-index: 200;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  /* Ensure dropdown doesn't go off-screen bottom */
+  max-height: min(250px, 40vh);
 }
 
 .select-search-box {
-  padding: var(--space-2.5);
+  padding: var(--space-2);
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   background-color: rgba(255, 255, 255, 0.02);
 }
@@ -68,11 +78,12 @@
   border: 1px solid rgba(255, 255, 255, 0.08);
   background-color: rgba(255, 255, 255, 0.03);
   border-radius: var(--radius-sm);
-  font-size: 0.875rem;
+  font-size: max(0.875rem, 16px);
   color: #ffffff;
   outline: none;
   font-family: inherit;
   transition: all 0.2s;
+  touch-action: manipulation;
 }
 
 .select-search-box input:focus {
@@ -84,16 +95,20 @@
   list-style: none;
   margin: 0;
   padding: 0;
-  max-height: 250px;
+  max-height: 200px;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .select-option {
-  padding: var(--space-2.5) var(--space-4);
+  padding: var(--space-2) var(--space-4);
   font-size: 0.875rem;
   color: var(--color-text-muted);
   cursor: pointer;
   transition: all 0.2s ease;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
 }
 
 .select-group-label {

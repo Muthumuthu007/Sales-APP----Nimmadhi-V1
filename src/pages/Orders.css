@@ -1,0 +1,62 @@
+/* ── Orders Toolbar ──
+   Desktop: [tabs ←──────────────── search →]  (row, side by side)
+   Mobile:  [search ↑]
+            [tabs   ↓]             (column, search on top)
+*/
+
+.orders-toolbar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Tabs row — horizontally scrollable */
+.orders-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--color-border);
+  gap: 1.5rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  flex: 1;
+  padding-bottom: 0.25rem;
+}
+.orders-tabs::-webkit-scrollbar { display: none; }
+
+/* Search input wrapper */
+.orders-search {
+  min-width: 220px;
+  max-width: 280px;
+}
+
+.orders-search .input-group {
+  margin-bottom: 0;
+}
+
+/* ── Mobile: stack vertically, search on top ── */
+@media (max-width: 640px) {
+  .orders-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  /* Search moves to top (order: -1 renders it first) */
+  .orders-search {
+    order: -1;
+    min-width: unset;
+    max-width: unset;
+    width: 100%;
+  }
+
+  /* Tabs go below */
+  .orders-tabs {
+    order: 1;
+    gap: 1rem;
+    border-bottom: 1px solid var(--color-border);
+  }
+}

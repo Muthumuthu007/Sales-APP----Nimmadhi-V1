@@ -212,7 +212,7 @@ const EmployeeAttendance = () => {
 
       setStatus('success');
     } catch (err) {
-      setErrorMessage(err.response?.data?.message || err.message || 'Submission failed. Geolocation might be out of bounds.');
+      setErrorMessage(err.response?.data?.message || err.response?.data?.error || err.message || 'Submission failed. Geolocation might be out of bounds.');
       setStatus('error');
       
       // Ensure camera stops if we fail

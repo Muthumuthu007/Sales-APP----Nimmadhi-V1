@@ -51,6 +51,8 @@
   box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
   transition: all 0.25s ease;
   outline: none;
+  min-height: 44px;
+  touch-action: manipulation;
 }
 
 .retry-btn:hover {

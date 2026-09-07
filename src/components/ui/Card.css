@@ -8,6 +8,7 @@
   display: flex;
   flex-direction: column;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  min-width: 0;
 }
 
 .card:hover {
@@ -22,17 +23,32 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
 }
 
 .card-title {
-  font-size: 1rem;
+  font-size: clamp(0.9rem, 2vw, 1rem);
   font-weight: 600;
   margin: 0;
   color: var(--color-text-main);
   letter-spacing: -0.01em;
+  min-width: 0;
 }
 
 .card-content {
   padding: var(--space-5);
   flex: 1;
+  min-width: 0;
+}
+
+/* ── Mobile ── */
+@media (max-width: 480px) {
+  .card-header {
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .card-content {
+    padding: var(--space-4);
+  }
 }

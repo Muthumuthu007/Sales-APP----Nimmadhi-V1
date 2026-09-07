@@ -7,6 +7,7 @@ import { Input } from '../components/ui/Input';
 import { LoadingState, ErrorState } from '../components/ui/StateContainers';
 import { Button } from '../components/ui/Button';
 import { fetchOrders } from '../api/manager';
+import './Orders.css';
 
 const Orders = () => {
   const [orders, setOrders] = useState([]);
@@ -59,7 +60,7 @@ const Orders = () => {
     { key: 'outletId', label: 'Outlet ID' },
     { key: 'createdAt', label: 'Created At' },
     { key: 'status', label: 'Status', render: (row) => (
-      <Badge status={(row.status === 'PENDING' && activeTab === 'PARTIALLY_APPROVED') ? 'PARTIALLY_APPROVED' : row.status} /> 
+      <Badge status={(row.status === 'PENDING' && activeTab === 'PARTIALLY_APPROVED') ? 'PARTIALLY_APPROVED' : row.status} />
     )},
     { key: 'actions', label: 'Actions', align: 'right', render: (row) => (
       <Button 
@@ -82,8 +83,16 @@ const Orders = () => {
         <h2 style={{ margin: 0 }}>Orders Management</h2>
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '0.5rem' }}>
-        <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', gap: '2rem', overflowX: 'auto', paddingBottom: '0.5rem', flex: 1 }}>
+      {/* Toolbar: on desktop — tabs left, search right; on mobile — search top, tabs bottom */}
+      <div className="orders-toolbar">
+        <div className="orders-search">
+          <Input
+            placeholder="Filter by Outlet ID..."
+            value={outletFilter}
+            onChange={(e) => setOutletFilter(e.target.value)}
+          />
+        </div>
+        <div className="orders-tabs">
           {tabs.map(tab => (
             <button
               key={tab.id}
@@ -94,20 +103,13 @@ const Orders = () => {
                 color: activeTab === tab.id ? 'var(--color-primary)' : 'var(--color-text-muted)',
                 borderBottom: activeTab === tab.id ? '2px solid var(--color-primary)' : '2px solid transparent',
                 cursor: 'pointer',
-                whiteSpace: 'nowrap'
+                whiteSpace: 'nowrap',
+                minHeight: '44px',
               }}
             >
               {tab.label}
             </button>
           ))}
-        </div>
-        
-        <div style={{ paddingLeft: '1rem', minWidth: '250px' }}>
-          <Input 
-             placeholder="Filter by Outlet ID..."
-             value={outletFilter}
-             onChange={(e) => setOutletFilter(e.target.value)}
-          />
         </div>
       </div>
 
