@@ -1,6 +1,6 @@
 import React, { useContext } from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, ShoppingCart, CalendarDays, Truck, PackageX, Users, Clock, CreditCard, Store, UserPlus } from 'lucide-react';
+import { LayoutDashboard, ShoppingCart, CalendarDays, Truck, CreditCard, Store, UserPlus, UsersRound } from 'lucide-react';
 import { AuthContext } from '../../context/AuthContext';
 import './Sidebar.css';
 
@@ -13,18 +13,15 @@ const Sidebar = ({ isOpen, onClose }) => {
     { to: '/load-plans', icon: <CalendarDays size={20} />, label: 'Load Plans' },
     { to: '/dispatch', icon: <Truck size={20} />, label: 'Dispatch' },
     { to: '/salary', icon: <CreditCard size={20} />, label: 'Salary' },
+    { to: '/employees', icon: <UsersRound size={20} />, label: 'Employees' },
     { to: '/create-user', icon: <UserPlus size={20} />, label: 'Create User' },
   ];
 
-  const outletLinks = [
-    { to: '/outlet', icon: <Store size={20} />, label: 'Outlet View' },
-  ];
-
   const employeeLinks = [
-    { to: '/employee/attendance', icon: <Clock size={20} />, label: 'Mark Attendance' },
+    { to: '/employee', icon: <Store size={20} />, label: 'Outlet Operations' },
   ];
 
-  const links = role === 'MANAGER' ? managerLinks : (role === 'EMPLOYEE' ? employeeLinks : outletLinks);
+  const links = role === 'MANAGER' ? managerLinks : employeeLinks;
 
   return (
     <aside className={`sidebar${isOpen ? ' sidebar--open' : ''}`}>

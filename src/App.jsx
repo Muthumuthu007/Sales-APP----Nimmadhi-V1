@@ -16,9 +16,7 @@ import LoadPlans from './pages/LoadPlans';
 import Dispatch from './pages/Dispatch';
 import OutletView from './pages/OutletView';
 import Salary from './pages/Salary';
-
-// Employee Pages
-import EmployeeAttendance from './pages/EmployeeAttendance';
+import Employees from './pages/Employees';
 
 // Root Redirect component
 const RootRedirect = () => {
@@ -30,10 +28,8 @@ const RootRedirect = () => {
   
   if (role === 'MANAGER') {
     return <Navigate to="/dashboard" replace />;
-  } else if (role === 'OUTLET') {
-    return <Navigate to="/outlet" replace />;
-  } else if (role === 'EMPLOYEE') {
-    return <Navigate to="/employee/attendance" replace />;
+  } else if (['OUTLET', 'EMPLOYEE', 'CASHIER', 'SUPERVISOR'].includes(role)) {
+    return <Navigate to="/employee" replace />;
   }
   
   return <Navigate to="/login" replace />;
@@ -86,18 +82,23 @@ function App() {
                 <CreateUser />
               </ProtectedRoute>
             } />
+            <Route path="employees" element={
+              <ProtectedRoute allowedRoles={['MANAGER']}>
+                <Employees />
+              </ProtectedRoute>
+            } />
 
             {/* OUTLET ROUTES */}
             <Route path="outlet" element={
-              <ProtectedRoute allowedRoles={['OUTLET']}>
+              <ProtectedRoute allowedRoles={['OUTLET', 'EMPLOYEE', 'CASHIER', 'SUPERVISOR']}>
                 <OutletView />
               </ProtectedRoute>
             } />
 
             {/* EMPLOYEE ROUTES */}
-            <Route path="employee/attendance" element={
-              <ProtectedRoute allowedRoles={['EMPLOYEE']}>
-                <EmployeeAttendance />
+            <Route path="employee" element={
+              <ProtectedRoute allowedRoles={['OUTLET', 'EMPLOYEE', 'CASHIER', 'SUPERVISOR']}>
+                <OutletView />
               </ProtectedRoute>
             } />
 

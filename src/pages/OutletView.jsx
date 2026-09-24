@@ -14,13 +14,16 @@ import { fetchOutletEmployees, createOutletEmployee, updateEmployeeSalary } from
 import { getOutletLocation, updateOutletLocation } from '../api/location';
 
 import { AuthContext } from '../context/AuthContext';
+import EmployeeAttendance from './EmployeeAttendance';
 import './OutletView.css';
 
 const OutletView = () => {
-  const [activeTab, setActiveTab] = useState('CREATE_ORDER');
-  const { outletId } = React.useContext(AuthContext);
+  const { outletId, role } = React.useContext(AuthContext);
+  const [activeTab, setActiveTab] = useState(() => (
+    ['OUTLET', 'EMPLOYEE', 'CASHIER', 'SUPERVISOR'].includes(role) ? 'ATTENDANCE' : 'CREATE_ORDER'
+  ));
 
-  const tabs = [
+  const outletTabs = [
     { id: 'CREATE_ORDER', label: 'Create Order' },
     { id: 'MY_ORDERS', label: 'My Orders' },
     { id: 'STOCK', label: 'Stock View' },
@@ -29,6 +32,14 @@ const OutletView = () => {
     { id: 'MANAGE_EMPLOYEES', label: 'Manage Employees' },
     { id: 'OUTLET_LOCATION', label: 'Outlet Location' },
   ];
+  const employeeTabs = [
+    { id: 'ATTENDANCE', label: 'Attendance' },
+    { id: 'CREATE_ORDER', label: 'Create Order' },
+    { id: 'MY_ORDERS', label: 'My Orders' },
+    { id: 'STOCK', label: 'Stock View' },
+    { id: 'REPORTS', label: 'Reports' },
+  ];
+  const tabs = ['OUTLET', 'EMPLOYEE', 'CASHIER', 'SUPERVISOR'].includes(role) ? employeeTabs : outletTabs;
 
   // --- Create Order State ---
   const [productOptions, setProductOptions] = useState([{ label: 'Loading products...', value: '' }]);
@@ -733,6 +744,7 @@ const OutletView = () => {
       )}
 
       <div>
+        {activeTab === 'ATTENDANCE' && <EmployeeAttendance />}
         {activeTab === 'CREATE_ORDER' && (
           <Card className="order-builder-card">
             <CardHeader title="Create a new order" action={<span className="order-builder-step">Build your order</span>} />

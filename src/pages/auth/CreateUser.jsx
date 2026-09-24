@@ -1,166 +1,63 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
-import { Input } from '../../components/ui/Input';
+import { Input, Select } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
-import { createUser as createUserApi } from '../../api/auth';
-import { Building2, LockKeyhole, ShieldCheck, UserPlus, UsersRound } from 'lucide-react';
+import { Building2, LockKeyhole, UserPlus, UsersRound } from 'lucide-react';
+import { createManagerEmployee, fetchOutlets } from '../../api/employees';
 import './CreateUser.css';
 
+const emptyForm = { name: '', phone: '', password: '', outletId: '', role: 'EMPLOYEE', salaryModel: 'MONTHLY', basicSalary: '', perDayRate: '', overtimeRate: '0' };
+
 const CreateUser = () => {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [role, setRole] = useState('MANAGER');
-  const [outletId, setOutletId] = useState('');
-  
+  const [form, setForm] = useState(emptyForm);
+  const [outlets, setOutlets] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
-  const handleCreateUser = async (e) => {
-    e.preventDefault();
-    
-    if (!username || !password) {
-      setError('Username and password are required.');
+  useEffect(() => {
+    fetchOutlets().then((data) => setOutlets(data?.outlets || data?.data || [])).catch(() => setError('Unable to load outlets. Please refresh and try again.'));
+  }, []);
+
+  const update = (field) => (event) => setForm((current) => ({ ...current, [field]: event.target.value }));
+  const monthly = form.salaryModel === 'MONTHLY';
+  const outletOptions = [{ value: '', label: outlets.length ? 'Select an outlet' : 'Loading outlets…' }, ...outlets.map((outlet) => ({ value: outlet.outletId || outlet.id, label: `${outlet.outletName || outlet.name || 'Outlet'} (${outlet.outletId || outlet.id})` }))];
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    if (!form.name || !form.phone || !form.password || !form.outletId || (monthly && !form.basicSalary) || (!monthly && !form.perDayRate)) {
+      setError('Enter the employee details, assigned outlet, and the selected salary rate.');
       return;
     }
-    
-    if (role === 'OUTLET' && !outletId) {
-      setError('Outlet ID is required when assigning the OUTLET role.');
-      return;
-    }
-
-    setIsLoading(true);
-    setError('');
-    setSuccessMsg('');
-
+    setError(''); setSuccessMsg(''); setIsLoading(true);
     try {
-      const payload = {
-        username,
-        password,
-        role,
-        ...(role === 'OUTLET' ? { outletId } : {})
-      };
-      
-      const response = await createUserApi(payload);
-      
-      // Successfully created
-      setSuccessMsg(response.message || 'User created successfully.');
-      
-      // Reset form
-      setUsername('');
-      setPassword('');
-      setRole('MANAGER');
-      setOutletId('');
-    } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Failed to create user. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
+      const payload = { name: form.name.trim(), phone: form.phone.trim(), password: form.password, outletId: form.outletId, role: form.role, salaryModel: form.salaryModel, overtimeRate: Number(form.overtimeRate || 0), ...(monthly ? { basicSalary: Number(form.basicSalary) } : { perDayRate: Number(form.perDayRate) }) };
+      const result = await createManagerEmployee(payload);
+      setSuccessMsg(`${result?.message || 'Employee created successfully.'} Login username: ${result?.loginUsername || form.phone.trim()}`);
+      setForm(emptyForm);
+    } catch (requestError) {
+      setError(requestError.response?.data?.error || requestError.response?.data?.message || 'Unable to create the employee.');
+    } finally { setIsLoading(false); }
   };
 
-  return (
-    <main className="create-user-page">
-      <section className="create-user-intro">
-        <div className="create-user-intro-icon"><UsersRound size={22} /></div>
-        <div>
-          <p className="create-user-eyebrow">Access management</p>
-          <h2>Create a system user</h2>
-          <p>Set up a secure account and assign only the access required for the user’s role.</p>
-        </div>
-      </section>
-
-      <div className="create-user-layout">
-        <Card className="create-user-card">
-          <CardHeader title="User details" />
-          <CardContent>
-          {error && (
-            <div className="create-user-alert create-user-alert-error" role="alert">
-              {error}
-            </div>
-          )}
-          {successMsg && (
-            <div className="create-user-alert create-user-alert-success" role="status">
-              {successMsg}
-            </div>
-          )}
-          <form onSubmit={handleCreateUser} className="create-user-form">
-            <Input 
-              label="Username" 
-              type="text" 
-              placeholder="e.g. arun.kumar"
-              autoComplete="username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              disabled={isLoading}
-            />
-            <Input 
-              label="Password" 
-              type="password" 
-              placeholder="Create a strong password"
-              autoComplete="new-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={isLoading}
-            />
-            <p className="create-user-field-note"><LockKeyhole size={14} /> Use a unique password and share it securely with the new user.</p>
-            
-            <fieldset className="create-user-role-picker" disabled={isLoading}>
-              <legend><span>2</span><div><strong>Access role</strong><small>Choose the access level for this user</small></div></legend>
-              <div className="create-user-role-options">
-                <button
-                  type="button"
-                  className={`create-user-role-option ${role === 'MANAGER' ? 'selected' : ''}`}
-                  onClick={() => setRole('MANAGER')}
-                >
-                  <ShieldCheck size={19} />
-                  <span><strong>Factory Manager</strong><small>Full operational access</small></span>
-                </button>
-                <button
-                  type="button"
-                  className={`create-user-role-option ${role === 'OUTLET' ? 'selected' : ''}`}
-                  onClick={() => setRole('OUTLET')}
-                >
-                  <Building2 size={19} />
-                  <span><strong>Outlet Account</strong><small>Access for one assigned outlet</small></span>
-                </button>
-              </div>
-            </fieldset>
-
-            {role === 'OUTLET' && (
-              <Input 
-                label="Assigned outlet ID" 
-                type="text" 
-                placeholder="e.g. OUT001"
-                value={outletId}
-                onChange={(e) => setOutletId(e.target.value)}
-                disabled={isLoading}
-              />
-            )}
-
-            <Button type="submit" variant="primary" className="create-user-submit" disabled={isLoading}>
-              <UserPlus size={18} />
-              {isLoading ? 'Creating user…' : 'Create user'}
-            </Button>
-          </form>
-          </CardContent>
-        </Card>
-
-        <aside className="create-user-guidance" aria-label="Role guidance">
-          <div className="create-user-guidance-icon"><ShieldCheck size={20} /></div>
-          <h3>Choose access carefully</h3>
-          <p>Roles control what the user can view and manage in the system.</p>
-          <div className="create-user-role">
-            <ShieldCheck size={18} />
-            <div><strong>Factory Manager</strong><span>Full access to orders, load plans, dispatch and users.</span></div>
-          </div>
-          <div className="create-user-role">
-            <Building2 size={18} />
-            <div><strong>Outlet Account</strong><span>Limited access, restricted to the assigned outlet.</span></div>
-          </div>
-        </aside>
-      </div>
-    </main>
-  );
+  return <main className="create-user-page">
+    <section className="create-user-intro"><div className="create-user-intro-icon"><UsersRound size={22} /></div><div><p className="create-user-eyebrow">Team management</p><h2>Add an employee</h2><p>Create one staff login and link it to the outlet where the employee works.</p></div></section>
+    <div className="create-user-layout"><Card className="create-user-card"><CardHeader title="Employee details" /><CardContent>
+      {error && <div className="create-user-alert create-user-alert-error" role="alert">{error}</div>}
+      {successMsg && <div className="create-user-alert create-user-alert-success" role="status">{successMsg}</div>}
+      <form onSubmit={handleSubmit} className="create-user-form">
+        <Input label="Employee name" placeholder="e.g. Arun Kumar" value={form.name} onChange={update('name')} disabled={isLoading} />
+        <Input label="Phone / login username" placeholder="e.g. 9876543210" value={form.phone} onChange={update('phone')} disabled={isLoading} />
+        <Input label="Temporary password" type="password" autoComplete="new-password" value={form.password} onChange={update('password')} disabled={isLoading} />
+        <Select label="Assigned outlet" value={form.outletId} onChange={update('outletId')} options={outletOptions} disabled={isLoading || !outlets.length} />
+        <fieldset className="create-user-role-picker" disabled={isLoading}><legend><span>2</span><div><strong>Employee role</strong><small>All staff use the same outlet workspace</small></div></legend><div className="create-user-role-options">{['EMPLOYEE', 'CASHIER', 'SUPERVISOR'].map((role) => <button key={role} type="button" className={`create-user-role-option ${form.role === role ? 'selected' : ''}`} onClick={() => setForm((current) => ({ ...current, role }))}><UsersRound size={19} /><span><strong>{role.charAt(0) + role.slice(1).toLowerCase()}</strong><small>Assigned to the selected outlet</small></span></button>)}</div></fieldset>
+        <Select label="Salary model" value={form.salaryModel} onChange={update('salaryModel')} options={[{ value: 'MONTHLY', label: 'Monthly salary' }, { value: 'PER_DAY', label: 'Per-day salary' }]} disabled={isLoading} />
+        {monthly ? <Input label="Basic monthly salary" type="number" min="0" value={form.basicSalary} onChange={update('basicSalary')} disabled={isLoading} /> : <Input label="Per-day rate" type="number" min="0" value={form.perDayRate} onChange={update('perDayRate')} disabled={isLoading} />}
+        <Input label="Overtime hourly rate" type="number" min="0" value={form.overtimeRate} onChange={update('overtimeRate')} disabled={isLoading} />
+        <Button type="submit" variant="primary" className="create-user-submit" disabled={isLoading}><UserPlus size={18} />{isLoading ? 'Creating employee…' : 'Create employee login'}</Button>
+      </form>
+    </CardContent></Card><aside className="create-user-guidance"><div className="create-user-guidance-icon"><Building2 size={20} /></div><h3>One employee workspace</h3><p>Employees can mark attendance, create and review outlet orders, view stock, and run their outlet reports.</p><div className="create-user-role"><LockKeyhole size={18} /><div><strong>Outlet-scoped access</strong><span>Every employee is restricted to the outlet selected here.</span></div></div></aside></div>
+  </main>;
 };
 
 export default CreateUser;

@@ -1,46 +1,55 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader } from '../components/ui/Card';
 import { Table } from '../components/ui/Table';
 import { Button } from '../components/ui/Button';
-import { mockEmployees } from '../api/mockData';
-import { Modal } from '../components/ui/Modal';
-import { Input, Select } from '../components/ui/Input';
+import { Select } from '../components/ui/Input';
+import { fetchManagerEmployees, fetchOutlets } from '../api/employees';
+import { LoadingState, ErrorState } from '../components/ui/StateContainers';
 
 const Employees = () => {
-  const [modalOpen, setModalOpen] = useState(false);
+  const [outlets, setOutlets] = useState([]);
+  const [outletId, setOutletId] = useState('');
+  const [employees, setEmployees] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
+  useEffect(() => {
+    fetchOutlets().then((data) => {
+      const result = data?.outlets || data?.data || [];
+      setOutlets(result);
+      if (result.length) setOutletId(result[0].outletId || result[0].id);
+    }).catch(() => setError('Unable to load outlets.'));
+  }, []);
+
+  const load = useCallback(async (target = outletId) => {
+    if (!target) return;
+    setLoading(true); setError('');
+    try {
+      const data = await fetchManagerEmployees(target);
+      setEmployees(data?.employees || data?.data || []);
+    } catch (requestError) {
+      setError(requestError.response?.data?.error || requestError.response?.data?.message || 'Unable to load employees.');
+    } finally { setLoading(false); }
+  }, [outletId]);
+
+  useEffect(() => { if (outletId) load(outletId); }, [outletId, load]);
+
+  const outletOptions = [{ value: '', label: 'Select outlet' }, ...outlets.map((outlet) => ({ value: outlet.outletId || outlet.id, label: `${outlet.outletName || outlet.name || 'Outlet'} (${outlet.outletId || outlet.id})` }))];
   const columns = [
-    { key: 'id', label: 'ID' },
-    { key: 'name', label: 'Name' },
-    { key: 'type', label: 'Salary Type' },
-    { key: 'salary', label: 'Salary / Rate', render: (row) => `$${row.salary}` },
-    { key: 'otRate', label: 'OT Rate/Hr', render: (row) => `$${row.otRate}` },
+    { key: 'name', label: 'Employee' },
+    { key: 'phone', label: 'Login username' },
+    { key: 'role', label: 'Role' },
+    { key: 'salaryModel', label: 'Salary model', render: (row) => row.salary?.salaryModel || row.salaryModel || '-' },
+    { key: 'status', label: 'Status', render: (row) => row.isActive === false ? 'Inactive' : 'Active' },
+    { key: 'createdAt', label: 'Created', render: (row) => row.createdAt ? new Date(row.createdAt).toLocaleDateString() : '-' },
   ];
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2>Employee Management</h2>
-        <Button onClick={() => setModalOpen(true)}>Add Employee</Button>
-      </div>
-
-      <Card>
-        <CardContent style={{ padding: 0 }}>
-          <Table columns={columns} data={mockEmployees} />
-        </CardContent>
-      </Card>
-
-      <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title="Add Employee">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <Input label="Employee Name" />
-          <Select label="Salary Type" options={[{ label: 'Monthly', value: 'Monthly' }, { label: 'Per Day', value: 'Per Day' }]} />
-          <Input type="number" label="Salary / Rate ($)" />
-          <Input type="number" label="Overtime Rate ($/hr)" />
-          <Button variant="primary" style={{ marginTop: '1rem' }} onClick={() => setModalOpen(false)}>Save Employee</Button>
-        </div>
-      </Modal>
-    </div>
-  );
+  return <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+    <div><p className="create-user-eyebrow">Team management</p><h2 style={{ margin: 0 }}>Employees by outlet</h2><p className="text-muted">Choose an outlet to view its staff accounts and employment details.</p></div>
+    <Card><CardHeader title="Employee directory" /><CardContent>
+      <div style={{ display: 'flex', gap: '1rem', alignItems: 'end', flexWrap: 'wrap', marginBottom: '1.25rem' }}><div style={{ minWidth: '280px' }}><Select label="Outlet" value={outletId} onChange={(event) => setOutletId(event.target.value)} options={outletOptions} /></div><Button onClick={() => load()} disabled={!outletId || loading}>{loading ? 'Loading…' : 'Refresh'}</Button></div>
+      {loading ? <LoadingState message="Loading employees…" /> : error ? <ErrorState error={error} onRetry={() => load()} /> : <Table columns={columns} data={employees} emptyStateMessage="No employees have been created for this outlet." />}
+    </CardContent></Card>
+  </div>;
 };
 
 export default Employees;

@@ -30,5 +30,17 @@ export async function updateEmployeeSalary(empId, salaryData) {
  * @param {string} outletId
  */
 export async function fetchEmployeesWithSalary(outletId) {
-  return api.post('/outlet/employees/list', { outletId });
+  return api.post('/manager/employees/list', { outletId });
+}
+
+export async function fetchManagerEmployees(outletId) {
+  return api.post('/manager/employees/list', { outletId });
+}
+
+export async function createManagerEmployee(employeeData) {
+  return api.post('/manager/employees', employeeData);
+}
+
+export async function fetchOutlets() {
+  return api.get('/outlets');
 }
