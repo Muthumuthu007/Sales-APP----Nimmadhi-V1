@@ -3,8 +3,9 @@ import { Card, CardContent, CardHeader } from '../components/ui/Card';
 import { Table } from '../components/ui/Table';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
+import { Select } from '../components/ui/Input';
 import { LoadingState, ErrorState } from '../components/ui/StateContainers';
-import { fetchLoadPlans, dispatchLoadPlan, downloadLoadPlansExcel } from '../api/manager';
+import { fetchLoadPlans, dispatchLoadPlan, downloadLoadPlansExcel, fetchOutlets } from '../api/manager';
 import './LoadPlans.css';
 
 const compactId = (value) => {
@@ -22,13 +23,6 @@ const formatDateTime = (value) => {
   }).format(date);
 };
 
-const groupByOutlet = (plans) => plans.reduce((groups, plan) => {
-  const outletId = plan.outletId || 'UNASSIGNED';
-  if (!groups[outletId]) groups[outletId] = [];
-  groups[outletId].push(plan);
-  return groups;
-}, {});
-
 const LoadPlans = () => {
   const [activeTab, setActiveTab] = useState('APPROVED'); // APPROVED or PENDING
   const [plans, setPlans] = useState([]);
@@ -43,6 +37,18 @@ const LoadPlans = () => {
   const [dispatchError, setDispatchError] = useState(null);
 
   const [isDownloading, setIsDownloading] = useState(false);
+  const [outlets, setOutlets] = useState([]);
+  const [selectedOutletId, setSelectedOutletId] = useState(() => sessionStorage.getItem('managerLogisticsOutletId') || 'ALL');
+
+  useEffect(() => {
+    let isMounted = true;
+    fetchOutlets().then((response) => {
+      if (isMounted) setOutlets(response?.outlets || []);
+    }).catch(() => {
+      if (isMounted) setOutlets([]);
+    });
+    return () => { isMounted = false; };
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -163,7 +169,19 @@ const LoadPlans = () => {
     )}
   ];
 
-  const plansByOutlet = groupByOutlet(plans);
+  const outletOptions = [
+    { value: 'ALL', label: 'All outlets' },
+    ...outlets.map((outlet) => ({ value: outlet.outletId, label: `${outlet.outletId}${outlet.username ? ` — ${outlet.username}` : ''}` })),
+  ];
+  const visiblePlans = selectedOutletId === 'ALL'
+    ? plans
+    : plans.filter((plan) => plan.outletId === selectedOutletId);
+
+  const handleOutletChange = (event) => {
+    const outletId = event.target.value;
+    setSelectedOutletId(outletId);
+    sessionStorage.setItem('managerLogisticsOutletId', outletId);
+  };
 
   return (
     <div className="load-plans-page">
@@ -172,14 +190,21 @@ const LoadPlans = () => {
           <h2>Production Load Plans</h2>
           <p>Review approved production plans and dispatch them to outlets.</p>
         </div>
-        <Button 
-          variant="secondary" 
-          onClick={handleDownloadExcel} 
-          disabled={isDownloading || loading || plans.length === 0}
-          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-        >
-          {isDownloading ? 'Downloading...' : 'Export to Excel'}
-        </Button>
+        <div className="load-plan-toolbar-actions">
+          <Select
+            label="Outlet"
+            value={selectedOutletId}
+            onChange={handleOutletChange}
+            options={outletOptions}
+          />
+          <Button
+            variant="secondary"
+            onClick={handleDownloadExcel}
+            disabled={isDownloading || loading || plans.length === 0}
+          >
+            {isDownloading ? 'Downloading...' : 'Export to Excel'}
+          </Button>
+        </div>
       </div>
 
       {successMsg && (
@@ -213,26 +238,15 @@ const LoadPlans = () => {
         ) : error ? (
           <ErrorState error={error} onRetry={() => setActiveTab(activeTab)} />
         ) : (
-          <CardContent className="load-plans-by-outlet">
-            {Object.keys(plansByOutlet).length === 0 ? (
-              <p className="load-plans-empty">No load plans found for {activeTab.toLowerCase()} status.</p>
-            ) : Object.entries(plansByOutlet).map(([outletId, outletPlans]) => (
-              <section className="outlet-plan-group" key={outletId}>
-                <div className="outlet-plan-group-header">
-                  <div>
-                    <p className="outlet-plan-group-label">Destination outlet</p>
-                    <h3>{outletId}</h3>
-                  </div>
-                  <span className="outlet-plan-count">{outletPlans.length} {outletPlans.length === 1 ? 'plan' : 'plans'}</span>
-                </div>
-                <Table
-                  columns={columns}
-                  data={outletPlans}
-                  className="load-plans-table"
-                  emptyStateMessage="No load plans for this outlet."
-                />
-              </section>
-            ))}
+          <CardContent style={{ padding: 0 }}>
+            <Table
+              columns={columns}
+              data={visiblePlans}
+              className="load-plans-table"
+              emptyStateMessage={selectedOutletId === 'ALL'
+                ? `No load plans found for ${activeTab.toLowerCase()} status.`
+                : `No ${activeTab.toLowerCase()} load plans found for ${selectedOutletId}.`}
+            />
           </CardContent>
         )}
       </Card>

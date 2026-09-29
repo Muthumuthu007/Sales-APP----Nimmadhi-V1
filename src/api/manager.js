@@ -32,3 +32,7 @@ export async function downloadLoadPlansExcel(type) {
 export async function fetchDashboardSummary() {
   return api.get('/dashboard/summary');
 }
+
+export async function fetchOutlets() {
+  return api.get('/outlets');
+}

@@ -24,6 +24,17 @@
   font-size: 0.9rem;
 }
 
+.load-plan-toolbar-actions {
+  display: flex;
+  align-items: end;
+  gap: var(--space-3);
+}
+
+.load-plan-toolbar-actions .input-group {
+  min-width: 220px;
+  margin: 0;
+}
+
 .load-plan-tabs,
 .load-plan-actions {
   display: flex;
@@ -181,7 +192,8 @@
 
 @media (max-width: 720px) {
   .load-plans-toolbar,
-  .load-plans-toolbar > div:first-child {
+  .load-plans-toolbar > div:first-child,
+  .load-plan-toolbar-actions {
     align-items: stretch;
     flex-direction: column;
     width: 100%;
@@ -189,6 +201,10 @@
 
   .load-plans-toolbar {
     flex-direction: column;
+  }
+
+  .load-plan-toolbar-actions .input-group {
+    width: 100%;
   }
 
   .load-plan-tabs {
