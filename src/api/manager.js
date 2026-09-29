@@ -29,6 +29,14 @@ export async function downloadLoadPlansExcel(type) {
   return api.get(`/load-plans/${endpoint}/download`, { responseType: 'blob' });
 }
 
+export async function fetchDispatchedLoadPlans() {
+  return api.get('/load-plans/dispatched');
+}
+
+export async function downloadDispatchedLoadPlansExcel() {
+  return api.get('/load-plans/dispatched/download', { responseType: 'blob' });
+}
+
 export async function fetchDashboardSummary() {
   return api.get('/dashboard/summary');
 }

@@ -98,10 +98,11 @@
 
 .load-plan-actions {
   justify-content: flex-end;
+  min-width: 156px;
 }
 
 .load-plans-table {
-  min-width: 900px;
+  min-width: 1080px;
   table-layout: fixed;
 }
 
@@ -110,8 +111,8 @@
 .load-plans-table .product-column { width: 250px; }
 .load-plans-table .quantity-column { width: 72px; }
 .load-plans-table .capacity-column { width: 92px; }
-.load-plans-table .created-column { width: 155px; }
-.load-plans-table .action-column { width: 116px; }
+.load-plans-table .created-column { width: 175px; }
+.load-plans-table .action-column { width: 180px; }
 
 .load-plans-table th,
 .load-plans-table td {
