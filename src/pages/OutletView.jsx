@@ -8,7 +8,7 @@ import { SearchableSelect } from '../components/ui/SearchableSelect';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Modal } from '../components/ui/Modal';
-import { createOrder, fetchOutletOrders, fetchOutletStock, receiveOrder, fetchOutletProductNames, recordSales, downloadSalesReport, fetchReportData } from '../api/orders';
+import { createOrder, fetchOutletOrders, fetchOutletStock, receiveOrder, fetchOutletProductNames, recordSales, fetchDueCustomers, downloadSalesReport, fetchReportData } from '../api/orders';
 import { LoadingState, ErrorState } from '../components/ui/StateContainers';
 import { fetchOutletEmployees, createOutletEmployee, updateEmployeeSalary } from '../api/employees';
 import { getOutletLocation, updateOutletLocation } from '../api/location';
@@ -28,6 +28,7 @@ const OutletView = () => {
     { id: 'MY_ORDERS', label: 'My Orders' },
     { id: 'STOCK', label: 'Stock View' },
     { id: 'SALES', label: 'Sales Entry' },
+    { id: 'DUE_CUSTOMERS', label: 'Pending Payments' },
     { id: 'REPORTS', label: 'Reports' },
     { id: 'MANAGE_EMPLOYEES', label: 'Manage Employees' },
     { id: 'OUTLET_LOCATION', label: 'Outlet Location' },
@@ -37,6 +38,7 @@ const OutletView = () => {
     { id: 'CREATE_ORDER', label: 'Create Order' },
     { id: 'MY_ORDERS', label: 'My Orders' },
     { id: 'STOCK', label: 'Stock View' },
+    { id: 'SALES', label: 'Sales Entry' },
     { id: 'REPORTS', label: 'Reports' },
   ];
   const tabs = ['OUTLET', 'EMPLOYEE', 'CASHIER', 'SUPERVISOR'].includes(role) ? employeeTabs : outletTabs;
@@ -111,10 +113,17 @@ const OutletView = () => {
     ];
   }, [productOptions, selectedProductGroup]);
 
+  const productNameById = useMemo(() => new Map(
+    productOptions
+      .filter((option) => option.value && option.label)
+      .map((option) => [String(option.value), option.label])
+  ), [productOptions]);
+
   // --- My Orders State ---
   const [myOrders, setMyOrders] = useState([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [ordersError, setOrdersError] = useState(null);
+  const [viewOrderTarget, setViewOrderTarget] = useState(null);
 
   // --- Stock View State ---
   const [stockItems, setStockItems] = useState([]);
@@ -134,9 +143,19 @@ const OutletView = () => {
   const [salesProduct, setSalesProduct] = useState('');
   const [salesQuantity, setSalesQuantity] = useState(1);
   const [salesDate, setSalesDate] = useState(new Date().toISOString().split('T')[0]);
+  const [customerName, setCustomerName] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
+  const [customerAddress, setCustomerAddress] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('CASH');
+  const [billAmount, setBillAmount] = useState('');
+  const [advanceAmount, setAdvanceAmount] = useState('');
   const [isSubmittingSales, setIsSubmittingSales] = useState(false);
   const [salesError, setSalesError] = useState(null);
   const [salesSuccess, setSalesSuccess] = useState(null);
+  const [dueCustomers, setDueCustomers] = useState([]);
+  const [dueCustomersLoading, setDueCustomersLoading] = useState(false);
+  const [dueCustomersError, setDueCustomersError] = useState(null);
+  const [receipt, setReceipt] = useState(null);
 
   const handleAddSalesItem = () => {
     if (!salesProduct) {
@@ -171,17 +190,42 @@ const OutletView = () => {
       setSalesError('Add at least one item to record sales.');
       return;
     }
+    if (!customerName.trim() || !customerPhone.trim() || !customerAddress.trim()) {
+      setSalesError('Customer name, phone number, and address are required.');
+      return;
+    }
+    const parsedBillAmount = Number(billAmount);
+    const parsedAdvanceAmount = Number(advanceAmount || 0);
+    if (!Number.isFinite(parsedBillAmount) || parsedBillAmount <= 0 || !Number.isFinite(parsedAdvanceAmount) || parsedAdvanceAmount < 0 || parsedAdvanceAmount > parsedBillAmount) {
+      setSalesError('Enter a valid bill amount and an advance amount that does not exceed it.');
+      return;
+    }
     setIsSubmittingSales(true);
     setSalesError(null);
     setSalesSuccess(null);
 
     try {
-      await recordSales({
+      const submittedItems = salesItems.map((item) => ({ ...item, productName: getProductName(item.product_id) }));
+      const result = await recordSales({
         outletId: outletId,
+        date: salesDate,
+        customerName: customerName.trim(),
+        customerPhone: customerPhone.trim(),
+        customerAddress: customerAddress.trim(),
+        paymentMethod,
+        billAmount: parsedBillAmount,
+        advanceAmount: parsedAdvanceAmount,
         soldItems: salesItems.map(i => ({ product_id: i.product_id, qty: i.quantity }))
       });
-      setSalesSuccess('Daily sales recorded successfully!');
+      setReceipt({ ...result, items: submittedItems });
+      setSalesSuccess('Sales invoice created successfully.');
       setSalesItems([]);
+      setCustomerName('');
+      setCustomerPhone('');
+      setCustomerAddress('');
+      setPaymentMethod('CASH');
+      setBillAmount('');
+      setAdvanceAmount('');
     } catch (err) {
       setSalesError(err.response?.data?.message || err.message || 'Failed to record sales.');
     } finally {
@@ -601,7 +645,14 @@ const OutletView = () => {
       
       fetchOutletStock(outletId).then(response => {
         if (isMounted) {
-          setStockItems(Array.isArray(response) ? response : (response?.products || []));
+          const stockProducts = Array.isArray(response) ? response : (response?.products || []);
+          setStockItems(stockProducts.map((product) => ({
+            ...product,
+            productName: product.productName
+              || product.product_name
+              || productNameById.get(String(product.product_id || product.productId))
+              || 'Product name unavailable',
+          })));
           setStockLoading(false);
         }
       }).catch(err => {
@@ -628,6 +679,20 @@ const OutletView = () => {
            setSalesProductOptions([{ label: 'Error loading options', value: '' }]);
         }
       });
+    } else if (activeTab === 'DUE_CUSTOMERS' && outletId) {
+      setDueCustomersLoading(true);
+      setDueCustomersError(null);
+      fetchDueCustomers(outletId).then((response) => {
+        if (isMounted) {
+          setDueCustomers(response?.customers || []);
+          setDueCustomersLoading(false);
+        }
+      }).catch((error) => {
+        if (isMounted) {
+          setDueCustomersError(error.response?.data?.message || error.response?.data?.error || error.message || 'Failed to load pending customer payments.');
+          setDueCustomersLoading(false);
+        }
+      });
     } else if (activeTab === 'MANAGE_EMPLOYEES' && outletId) {
       setEmployeesLoading(true);
       setEmployeesError(null);
@@ -649,7 +714,7 @@ const OutletView = () => {
     }
     
     return () => { isMounted = false; };
-  }, [activeTab, outletId]);
+  }, [activeTab, outletId, productNameById]);
 
   const handleAddItem = () => {
     if (!selectedProduct) {
@@ -725,6 +790,31 @@ const OutletView = () => {
     }
 
     return id;
+  };
+
+  const formatCurrency = (amount) => `₹${Number(amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+  const sendReceiptToCustomer = async () => {
+    if (!receipt) return;
+    const text = [
+      'NIMMADHI MATTRESS',
+      `Invoice: ${receipt.saleReferenceId || '-'}`,
+      `Customer: ${receipt.customerName}`,
+      `Bill amount: ${formatCurrency(receipt.billAmount)}`,
+      `Paid now: ${formatCurrency(receipt.advanceAmount)}`,
+      `Balance due: ${formatCurrency(receipt.balanceDue)}`,
+      `Payment method: ${receipt.paymentMethod}`,
+      'Thank you for choosing Nimmadhi Mattress.',
+    ].join('\n');
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: 'Nimmadhi Mattress invoice', text });
+        return;
+      } catch (error) {
+        if (error?.name === 'AbortError') return;
+      }
+    }
+    window.location.href = `sms:${receipt.customerPhone}?body=${encodeURIComponent(text)}`;
   };
 
   return (
@@ -835,13 +925,11 @@ const OutletView = () => {
                     { key: 'items', label: 'Items Count', align: 'center', render: (row) => row.items?.length || 0 },
                     { key: 'status', label: 'Status', render: (row) => <Badge status={row.status} /> },
                     { key: 'actions', label: 'Actions', render: (row) => (
-                        row.status === 'DISPATCHED' ? (
-                          <Button size="sm" onClick={() => handleReceiveClick(row)}>
-                            Receive
-                          </Button>
-                        ) : null
-                      )
-                    }
+                      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        <Button size="sm" variant="secondary" onClick={() => setViewOrderTarget(row)}>View</Button>
+                        {row.status === 'DISPATCHED' && <Button size="sm" onClick={() => handleReceiveClick(row)}>Receive</Button>}
+                      </div>
+                    ) }
                   ]} 
                   data={myOrders}
                   emptyStateMessage="No tracked operational orders found for your outlet."
@@ -850,6 +938,36 @@ const OutletView = () => {
             </CardContent>
           </Card>
         )}
+
+        <Modal
+          isOpen={Boolean(viewOrderTarget)}
+          onClose={() => setViewOrderTarget(null)}
+          title={`Order ${viewOrderTarget?.displayId || viewOrderTarget?.orderId || ''}`}
+        >
+          {viewOrderTarget && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+                <div><div className="text-muted" style={{ fontSize: '0.8rem' }}>ORDER ID</div><strong>{viewOrderTarget.displayId || viewOrderTarget.orderId}</strong></div>
+                <Badge status={viewOrderTarget.status} />
+              </div>
+              <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', fontSize: '0.9rem' }}>
+                <span><strong>Created:</strong> {viewOrderTarget.createdAt ? new Date(viewOrderTarget.createdAt).toLocaleString() : '-'}</span>
+                {viewOrderTarget.remarks && <span><strong>Remarks:</strong> {viewOrderTarget.remarks}</span>}
+              </div>
+              <Table
+                columns={[
+                  { key: 'productName', label: 'Product', render: (item) => item.productName || getProductName(item.product_id) || item.product_id },
+                  { key: 'orderedQty', label: 'Ordered', align: 'center', render: (item) => item.orderedQty ?? item.quantity ?? 0 },
+                  { key: 'approvedQty', label: 'Approved', align: 'center', render: (item) => item.approvedQty ?? 0 },
+                  { key: 'pendingQty', label: 'Pending', align: 'center', render: (item) => item.pendingQty ?? 0 },
+                ]}
+                data={viewOrderTarget.items || []}
+                emptyStateMessage="This order does not contain any item details."
+              />
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}><Button variant="secondary" onClick={() => setViewOrderTarget(null)}>Close</Button></div>
+            </div>
+          )}
+        </Modal>
 
         {activeTab === 'STOCK' && (
           <Card>
@@ -866,7 +984,7 @@ const OutletView = () => {
               ) : (
                 <Table 
                   columns={[
-                    { key: 'productName', label: 'Product Name', render: (row) => row.productName || row.product_id },
+                    { key: 'productName', label: 'Product Name', render: (row) => row.productName || 'Product name unavailable' },
                     { key: 'openingQty', label: 'Opening', align: 'center', render: (row) => row.openingQty || 0 },
                     { key: 'receivedQty', label: 'Received', align: 'center', render: (row) => row.receivedQty || 0 },
                     { key: 'soldQty', label: 'Sold', align: 'center', render: (row) => row.soldQty || 0 },
@@ -907,8 +1025,22 @@ const OutletView = () => {
                   <div className="order-builder-section-label"><span>1</span><div><strong>Sales date</strong><small>Choose the date for this entry</small></div></div>
                   <Input type="date" label="Date of sale" value={salesDate} onChange={(e) => setSalesDate(e.target.value)} />
                 </section>
+                <section className="sales-builder-date-card sales-builder-customer-card">
+                  <div className="order-builder-section-label"><span>2</span><div><strong>Customer details</strong><small>Required for every sales receipt</small></div></div>
+                  <Input label="Customer name" placeholder="e.g. S. Kumar" value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
+                  <Input label="Customer phone number" type="tel" placeholder="e.g. 9876543210" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} />
+                  <Input label="Customer address" placeholder="House, street, area, city" value={customerAddress} onChange={(e) => setCustomerAddress(e.target.value)} />
+                  <Select label="Payment method" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} options={[
+                    { value: 'CASH', label: 'Cash' },
+                    { value: 'CARD', label: 'Card' },
+                    { value: 'UPI', label: 'UPI' },
+                  ]} />
+                  <Input label="Total bill amount" type="number" min="0.01" step="0.01" placeholder="0.00" value={billAmount} onChange={(e) => setBillAmount(e.target.value)} />
+                  <Input label="Amount paid now (advance)" type="number" min="0" step="0.01" placeholder="0.00" value={advanceAmount} onChange={(e) => setAdvanceAmount(e.target.value)} />
+                  {billAmount && <div className="sales-builder-payment-summary">Balance due: <strong>{formatCurrency(Math.max(0, Number(billAmount) - Number(advanceAmount || 0)))}</strong></div>}
+                </section>
                 <section className="sales-builder-entry-card">
-                  <div className="order-builder-section-label"><span>2</span><div><strong>Sold product</strong><small>Only products available at this outlet are listed</small></div></div>
+                  <div className="order-builder-section-label"><span>3</span><div><strong>Sold product</strong><small>Only products available at this outlet are listed</small></div></div>
                   <SearchableSelect label="Select product" options={salesProductOptions} value={salesProduct} onChange={(val) => setSalesProduct(val)} placeholder="Search available products..." />
                   <div className="sales-builder-add-row">
                     <Input label="Quantity sold" type="number" min="1" value={salesQuantity} onChange={(e) => setSalesQuantity(e.target.value)} />
@@ -944,6 +1076,46 @@ const OutletView = () => {
             </CardContent>
           </Card>
         )}
+
+        {activeTab === 'DUE_CUSTOMERS' && (
+          <Card>
+            <CardHeader title="Pending customer payments" action={<span className="sales-builder-step">Advance payments awaiting balance</span>} />
+            <CardContent style={{ padding: 0 }}>
+              {dueCustomersLoading ? (
+                <div style={{ padding: '3rem 0' }}><LoadingState message="Loading pending customer payments…" /></div>
+              ) : dueCustomersError ? (
+                <div style={{ padding: '1.5rem' }}><ErrorState error={dueCustomersError} onRetry={() => setActiveTab('DUE_CUSTOMERS')} /></div>
+              ) : (
+                <Table
+                  columns={[
+                    { key: 'customerName', label: 'Customer' },
+                    { key: 'customerPhone', label: 'Phone' },
+                    { key: 'customerAddress', label: 'Address', render: (row) => row.customerAddress || '-' },
+                    { key: 'saleDate', label: 'Invoice date', render: (row) => row.saleDate ? new Date(row.saleDate).toLocaleDateString() : '-' },
+                    { key: 'billAmount', label: 'Bill', align: 'right', render: (row) => formatCurrency(row.billAmount) },
+                    { key: 'advanceAmount', label: 'Paid', align: 'right', render: (row) => formatCurrency(row.advanceAmount) },
+                    { key: 'balanceDue', label: 'Balance due', align: 'right', render: (row) => <strong>{formatCurrency(row.balanceDue)}</strong> },
+                  ]}
+                  data={dueCustomers}
+                  emptyStateMessage="No pending customer payments for this outlet."
+                />
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        <Modal isOpen={Boolean(receipt)} onClose={() => setReceipt(null)} title="Sales invoice">
+          {receipt && (
+            <article className="sales-receipt">
+              <header className="sales-receipt-header"><div><p className="sales-receipt-kicker">NIMMADHI</p><h2>MATTRESS</h2><span>Get your sleep</span></div><div className="sales-receipt-invoice"><span>INVOICE</span><strong>{receipt.saleReferenceId || '-'}</strong><small>{receipt.saleDate}</small></div></header>
+              <section className="sales-receipt-customer"><div><span>BILLED TO</span><strong>{receipt.customerName}</strong><p>{receipt.customerPhone}<br />{receipt.customerAddress}</p></div><div><span>PAYMENT</span><strong>{receipt.paymentMethod}</strong><p>{receipt.paymentStatus === 'PAID' ? 'Paid in full' : 'Advance payment received'}</p></div></section>
+              <table className="sales-receipt-items"><thead><tr><th>Product</th><th>Quantity</th></tr></thead><tbody>{(receipt.items || []).map((item, index) => <tr key={`${item.product_id}-${index}`}><td>{item.productName || item.product_id}</td><td>{item.quantity}</td></tr>)}</tbody></table>
+              <section className="sales-receipt-totals"><div><span>Total bill</span><strong>{formatCurrency(receipt.billAmount)}</strong></div><div><span>Paid now</span><strong>{formatCurrency(receipt.advanceAmount)}</strong></div><div className="sales-receipt-balance"><span>Balance due</span><strong>{formatCurrency(receipt.balanceDue)}</strong></div></section>
+              <footer>Thank you for choosing Nimmadhi Mattress. Please retain this invoice for your records.</footer>
+              <div className="sales-receipt-actions"><Button variant="secondary" onClick={() => window.print()}>Print receipt</Button><Button onClick={sendReceiptToCustomer}>Send receipt</Button></div>
+            </article>
+          )}
+        </Modal>
 
         {activeTab === 'REPORTS' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%' }}>

@@ -24,6 +24,10 @@ export async function recordSales(data) {
   return api.post('/outlet/sales', data);
 }
 
+export async function fetchDueCustomers(outletId) {
+  return api.get(`/outlet/customers/due?outletId=${outletId}`);
+}
+
 export async function fetchReportData(type, date, outletId) {
   return api.get(`/reports/sales?type=${type}&date=${date}&outletId=${outletId}`);
 }

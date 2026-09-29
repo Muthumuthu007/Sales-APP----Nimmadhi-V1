@@ -31,6 +31,60 @@
   gap: var(--space-2);
 }
 
+.load-plans-by-outlet {
+  display: grid;
+  gap: var(--space-5);
+  padding: var(--space-5) !important;
+}
+
+.load-plans-empty {
+  margin: 0;
+  padding: var(--space-6);
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.outlet-plan-group {
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-md);
+  background: rgba(15, 23, 42, 0.18);
+}
+
+.outlet-plan-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(251, 191, 36, 0.06);
+}
+
+.outlet-plan-group-label {
+  margin: 0 0 0.15rem;
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.outlet-plan-group h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.outlet-plan-count {
+  padding: 0.35rem 0.6rem;
+  border-radius: 999px;
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.12);
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 .load-plan-actions {
   justify-content: flex-end;
 }
@@ -83,6 +137,48 @@
   padding: 0.48rem 0.7rem !important;
 }
 
+.view-plan-button {
+  min-width: 58px;
+  white-space: nowrap;
+  font-size: 0.78rem !important;
+  padding: 0.48rem 0.7rem !important;
+}
+
+.load-plan-detail-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.load-plan-detail-summary > div {
+  padding: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.load-plan-detail-summary span {
+  display: block;
+  margin-bottom: 0.2rem;
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.load-plan-detail-summary strong {
+  overflow-wrap: anywhere;
+  font-size: 0.85rem;
+}
+
+.load-plan-detail-items {
+  margin-top: var(--space-5);
+}
+
+.load-plan-detail-items h4 {
+  margin: 0 0 var(--space-3);
+}
+
 @media (max-width: 720px) {
   .load-plans-toolbar,
   .load-plans-toolbar > div:first-child {
@@ -115,5 +211,9 @@
   .load-plan-actions .btn {
     flex: 1;
     justify-content: center;
+  }
+
+  .load-plan-detail-summary {
+    grid-template-columns: 1fr;
   }
 }

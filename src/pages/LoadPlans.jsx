@@ -22,6 +22,13 @@ const formatDateTime = (value) => {
   }).format(date);
 };
 
+const groupByOutlet = (plans) => plans.reduce((groups, plan) => {
+  const outletId = plan.outletId || 'UNASSIGNED';
+  if (!groups[outletId]) groups[outletId] = [];
+  groups[outletId].push(plan);
+  return groups;
+}, {});
+
 const LoadPlans = () => {
   const [activeTab, setActiveTab] = useState('APPROVED'); // APPROVED or PENDING
   const [plans, setPlans] = useState([]);
@@ -31,6 +38,7 @@ const LoadPlans = () => {
 
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState(null);
+  const [detailsPlan, setDetailsPlan] = useState(null);
   const [isDispatching, setIsDispatching] = useState(false);
   const [dispatchError, setDispatchError] = useState(null);
 
@@ -133,6 +141,13 @@ const LoadPlans = () => {
     { key: 'createdAt', label: 'Created', className: 'created-column', render: (row) => <span title={row.createdAt}>{formatDateTime(row.createdAt)}</span> },
     { key: 'actions', label: 'Action', className: 'action-column', align: 'right', render: (row) => (
       <div className="load-plan-actions">
+        <Button
+          variant="secondary"
+          className="view-plan-button"
+          onClick={() => setDetailsPlan(row)}
+        >
+          View
+        </Button>
         {activeTab === 'APPROVED' ? (
           <Button 
             variant="primary" 
@@ -147,6 +162,8 @@ const LoadPlans = () => {
       </div>
     )}
   ];
+
+  const plansByOutlet = groupByOutlet(plans);
 
   return (
     <div className="load-plans-page">
@@ -196,13 +213,26 @@ const LoadPlans = () => {
         ) : error ? (
           <ErrorState error={error} onRetry={() => setActiveTab(activeTab)} />
         ) : (
-          <CardContent style={{ padding: 0 }}>
-            <Table 
-              columns={columns} 
-              data={plans} 
-              className="load-plans-table"
-              emptyStateMessage={`No load plans found for ${activeTab.toLowerCase()} status.`} 
-            />
+          <CardContent className="load-plans-by-outlet">
+            {Object.keys(plansByOutlet).length === 0 ? (
+              <p className="load-plans-empty">No load plans found for {activeTab.toLowerCase()} status.</p>
+            ) : Object.entries(plansByOutlet).map(([outletId, outletPlans]) => (
+              <section className="outlet-plan-group" key={outletId}>
+                <div className="outlet-plan-group-header">
+                  <div>
+                    <p className="outlet-plan-group-label">Destination outlet</p>
+                    <h3>{outletId}</h3>
+                  </div>
+                  <span className="outlet-plan-count">{outletPlans.length} {outletPlans.length === 1 ? 'plan' : 'plans'}</span>
+                </div>
+                <Table
+                  columns={columns}
+                  data={outletPlans}
+                  className="load-plans-table"
+                  emptyStateMessage="No load plans for this outlet."
+                />
+              </section>
+            ))}
           </CardContent>
         )}
       </Card>
@@ -237,6 +267,32 @@ const LoadPlans = () => {
           >
             {isDispatching ? 'Transmitting...' : 'Confirm Dispatch'}
           </Button>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={Boolean(detailsPlan)}
+        onClose={() => setDetailsPlan(null)}
+        title={`Load Plan ${detailsPlan?.displayId || compactId(detailsPlan?.loadPlanId)}`}
+      >
+        <div className="load-plan-detail-summary">
+          <div><span>Outlet</span><strong>{detailsPlan?.outletId || '—'}</strong></div>
+          <div><span>Order reference</span><strong>{detailsPlan?.orderDisplayId || compactId(detailsPlan?.orderId)}</strong></div>
+          <div><span>Created</span><strong>{formatDateTime(detailsPlan?.createdAt)}</strong></div>
+          <div><span>Status</span><strong>{detailsPlan?.planType || activeTab}</strong></div>
+        </div>
+        <div className="load-plan-detail-items">
+          <h4>Items in this load plan</h4>
+          <Table
+            columns={[
+              { key: 'productName', label: 'Product', render: (item) => item.productName || item.product_id || '—' },
+              { key: 'quantity', label: 'Quantity', align: 'center', render: (item) => item.quantity ?? '—' },
+              { key: 'maxProduce', label: 'Capacity', align: 'center', render: (item) => item.maxProduce ?? '—' },
+              { key: 'isFree', label: 'Type', render: (item) => item.isFree ? 'Free item' : 'Ordered item' },
+            ]}
+            data={detailsPlan?.items || []}
+            emptyStateMessage="This load plan has no items."
+          />
         </div>
       </Modal>
     </div>

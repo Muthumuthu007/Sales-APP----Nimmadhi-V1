@@ -6,7 +6,7 @@ const optionalSessionFields = [
 
 /**
  * Save the complete authenticated session synchronously.
- * Axios reads localStorage for the Authorization header, so this must happen
+ * Axios reads sessionStorage for the Authorization header, so this must happen
  * before routing to a page that requests protected data.
  */
 export function persistSession(storage, session) {

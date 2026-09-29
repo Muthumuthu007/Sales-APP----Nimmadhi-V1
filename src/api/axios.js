@@ -12,7 +12,7 @@ const api = axios.create({
 // Request Interceptor
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    const token = sessionStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -28,10 +28,13 @@ api.interceptors.response.use(
     const isLoginRequest = error.config?.url?.replace(/\/$/, '') === '/login';
 
     if (error.response && error.response.status === 401 && !isLoginRequest) {
-      console.warn('Unauthorized - clearing token and redirecting to login');
-      localStorage.removeItem('token');
-      localStorage.removeItem('role');
-      localStorage.removeItem('outletId');
+      console.warn('Unauthorized - clearing this tab session and redirecting to login');
+      sessionStorage.removeItem('token');
+      sessionStorage.removeItem('role');
+      sessionStorage.removeItem('username');
+      sessionStorage.removeItem('outletId');
+      sessionStorage.removeItem('empId');
+      sessionStorage.removeItem('empName');
       window.location.href = '/login';
     }
     return Promise.reject(error);

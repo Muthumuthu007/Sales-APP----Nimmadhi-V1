@@ -6,40 +6,42 @@ import { persistSession } from '../auth/session';
 export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  const [token, setToken] = useState(localStorage.getItem('token') || null);
-  const [role, setRole] = useState(localStorage.getItem('role') || null);
-  const [outletId, setOutletId] = useState(localStorage.getItem('outletId') || null);
-  const [username, setUsername] = useState(localStorage.getItem('username') || null);
-  const [empId, setEmpId] = useState(localStorage.getItem('empId') || null);
-  const [empName, setEmpName] = useState(localStorage.getItem('empName') || null);
+  // sessionStorage belongs to one browser tab. A manager and employee can
+  // therefore work in separate tabs without replacing one another's login.
+  const [token, setToken] = useState(sessionStorage.getItem('token') || null);
+  const [role, setRole] = useState(sessionStorage.getItem('role') || null);
+  const [outletId, setOutletId] = useState(sessionStorage.getItem('outletId') || null);
+  const [username, setUsername] = useState(sessionStorage.getItem('username') || null);
+  const [empId, setEmpId] = useState(sessionStorage.getItem('empId') || null);
+  const [empName, setEmpName] = useState(sessionStorage.getItem('empName') || null);
 
   useEffect(() => {
-    // Keep localStorage in sync with state
+    // Keep the current tab's session in sync with state.
     if (token) {
-      localStorage.setItem('token', token);
-      localStorage.setItem('role', role);
-      if (username) localStorage.setItem('username', username);
+      sessionStorage.setItem('token', token);
+      sessionStorage.setItem('role', role);
+      if (username) sessionStorage.setItem('username', username);
       if (outletId) {
-        localStorage.setItem('outletId', outletId);
+        sessionStorage.setItem('outletId', outletId);
       } else {
-        localStorage.removeItem('outletId');
+        sessionStorage.removeItem('outletId');
       }
-      if (empId) localStorage.setItem('empId', empId);
-      if (empName) localStorage.setItem('empName', empName);
+      if (empId) sessionStorage.setItem('empId', empId);
+      if (empName) sessionStorage.setItem('empName', empName);
     } else {
-      localStorage.removeItem('token');
-      localStorage.removeItem('role');
-      localStorage.removeItem('username');
-      localStorage.removeItem('outletId');
-      localStorage.removeItem('empId');
-      localStorage.removeItem('empName');
+      sessionStorage.removeItem('token');
+      sessionStorage.removeItem('role');
+      sessionStorage.removeItem('username');
+      sessionStorage.removeItem('outletId');
+      sessionStorage.removeItem('empId');
+      sessionStorage.removeItem('empName');
     }
   }, [token, role, outletId, username, empId, empName]);
 
   const loginContext = (data) => {
     // Persist the session before navigation. Dashboard requests run immediately
-    // after login and must be able to attach this token on their first request.
-    persistSession(localStorage, data);
+    // after login and must be able to attach this tab's token on their first request.
+    persistSession(sessionStorage, data);
 
     setToken(data.token);
     setRole(data.role);
