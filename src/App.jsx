@@ -17,6 +17,7 @@ import Dispatch from './pages/Dispatch';
 import OutletView from './pages/OutletView';
 import Salary from './pages/Salary';
 import Employees from './pages/Employees';
+import Outlets from './pages/Outlets';
 
 // Root Redirect component
 const RootRedirect = () => {
@@ -85,6 +86,11 @@ function App() {
             <Route path="employees" element={
               <ProtectedRoute allowedRoles={['MANAGER']}>
                 <Employees />
+              </ProtectedRoute>
+            } />
+            <Route path="outlets" element={
+              <ProtectedRoute allowedRoles={['MANAGER']}>
+                <Outlets />
               </ProtectedRoute>
             } />
 

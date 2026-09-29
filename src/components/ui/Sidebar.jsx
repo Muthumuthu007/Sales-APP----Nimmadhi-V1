@@ -13,6 +13,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     { to: '/load-plans', icon: <CalendarDays size={20} />, label: 'Load Plans' },
     { to: '/dispatch', icon: <Truck size={20} />, label: 'Dispatch' },
     { to: '/salary', icon: <CreditCard size={20} />, label: 'Salary' },
+    { to: '/outlets', icon: <Store size={20} />, label: 'Outlets' },
     { to: '/employees', icon: <UsersRound size={20} />, label: 'Employees' },
     { to: '/create-user', icon: <UserPlus size={20} />, label: 'Create User' },
   ];

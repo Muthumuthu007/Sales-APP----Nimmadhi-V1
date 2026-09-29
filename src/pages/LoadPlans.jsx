@@ -171,7 +171,7 @@ const LoadPlans = () => {
 
   const outletOptions = [
     { value: 'ALL', label: 'All outlets' },
-    ...outlets.map((outlet) => ({ value: outlet.outletId, label: `${outlet.outletId}${outlet.username ? ` — ${outlet.username}` : ''}` })),
+    ...outlets.map((outlet) => ({ value: outlet.outletId, label: `${outlet.outletId}${outlet.outletName || outlet.username ? ` — ${outlet.outletName || outlet.username}` : ''}` })),
   ];
   const visiblePlans = selectedOutletId === 'ALL'
     ? plans

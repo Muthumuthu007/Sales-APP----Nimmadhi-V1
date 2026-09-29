@@ -44,3 +44,7 @@ export async function createManagerEmployee(employeeData) {
 export async function fetchOutlets() {
   return api.get('/outlets');
 }
+
+export async function createOutlet(outletData) {
+  return api.post('/outlets/create', outletData);
+}
