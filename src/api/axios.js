@@ -33,6 +33,7 @@ api.interceptors.response.use(
       sessionStorage.removeItem('role');
       sessionStorage.removeItem('username');
       sessionStorage.removeItem('outletId');
+      sessionStorage.removeItem('outletName');
       sessionStorage.removeItem('empId');
       sessionStorage.removeItem('empName');
       window.location.href = '/login';

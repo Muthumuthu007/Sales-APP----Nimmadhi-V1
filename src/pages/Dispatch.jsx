@@ -6,6 +6,7 @@ import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 import { Select } from '../components/ui/Input';
 import { fetchDispatchedLoadPlans, fetchOutlets, downloadDispatchedLoadPlansExcel } from '../api/manager';
+import { outletLabel } from '../utils/outlets';
 import { LoadingState, ErrorState } from '../components/ui/StateContainers';
 import './Dispatch.css';
 
@@ -51,7 +52,7 @@ const Dispatch = () => {
       label: 'Order Ref',
       render: (row) => <span title={row.orderId}>{row.orderDisplayId || '—'}</span>,
     },
-    { key: 'outletId', label: 'Destination Outlet' },
+    { key: 'outletId', label: 'Destination Outlet', render: (row) => outletLabel(row.outletId, outlets) },
     {
       key: 'createdAt',
       label: 'Registered Date',
@@ -147,7 +148,7 @@ const Dispatch = () => {
         title={`Dispatched order ${detailsPlan?.orderDisplayId || '—'}`}
       >
         <div className="dispatch-detail-summary">
-          <div><span>Outlet</span><strong>{detailsPlan?.outletId || '—'}</strong></div>
+          <div><span>Outlet</span><strong>{outletLabel(detailsPlan?.outletId, outlets)}</strong></div>
           <div><span>Load plan</span><strong>{detailsPlan?.displayId || '—'}</strong></div>
           <div><span>Dispatched</span><strong>{detailsPlan?.dispatchedAt ? new Date(detailsPlan.dispatchedAt).toLocaleString() : '—'}</strong></div>
           <div><span>Dispatched by</span><strong>{detailsPlan?.dispatchedBy || '—'}</strong></div>

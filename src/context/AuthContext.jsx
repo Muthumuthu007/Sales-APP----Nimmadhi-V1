@@ -11,6 +11,7 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(sessionStorage.getItem('token') || null);
   const [role, setRole] = useState(sessionStorage.getItem('role') || null);
   const [outletId, setOutletId] = useState(sessionStorage.getItem('outletId') || null);
+  const [outletName, setOutletName] = useState(sessionStorage.getItem('outletName') || null);
   const [username, setUsername] = useState(sessionStorage.getItem('username') || null);
   const [empId, setEmpId] = useState(sessionStorage.getItem('empId') || null);
   const [empName, setEmpName] = useState(sessionStorage.getItem('empName') || null);
@@ -26,6 +27,8 @@ export const AuthProvider = ({ children }) => {
       } else {
         sessionStorage.removeItem('outletId');
       }
+      if (outletName) sessionStorage.setItem('outletName', outletName);
+      else sessionStorage.removeItem('outletName');
       if (empId) sessionStorage.setItem('empId', empId);
       if (empName) sessionStorage.setItem('empName', empName);
     } else {
@@ -33,10 +36,11 @@ export const AuthProvider = ({ children }) => {
       sessionStorage.removeItem('role');
       sessionStorage.removeItem('username');
       sessionStorage.removeItem('outletId');
+      sessionStorage.removeItem('outletName');
       sessionStorage.removeItem('empId');
       sessionStorage.removeItem('empName');
     }
-  }, [token, role, outletId, username, empId, empName]);
+  }, [token, role, outletId, outletName, username, empId, empName]);
 
   const loginContext = (data) => {
     // Persist the session before navigation. Dashboard requests run immediately
@@ -47,6 +51,7 @@ export const AuthProvider = ({ children }) => {
     setRole(data.role);
     setUsername(data.username);
     setOutletId(data.outletId || null);
+    setOutletName(data.outletName || null);
     setEmpId(data.empId || null);
     setEmpName(data.empName || null);
   };
@@ -56,12 +61,13 @@ export const AuthProvider = ({ children }) => {
     setRole(null);
     setUsername(null);
     setOutletId(null);
+    setOutletName(null);
     setEmpId(null);
     setEmpName(null);
   };
 
   return (
-    <AuthContext.Provider value={{ token, role, outletId, username, empId, empName, login: loginContext, logout: logoutContext }}>
+    <AuthContext.Provider value={{ token, role, outletId, outletName, username, empId, empName, login: loginContext, logout: logoutContext }}>
       {children}
     </AuthContext.Provider>
   );

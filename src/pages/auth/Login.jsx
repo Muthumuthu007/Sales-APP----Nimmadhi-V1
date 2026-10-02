@@ -37,6 +37,7 @@ const Login = () => {
         token: response.token,
         role: role,
         outletId: response.outletId,
+        outletName: response.outletName || null,
         username: response.username || username.trim(),
         empId: response.empId || null,
         empName: response.name || response.username || null

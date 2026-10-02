@@ -6,7 +6,7 @@ import { AuthContext } from '../context/AuthContext';
 import { Camera, MapPin, CheckCircle, Clock, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 
 const EmployeeAttendance = () => {
-  const { empId, empName, outletId, username } = useContext(AuthContext);
+  const { empId, empName, outletId, outletName, username } = useContext(AuthContext);
 
   // Time & Date States
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -316,7 +316,7 @@ const EmployeeAttendance = () => {
                 </Button>
                 
                 <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                  Assigned Outlet: <strong>{outletId || 'OUT001'}</strong>
+                  Assigned Outlet: <strong>{outletName ? `${outletName} (${outletId})` : (outletId || 'OUT001')}</strong>
                 </div>
               </div>
             </div>
@@ -537,7 +537,7 @@ const EmployeeAttendance = () => {
           fontSize: '0.825rem',
           color: 'var(--color-text-muted)'
         }}>
-          Assigned Outlet: <strong>{outletId || 'OUT001'}</strong> &bull; Employee ID: <strong>{empId || 'Guest'}</strong>
+          Assigned Outlet: <strong>{outletName ? `${outletName} (${outletId})` : (outletId || 'OUT001')}</strong> &bull; Employee ID: <strong>{empId || 'Guest'}</strong>
         </div>
       </Card>
       

@@ -2,28 +2,29 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '../components/ui/Card';
 import { Table } from '../components/ui/Table';
 import { Button } from '../components/ui/Button';
-import { Input, Select } from '../components/ui/Input';
+import { Select } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
-import { fetchEmployeesWithSalary } from '../api/employees';
+import { fetchEmployeesWithSalary, fetchOutlets } from '../api/employees';
 import { LoadingState, ErrorState } from '../components/ui/StateContainers';
 
 const Salary = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
-  const [outletId, setOutletId] = useState('OUT009');
+  const [outletId, setOutletId] = useState('');
+  const [outlets, setOutlets] = useState([]);
   const [employeesList, setEmployeesList] = useState([]);
   const [employeesLoading, setEmployeesLoading] = useState(false);
   const [employeesError, setEmployeesError] = useState(null);
 
   const loadEmployees = async (targetId = outletId) => {
-    if (!targetId.trim()) {
-      setEmployeesError('Please enter a valid Outlet ID.');
+    if (!targetId) {
+      setEmployeesError('Select an outlet first.');
       return;
     }
     setEmployeesLoading(true);
     setEmployeesError(null);
     try {
-      const response = await fetchEmployeesWithSalary(targetId.trim());
+      const response = await fetchEmployeesWithSalary(targetId);
       const list = Array.isArray(response) ? response : (response?.employees || response?.data || []);
       setEmployeesList(list);
     } catch (err) {
@@ -34,8 +35,21 @@ const Salary = () => {
   };
 
   useEffect(() => {
-    loadEmployees('OUT009');
+    let isMounted = true;
+    fetchOutlets().then((response) => {
+      if (!isMounted) return;
+      const availableOutlets = response?.outlets || [];
+      setOutlets(availableOutlets);
+      if (availableOutlets.length) setOutletId(availableOutlets[0].outletId || availableOutlets[0].id);
+    }).catch(() => {
+      if (isMounted) setEmployeesError('Unable to load registered outlets.');
+    });
+    return () => { isMounted = false; };
   }, []);
+
+  useEffect(() => {
+    if (outletId) loadEmployees(outletId);
+  }, [outletId]);
 
   const viewPayslip = (emp) => {
     setSelectedUser(emp);
@@ -46,16 +60,20 @@ const Salary = () => {
   const otHours = 10;
 
   const salaryData = employeesList.map(emp => {
-    const isMonthly = emp.salaryModel === 'MONTHLY';
-    const baseRate = isMonthly ? (emp.basicSalary || 0) : (emp.perDayRate || 0);
+    // The backend returns remuneration under `salary`; keep compatibility
+    // with earlier flat records as well.
+    const salary = emp.salary || emp;
+    const isMonthly = salary.salaryModel === 'MONTHLY';
+    const baseRate = isMonthly ? (salary.basicSalary || 0) : (salary.perDayRate || 0);
     const base = isMonthly ? baseRate : baseRate * presentDays;
-    const ot = otHours * (emp.overtimeRate || 0);
-    const allowances = emp.allowancesDefault !== undefined && emp.allowancesDefault !== null ? emp.allowancesDefault : 100;
-    const deductions = emp.deductionsDefault !== undefined && emp.deductionsDefault !== null ? emp.deductionsDefault : 50;
+    const ot = otHours * (salary.overtimeRate || 0);
+    const allowances = salary.allowancesDefault !== undefined && salary.allowancesDefault !== null ? salary.allowancesDefault : 100;
+    const deductions = salary.deductionsDefault !== undefined && salary.deductionsDefault !== null ? salary.deductionsDefault : 50;
     const netSalary = base + ot + allowances - deductions;
 
     return {
       ...emp,
+      ...salary,
       presentDays,
       otHours,
       baseSalary: base,
@@ -86,17 +104,26 @@ const Salary = () => {
     )}
   ];
 
+  const outletOptions = [
+    { value: '', label: outlets.length ? 'Select outlet' : 'No outlets available' },
+    ...outlets.map((outlet) => ({
+      value: outlet.outletId || outlet.id,
+      label: `${outlet.outletName || outlet.name || outlet.username || 'Outlet'} (${outlet.outletId || outlet.id})`,
+    })),
+  ];
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '0.5rem' }}>
         <h2 style={{ margin: 0 }}>Salary Generation</h2>
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-          <div style={{ width: '160px' }}>
-            <Input 
-              label="Outlet ID" 
-              placeholder="e.g. OUT009" 
+          <div style={{ minWidth: '260px' }}>
+            <Select
+              label="Outlet"
               value={outletId}
               onChange={(e) => setOutletId(e.target.value)}
+              options={outletOptions}
+              disabled={!outlets.length || employeesLoading}
             />
           </div>
           <div style={{ width: '160px' }}>
@@ -106,7 +133,7 @@ const Salary = () => {
             />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', height: '100%', justifyContent: 'flex-end', paddingTop: '1.25rem' }}>
-            <Button onClick={() => loadEmployees(outletId)} disabled={employeesLoading}>
+            <Button onClick={() => loadEmployees(outletId)} disabled={employeesLoading || !outletId}>
               {employeesLoading ? 'Loading...' : 'Generate'}
             </Button>
           </div>
@@ -175,4 +202,3 @@ const Salary = () => {
 };
 
 export default Salary;
-

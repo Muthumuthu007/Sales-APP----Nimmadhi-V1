@@ -7,8 +7,9 @@ import { Button } from '../components/ui/Button';
 import { Input, Select } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
 import { LoadingState, ErrorState } from '../components/ui/StateContainers';
-import { fetchAllOrders, approveOrder, rejectOrder } from '../api/manager';
+import { fetchAllOrders, approveOrder, rejectOrder, fetchOutlets } from '../api/manager';
 import api from '../api/axios';
+import { outletLabel } from '../utils/outlets';
 
 const OrderDetails = () => {
   const { id } = useParams(); // refers to orderId
@@ -20,6 +21,7 @@ const OrderDetails = () => {
   const [error, setError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState(null);
+  const [outlets, setOutlets] = useState([]);
 
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
   const [rejectRemarks, setRejectRemarks] = useState('');
@@ -78,6 +80,10 @@ const OrderDetails = () => {
     
     return () => { isMounted = false; };
   }, [id, location.state]);
+
+  useEffect(() => {
+    fetchOutlets().then((response) => setOutlets(response?.outlets || [])).catch(() => setOutlets([]));
+  }, []);
 
   // Synchronize dynamic table inputs on order load securely verifying state
   useEffect(() => {
@@ -238,8 +244,8 @@ const OrderDetails = () => {
           <CardHeader title="Order Metadata" />
           <CardContent style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div>
-              <span className="text-muted">Outlet ID:</span>
-              <div className="font-semibold">{order.outletId}</div>
+              <span className="text-muted">Outlet:</span>
+              <div className="font-semibold">{outletLabel(order.outletId, outlets)}</div>
             </div>
             <div>
               <span className="text-muted">Date Logged:</span>

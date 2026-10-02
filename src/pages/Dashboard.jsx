@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardContent } from '../components/ui/Card';
 import { LoadingState } from '../components/ui/StateContainers';
 import { mockSalesData } from '../api/mockData';
-import { fetchDashboardSummary, fetchOrders } from '../api/manager';
+import { fetchDashboardSummary, fetchOrders, fetchOutlets } from '../api/manager';
+import { outletLabel } from '../utils/outlets';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Package, Truck, CheckCircle, AlertTriangle, TrendingUp, DollarSign } from 'lucide-react';
 import './Dashboard.css';
@@ -13,15 +14,17 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState(null);
   const [pendingOrders, setPendingOrders] = useState([]);
+  const [outlets, setOutlets] = useState([]);
 
   useEffect(() => {
     let isMounted = true;
     
     const loadDashboardData = async () => {
       try {
-        const [summaryResponse, pendingResponse] = await Promise.all([
+        const [summaryResponse, pendingResponse, outletsResponse] = await Promise.all([
           fetchDashboardSummary(),
-          fetchOrders('PENDING')
+          fetchOrders('PENDING'),
+          fetchOutlets(),
         ]);
         
         if (isMounted) {
@@ -36,6 +39,7 @@ const Dashboard = () => {
           
           const list = Array.isArray(pendingResponse) ? pendingResponse : (pendingResponse?.orders || []);
           setPendingOrders(list);
+          setOutlets(outletsResponse?.outlets || []);
           setLoading(false);
         }
       } catch (err) {
@@ -115,7 +119,7 @@ const Dashboard = () => {
                     </div>
                     <div className="activity-details">
                       <p className="activity-title">
-                        Order <strong>{o.orderId || o.id}</strong> from <strong>{o.outletId || o.outlet}</strong> is pending approval.
+                        Order <strong>{o.orderId || o.id}</strong> from <strong>{outletLabel(o.outletId || o.outlet, outlets)}</strong> is pending approval.
                       </p>
                       <span className="activity-time">
                         {o.createdAt ? new Date(o.createdAt).toLocaleString() : 'Recent'}

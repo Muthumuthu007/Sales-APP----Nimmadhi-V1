@@ -2,6 +2,7 @@ const optionalSessionFields = [
   ['outletId', 'outletId'],
   ['empId', 'empId'],
   ['empName', 'empName'],
+  ['outletName', 'outletName'],
 ];
 
 /**

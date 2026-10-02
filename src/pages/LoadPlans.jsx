@@ -6,6 +6,7 @@ import { Modal } from '../components/ui/Modal';
 import { Select } from '../components/ui/Input';
 import { LoadingState, ErrorState } from '../components/ui/StateContainers';
 import { fetchLoadPlans, dispatchLoadPlan, downloadLoadPlansExcel, fetchOutlets } from '../api/manager';
+import { outletLabel } from '../utils/outlets';
 import './LoadPlans.css';
 
 const compactId = (value) => {
@@ -140,7 +141,7 @@ const LoadPlans = () => {
   const columns = [
     { key: 'orderDisplayId', label: 'Order Ref', className: 'id-column', render: (row) => <span title={row.orderId}>{row.orderDisplayId || '—'}</span> },
     { key: 'displayId', label: 'Plan Ref', className: 'id-column', render: (row) => <span title={row.loadPlanId}>{row.displayId || compactId(row.loadPlanId)}</span> },
-    { key: 'outletId', label: 'Outlet', className: 'outlet-column', render: (row) => row.outletId || '—' },
+    { key: 'outletId', label: 'Outlet', className: 'outlet-column', render: (row) => outletLabel(row.outletId, outlets) },
     { key: 'productName', label: 'Product', className: 'product-column', render: (row) => row.productName || (row.items && row.items[0]?.productName) || 'Multiple products' },
     { key: 'quantity', label: 'Qty', className: 'quantity-column', align: 'center', render: (row) => row.quantity ?? (row.items && row.items[0]?.quantity) ?? '—' },
     { key: 'maxProduce', label: 'Capacity', className: 'capacity-column', align: 'center', render: (row) => row.maxProduce ?? '—' },
@@ -290,7 +291,7 @@ const LoadPlans = () => {
         title={`Load Plan ${detailsPlan?.displayId || compactId(detailsPlan?.loadPlanId)}`}
       >
         <div className="load-plan-detail-summary">
-          <div><span>Outlet</span><strong>{detailsPlan?.outletId || '—'}</strong></div>
+          <div><span>Outlet</span><strong>{outletLabel(detailsPlan?.outletId, outlets)}</strong></div>
           <div><span>Order reference</span><strong>{detailsPlan?.orderDisplayId || compactId(detailsPlan?.orderId)}</strong></div>
           <div><span>Created</span><strong>{formatDateTime(detailsPlan?.createdAt)}</strong></div>
           <div><span>Status</span><strong>{detailsPlan?.planType || activeTab}</strong></div>

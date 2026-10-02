@@ -48,3 +48,7 @@ export async function fetchOutlets() {
 export async function createOutlet(outletData) {
   return api.post('/outlets/create', outletData);
 }
+
+export async function deleteOutlet(outletId) {
+  return api.delete(`/outlets/${encodeURIComponent(outletId)}`);
+}

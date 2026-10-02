@@ -6,7 +6,8 @@ import { Badge } from '../components/ui/Badge';
 import { Input } from '../components/ui/Input';
 import { LoadingState, ErrorState } from '../components/ui/StateContainers';
 import { Button } from '../components/ui/Button';
-import { fetchOrders } from '../api/manager';
+import { fetchOrders, fetchOutlets } from '../api/manager';
+import { outletLabel } from '../utils/outlets';
 import './Orders.css';
 
 const Orders = () => {
@@ -15,6 +16,7 @@ const Orders = () => {
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('PENDING'); // PENDING, APPROVED, PARTIALLY_APPROVED, REJECTED, DISPATCHED, RECEIVED
   const [outletFilter, setOutletFilter] = useState('');
+  const [outlets, setOutlets] = useState([]);
   const navigate = useNavigate();
 
   const tabs = [
@@ -55,9 +57,13 @@ const Orders = () => {
     };
   }, [activeTab]);
 
+  useEffect(() => {
+    fetchOutlets().then((response) => setOutlets(response?.outlets || [])).catch(() => setOutlets([]));
+  }, []);
+
   const columns = [
     { key: 'displayId', label: 'Order Ref', render: (row) => <span title={row.orderId}>{row.displayId || row.orderId}</span> },
-    { key: 'outletId', label: 'Outlet ID' },
+    { key: 'outletId', label: 'Outlet', render: (row) => outletLabel(row.outletId, outlets) },
     { key: 'createdAt', label: 'Created At' },
     { key: 'status', label: 'Status', render: (row) => (
       <Badge status={(row.status === 'PENDING' && activeTab === 'PARTIALLY_APPROVED') ? 'PARTIALLY_APPROVED' : row.status} />
@@ -74,7 +80,7 @@ const Orders = () => {
   ];
 
   const filteredOrders = outletFilter 
-    ? orders.filter(o => o.outletId && o.outletId.toLowerCase().includes(outletFilter.toLowerCase()))
+    ? orders.filter((order) => outletLabel(order.outletId, outlets).toLowerCase().includes(outletFilter.toLowerCase()))
     : orders;
 
   return (
@@ -87,7 +93,7 @@ const Orders = () => {
       <div className="orders-toolbar">
         <div className="orders-search">
           <Input
-            placeholder="Filter by Outlet ID..."
+            placeholder="Filter by outlet name or ID..."
             value={outletFilter}
             onChange={(e) => setOutletFilter(e.target.value)}
           />

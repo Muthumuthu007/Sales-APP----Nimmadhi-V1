@@ -5,7 +5,7 @@ import { User, Bell, LogOut, Menu } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const TopBar = ({ onMenuClick }) => {
-  const { role, logout, username, outletId, empId, empName } = useContext(AuthContext);
+  const { role, logout, username, outletId, outletName, empId, empName } = useContext(AuthContext);
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -46,7 +46,7 @@ const TopBar = ({ onMenuClick }) => {
                 ? 'Factory Manager'
                 : (role === 'EMPLOYEE'
                     ? `Employee ID: ${empId || ''}`
-                    : (outletId ? `Outlet ID: ${outletId}` : 'Outlet User'))}
+                    : (outletId ? `${outletName || 'Outlet'} (${outletId})` : 'Outlet User'))}
             </span>
           </div>
         </div>
