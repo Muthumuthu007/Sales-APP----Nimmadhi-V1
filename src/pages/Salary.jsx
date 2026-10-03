@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '../components/ui/Card';
 import { Table } from '../components/ui/Table';
 import { Button } from '../components/ui/Button';
-import { Select } from '../components/ui/Input';
+import { Input, Select } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
-import { fetchEmployeesWithSalary, fetchOutlets } from '../api/employees';
+import { fetchEmployeesWithSalary, fetchOutletIncentives, fetchOutlets } from '../api/employees';
 import { LoadingState, ErrorState } from '../components/ui/StateContainers';
 
 const Salary = () => {
@@ -15,6 +15,8 @@ const Salary = () => {
   const [employeesList, setEmployeesList] = useState([]);
   const [employeesLoading, setEmployeesLoading] = useState(false);
   const [employeesError, setEmployeesError] = useState(null);
+  const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
+  const [incentiveReport, setIncentiveReport] = useState(null);
 
   const loadEmployees = async (targetId = outletId) => {
     if (!targetId) {
@@ -24,9 +26,14 @@ const Salary = () => {
     setEmployeesLoading(true);
     setEmployeesError(null);
     try {
-      const response = await fetchEmployeesWithSalary(targetId);
+      const [employeeResponse, incentiveResponse] = await Promise.all([
+        fetchEmployeesWithSalary(targetId),
+        fetchOutletIncentives(targetId, month),
+      ]);
+      const response = employeeResponse;
       const list = Array.isArray(response) ? response : (response?.employees || response?.data || []);
       setEmployeesList(list);
+      setIncentiveReport(incentiveResponse || null);
     } catch (err) {
       setEmployeesError(err.response?.data?.message || err.response?.data?.error || err.message || 'Failed to fetch employee salaries.');
     } finally {
@@ -56,8 +63,9 @@ const Salary = () => {
     setModalOpen(true);
   };
 
-  const presentDays = 22;
-  const otHours = 10;
+  const incentiveByEmployee = Object.fromEntries(
+    (incentiveReport?.employees || []).map((employee) => [employee.empId, employee])
+  );
 
   const salaryData = employeesList.map(emp => {
     // The backend returns remuneration under `salary`; keep compatibility
@@ -65,11 +73,15 @@ const Salary = () => {
     const salary = emp.salary || emp;
     const isMonthly = salary.salaryModel === 'MONTHLY';
     const baseRate = isMonthly ? (salary.basicSalary || 0) : (salary.perDayRate || 0);
+    const incentive = incentiveByEmployee[emp.empId] || {};
+    const presentDays = incentive.presentDays || 0;
+    const otHours = 0;
     const base = isMonthly ? baseRate : baseRate * presentDays;
     const ot = otHours * (salary.overtimeRate || 0);
     const allowances = salary.allowancesDefault !== undefined && salary.allowancesDefault !== null ? salary.allowancesDefault : 100;
     const deductions = salary.deductionsDefault !== undefined && salary.deductionsDefault !== null ? salary.deductionsDefault : 50;
-    const netSalary = base + ot + allowances - deductions;
+    const salesIncentive = incentive.salesIncentive || 0;
+    const netSalary = base + ot + allowances + salesIncentive - deductions;
 
     return {
       ...emp,
@@ -80,6 +92,7 @@ const Salary = () => {
       otPay: ot,
       allowances,
       deductions,
+      salesIncentive,
       netSalary
     };
   });
@@ -97,6 +110,7 @@ const Salary = () => {
         : `₹${Number(row.perDayRate || 0).toLocaleString()} / day` 
     },
     { key: 'presentDays', label: 'Present Days', align: 'center' },
+    { key: 'salesIncentive', label: 'Sales Incentive', align: 'right', render: (row) => `₹${Number(row.salesIncentive || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` },
     { key: 'otHours', label: 'OT Hours', align: 'center' },
     { key: 'netSalary', label: 'Net Salary', align: 'right', render: (row) => `₹${Number(row.netSalary || 0).toLocaleString()}` },
     { key: 'actions', label: 'Actions', align: 'center', render: (row) => (
@@ -127,10 +141,7 @@ const Salary = () => {
             />
           </div>
           <div style={{ width: '160px' }}>
-            <Select 
-              label="Select Month"
-              options={[{ label: 'April 2026', value: '04-2026' }, { label: 'March 2026', value: '03-2026' }]} 
-            />
+            <Input label="Incentive month" type="month" value={month} onChange={(e) => setMonth(e.target.value)} />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', height: '100%', justifyContent: 'flex-end', paddingTop: '1.25rem' }}>
             <Button onClick={() => loadEmployees(outletId)} disabled={employeesLoading || !outletId}>
@@ -145,6 +156,27 @@ const Salary = () => {
           {employeesError}
         </div>
       )}
+
+      <Card>
+        <CardHeader title="Monthly Sales Incentive" />
+        <CardContent>
+          {incentiveReport ? (
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1rem' }}>
+                <div><div className="text-muted">Sales incentive pool</div><strong>₹{Number(incentiveReport.sales?.incentivePool || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></div>
+                <div><div className="text-muted">Eligible present days</div><strong>{incentiveReport.attendance?.eligiblePresentDays || 0}</strong></div>
+                <div><div className="text-muted">Matched product quantity</div><strong>{incentiveReport.sales?.matchedQuantity || 0}</strong></div>
+                <div><div className="text-muted">Unmatched product quantity</div><strong>{incentiveReport.sales?.unmatchedQuantity || 0}</strong></div>
+              </div>
+              {incentiveReport.sales?.unmatchedProducts?.length > 0 && (
+                <p style={{ margin: '1rem 0 0', color: 'var(--color-warning, #f59e0b)' }}>
+                  {incentiveReport.sales.unmatchedProducts.length} product type(s) did not match the configured PDF rate card and were excluded from the pool.
+                </p>
+              )}
+            </>
+          ) : <span className="text-muted">Choose an outlet and month, then generate the report.</span>}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardContent style={{ padding: 0 }}>
@@ -180,6 +212,10 @@ const Salary = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span className="text-muted">Overtime:</span>
               <span>{selectedUser.otHours} hrs × ₹{Number(selectedUser.overtimeRate || 0).toLocaleString()} = ₹{Number(selectedUser.otPay || 0).toLocaleString()}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span className="text-muted">Sales incentive:</span>
+              <span>₹{Number(selectedUser.salesIncentive || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span className="text-muted">Allowances:</span>

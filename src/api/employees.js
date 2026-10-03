@@ -52,3 +52,7 @@ export async function createOutlet(outletData) {
 export async function deleteOutlet(outletId) {
   return api.delete(`/outlets/${encodeURIComponent(outletId)}`);
 }
+
+export async function fetchOutletIncentives(outletId, month) {
+  return api.get('/manager/incentives', { params: { outletId, month } });
+}
