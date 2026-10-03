@@ -1,5 +1,6 @@
-import React, { useRef, useState } from 'react';
-import { CheckCircle2, PackageCheck, QrCode, ScanLine } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Html5Qrcode } from 'html5-qrcode';
+import { Camera, CheckCircle2, PackageCheck, QrCode, ScanLine, X } from 'lucide-react';
 import api from '../api/axios';
 import { Card, CardContent, CardHeader } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -19,7 +20,54 @@ export default function QRUnitReceive() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [cameraError, setCameraError] = useState(null);
   const keys = useRef(new Map());
+  const scanner = useRef(null);
+
+  const stopCamera = async () => {
+    const activeScanner = scanner.current;
+    scanner.current = null;
+    if (activeScanner?.isScanning) {
+      try { await activeScanner.stop(); } catch { /* Camera can already be stopped by the browser. */ }
+    }
+    activeScanner?.clear?.();
+    setCameraOpen(false);
+  };
+
+  useEffect(() => {
+    if (!cameraOpen) return undefined;
+    let cancelled = false;
+    const startCamera = async () => {
+      try {
+        const instance = new Html5Qrcode('qr-unit-camera');
+        scanner.current = instance;
+        await instance.start(
+          { facingMode: 'environment' },
+          { fps: 10, qrbox: { width: 240, height: 240 } },
+          async (decodedText) => {
+            if (cancelled) return;
+            setUnitId(decodedText.trim());
+            setCameraError(null);
+            await stopCamera();
+          },
+          () => {},
+        );
+      } catch (cameraFailure) {
+        if (!cancelled) {
+          setCameraError(cameraFailure?.message || 'Unable to open the camera. Allow camera access, then try again.');
+          setCameraOpen(false);
+        }
+      }
+    };
+    startCamera();
+    return () => {
+      cancelled = true;
+      const activeScanner = scanner.current;
+      scanner.current = null;
+      if (activeScanner?.isScanning) activeScanner.stop().catch(() => {});
+    };
+  }, [cameraOpen]);
 
   const receive = async (event) => {
     event?.preventDefault();
@@ -53,6 +101,7 @@ export default function QRUnitReceive() {
         </div>
         {error && <div className="order-builder-alert order-builder-alert-error" role="alert">{error}</div>}
         {result && <div className="order-builder-alert order-builder-alert-success" role="status">Unit receipt has been recorded successfully.</div>}
+        {cameraError && <div className="order-builder-alert order-builder-alert-error" role="alert">{cameraError}</div>}
         <form onSubmit={receive} className="mt-6" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxWidth: '680px' }}>
           <Input
             label="QR unit ID"
@@ -61,8 +110,17 @@ export default function QRUnitReceive() {
             onChange={(event) => setUnitId(event.target.value)}
             autoComplete="off"
           />
-          <Button type="submit" disabled={loading} className="order-builder-add-button" style={{ alignSelf: 'flex-start' }}><ScanLine size={18} /> {loading ? 'Receiving…' : 'Receive unit'}</Button>
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <Button type="button" variant="secondary" onClick={() => { setCameraError(null); setCameraOpen(true); }} disabled={cameraOpen || loading}><Camera size={18} />Scan with camera</Button>
+            <Button type="submit" disabled={loading} className="order-builder-add-button"><ScanLine size={18} /> {loading ? 'Receiving…' : 'Receive unit'}</Button>
+          </div>
         </form>
+        {cameraOpen && (
+          <section className="mt-5 rounded-xl border" style={{ padding: '1rem', borderColor: 'var(--border-color, #d1d5db)', maxWidth: 680 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'center', marginBottom: '0.75rem' }}><strong>Point the camera at the QR label</strong><Button type="button" size="sm" variant="secondary" onClick={stopCamera}><X size={16} /> Close</Button></div>
+            <div id="qr-unit-camera" style={{ width: '100%', overflow: 'hidden', borderRadius: 12 }} />
+          </section>
+        )}
         {result && (
           <section className="mt-6 rounded-xl border" style={{ padding: '1.25rem', borderColor: 'var(--border-color, #d1d5db)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '0.75rem' }}><CheckCircle2 size={22} color="#10b981" /><strong>Receipt confirmed</strong></div>
