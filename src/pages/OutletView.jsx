@@ -8,7 +8,7 @@ import { SearchableSelect } from '../components/ui/SearchableSelect';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Modal } from '../components/ui/Modal';
-import { createOrder, fetchOutletOrders, fetchOutletStock, receiveOrder, fetchOutletProductNames, recordSales, fetchDueCustomers, downloadSalesReport, fetchReportData } from '../api/orders';
+import { createOrder, fetchOutletOrders, fetchOutletStock, fetchOutletProductNames, recordSales, fetchDueCustomers, downloadSalesReport, fetchReportData } from '../api/orders';
 import { LoadingState, ErrorState } from '../components/ui/StateContainers';
 import { fetchOutletEmployees, createOutletEmployee, updateEmployeeSalary } from '../api/employees';
 import { getOutletLocation, updateOutletLocation } from '../api/location';
@@ -150,13 +150,6 @@ const OutletView = () => {
   const [stockLoading, setStockLoading] = useState(false);
   const [stockError, setStockError] = useState(null);
 
-  // --- Receive Order State ---
-  const [receiveModalOpen, setReceiveModalOpen] = useState(false);
-  const [receiveOrderTarget, setReceiveOrderTarget] = useState(null);
-  const [receiveItems, setReceiveItems] = useState({});
-  const [isReceiving, setIsReceiving] = useState(false);
-  const [receiveError, setReceiveError] = useState(null);
-
   // --- Sales Entry State ---
   const [salesProductOptions, setSalesProductOptions] = useState([{ label: 'Loading products...', value: '' }]);
   const [ownedShowroomSales, setOwnedShowroomSales] = useState(false);
@@ -290,69 +283,6 @@ const OutletView = () => {
       setReportError(err.response?.data?.message || err.message || 'Failed to download report.');
     } finally {
       setIsDownloading(false);
-    }
-  };
-
-  const handleReceiveClick = (order) => {
-    setReceiveOrderTarget(order);
-    // Keep every field intentionally blank.  Only quantities entered here are
-    // submitted; products not delivered yet remain outstanding for this order.
-    setReceiveItems({});
-    setReceiveError(null);
-    setReceiveModalOpen(true);
-  };
-
-  const handleReceiveQtyChange = (productId, qty) => {
-    setReceiveItems((prev) => ({
-      ...prev,
-      [productId]: Number(qty)
-    }));
-  };
-
-  const handleReceiveSubmit = async () => {
-    if (!receiveOrderTarget) return;
-    setIsReceiving(true);
-    setReceiveError(null);
-    
-    const receivedItemsArr = Object.entries(receiveItems)
-      .map(([product_id, qty]) => ({ product_id, qty: Number(qty) }))
-      .filter((item) => Number.isInteger(item.qty) && item.qty > 0);
-
-    if (!receivedItemsArr.length) {
-      setReceiveError('Enter the quantity received for at least one product. Leave products that have not arrived blank.');
-      return;
-    }
-
-    const payload = {
-      orderId: receiveOrderTarget.orderId || receiveOrderTarget.id,
-      outletId: outletId,
-      receivedItems: receivedItemsArr
-    };
-
-    const planId = receiveOrderTarget.loadPlanId || payload.orderId;
-
-    try {
-      const result = await receiveOrder(planId, payload);
-      
-      setOrdersLoading(true);
-      const response = await fetchOutletOrders(outletId);
-      const updatedOrders = Array.isArray(response) ? response : (response?.orders || []);
-      setMyOrders(updatedOrders);
-      if (result.isReceived) {
-        setReceiveModalOpen(false);
-        setReceiveOrderTarget(null);
-      } else {
-        const outstandingOrder = updatedOrders.find((order) => (order.orderId || order.id) === payload.orderId);
-        setReceiveOrderTarget(outstandingOrder || receiveOrderTarget);
-        setReceiveItems({});
-        setReceiveError(null);
-      }
-      setOrdersLoading(false);
-    } catch (err) {
-      setReceiveError(err.response?.data?.message || err.message || 'Failed to receive order.');
-      setOrdersLoading(false);
-    } finally {
-      setIsReceiving(false);
     }
   };
 
@@ -968,6 +898,7 @@ const OutletView = () => {
           <Card>
             <CardHeader title="Order History" />
             <CardContent style={{ padding: 0 }}>
+              <p className="text-muted" style={{ margin: '1rem 1rem 0' }}>Receive delivered stock by scanning each physical QR label in <strong>Receive QR Units</strong>. Manual quantity entry is no longer available.</p>
               {ordersLoading ? (
                 <div style={{ padding: '3rem 0' }}>
                   <LoadingState message="Fetching your historical orders..." />
@@ -986,7 +917,6 @@ const OutletView = () => {
                     { key: 'actions', label: 'Actions', render: (row) => (
                       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                         <Button size="sm" variant="secondary" onClick={() => setViewOrderTarget(row)}>View</Button>
-                        {row.status === 'DISPATCHED' && <Button size="sm" onClick={() => handleReceiveClick(row)}>Receive</Button>}
                       </div>
                     ) }
                   ]} 
@@ -1528,46 +1458,6 @@ const OutletView = () => {
           </Card>
         )}
       </div>
-
-      <Modal 
-        isOpen={receiveModalOpen} 
-        onClose={() => !isReceiving && setReceiveModalOpen(false)} 
-        title={`Receive Order ${receiveOrderTarget?.orderId || receiveOrderTarget?.id || ''}`}
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {receiveError && (
-            <div style={{ padding: '0.75rem', backgroundColor: 'var(--color-red)', color: 'white', borderRadius: '4px', fontSize: '0.875rem' }}>
-              {receiveError}
-            </div>
-          )}
-          <p>Enter only the products received now. Leave all other products blank; they will remain here until they arrive.</p>
-          <div style={{ maxHeight: '300px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            {(receiveOrderTarget?.receiptItems || receiveOrderTarget?.items || []).map((item, idx) => (
-              <div key={idx} style={{ display: 'flex', justifyItems: 'space-between', alignItems: 'center', backgroundColor: 'var(--color-secondary)', padding: '0.5rem', borderRadius: '4px' }}>
-                <span style={{flex: 1}}>
-                  {item.productName || getProductName(item.product_id)} (Outstanding: {item.remainingQty ?? item.quantity})
-                </span>
-                <Input 
-                  type="number" 
-                  min="0" 
-                  max={item.remainingQty ?? item.quantity}
-                  placeholder="0"
-                  value={receiveItems[item.product_id] ?? ''}
-                  onChange={(e) => handleReceiveQtyChange(item.product_id, e.target.value)}
-                />
-              </div>
-            ))}
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem' }}>
-            <Button variant="secondary" onClick={() => setReceiveModalOpen(false)} disabled={isReceiving}>
-              Cancel
-            </Button>
-            <Button variant="primary" onClick={handleReceiveSubmit} disabled={isReceiving}>
-              {isReceiving ? 'Saving...' : 'Save received quantities'}
-            </Button>
-          </div>
-        </div>
-      </Modal>
 
       <Modal
         isOpen={employeeModalOpen}

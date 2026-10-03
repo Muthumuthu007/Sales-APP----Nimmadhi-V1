@@ -116,7 +116,7 @@ export default function QRUnitReceive() {
           <div><h3>Scan each delivered physical unit</h3><p>Receipt is recorded only for a unit dispatched to your assigned outlet. Re-scanning the same unit is safe and will not increase stock twice.</p></div>
         </div>
         {error && <div className="order-builder-alert order-builder-alert-error" role="alert">{error}</div>}
-        {result && <div className="order-builder-alert order-builder-alert-success" role="status">Unit receipt has been recorded successfully.</div>}
+        {result && <div className="order-builder-alert order-builder-alert-success" role="status">Unit receipt has been recorded and Stock View has been updated.</div>}
         {cameraError && <div className="order-builder-alert order-builder-alert-error" role="alert">{cameraError}</div>}
         <form onSubmit={receive} className="mt-6" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxWidth: '680px' }}>
           <Input
