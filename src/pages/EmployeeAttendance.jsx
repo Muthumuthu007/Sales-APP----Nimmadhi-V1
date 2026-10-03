@@ -32,7 +32,9 @@ const EmployeeAttendance = () => {
   });
 
   // Local storage locking key for today
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit'
+  }).format(new Date());
   const lockKey = `attendance_marked_${empId || 'guest'}_${todayStr}`;
 
   // Live ticking clock
@@ -62,6 +64,26 @@ const EmployeeAttendance = () => {
       }
     }
   }, [empId, lockKey]);
+
+  const refreshSelfieUrl = async (date = todayStr) => {
+    if (!outletId) return;
+    try {
+      const data = await api.get('/outlet/attendance/selfie', {
+        params: { outletId, date }
+      });
+      if (!data?.photoUrl) return;
+      setSuccessDetails(previous => ({ ...previous, photoUrl: data.photoUrl }));
+      const savedAttendance = localStorage.getItem(lockKey);
+      if (savedAttendance) {
+        const parsed = JSON.parse(savedAttendance);
+        localStorage.setItem(lockKey, JSON.stringify({ ...parsed, photoUrl: data.photoUrl }));
+      }
+    } catch (error) {
+      // A selfie may be unavailable for older attendance records. The
+      // attendance result itself remains valid, so do not show an error panel.
+      console.warn('Could not refresh attendance selfie URL', error);
+    }
+  };
 
   // Clean up camera stream when component unmounts
   useEffect(() => {
@@ -518,6 +540,12 @@ const EmployeeAttendance = () => {
                     <img 
                       src={successDetails.photoUrl} 
                       alt="Verified selfie record" 
+                      onError={(event) => {
+                        // Avoid repeatedly retrying if the attendance record no
+                        // longer has a valid selfie object in storage.
+                        event.currentTarget.onerror = null;
+                        refreshSelfieUrl(successDetails.date || todayStr);
+                      }}
                       style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     />
                   </div>
