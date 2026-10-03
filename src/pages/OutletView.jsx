@@ -292,13 +292,9 @@ const OutletView = () => {
 
   const handleReceiveClick = (order) => {
     setReceiveOrderTarget(order);
-    const initialItems = {};
-    if (order.items && Array.isArray(order.items)) {
-      order.items.forEach(item => {
-        initialItems[item.product_id] = item.quantity || 0; 
-      });
-    }
-    setReceiveItems(initialItems);
+    // Keep every field intentionally blank.  Only quantities entered here are
+    // submitted; products not delivered yet remain outstanding for this order.
+    setReceiveItems({});
     setReceiveError(null);
     setReceiveModalOpen(true);
   };
@@ -315,10 +311,14 @@ const OutletView = () => {
     setIsReceiving(true);
     setReceiveError(null);
     
-    const receivedItemsArr = Object.keys(receiveItems).map(prodId => ({
-      product_id: prodId,
-      qty: receiveItems[prodId]
-    }));
+    const receivedItemsArr = Object.entries(receiveItems)
+      .map(([product_id, qty]) => ({ product_id, qty: Number(qty) }))
+      .filter((item) => Number.isInteger(item.qty) && item.qty > 0);
+
+    if (!receivedItemsArr.length) {
+      setReceiveError('Enter the quantity received for at least one product. Leave products that have not arrived blank.');
+      return;
+    }
 
     const payload = {
       orderId: receiveOrderTarget.orderId || receiveOrderTarget.id,
@@ -329,13 +329,21 @@ const OutletView = () => {
     const planId = receiveOrderTarget.loadPlanId || payload.orderId;
 
     try {
-      await receiveOrder(planId, payload);
-      setReceiveModalOpen(false);
-      setReceiveOrderTarget(null);
+      const result = await receiveOrder(planId, payload);
       
       setOrdersLoading(true);
       const response = await fetchOutletOrders(outletId);
-      setMyOrders(Array.isArray(response) ? response : (response?.orders || []));
+      const updatedOrders = Array.isArray(response) ? response : (response?.orders || []);
+      setMyOrders(updatedOrders);
+      if (result.isReceived) {
+        setReceiveModalOpen(false);
+        setReceiveOrderTarget(null);
+      } else {
+        const outstandingOrder = updatedOrders.find((order) => (order.orderId || order.id) === payload.orderId);
+        setReceiveOrderTarget(outstandingOrder || receiveOrderTarget);
+        setReceiveItems({});
+        setReceiveError(null);
+      }
       setOrdersLoading(false);
     } catch (err) {
       setReceiveError(err.response?.data?.message || err.message || 'Failed to receive order.');
@@ -1527,17 +1535,19 @@ const OutletView = () => {
               {receiveError}
             </div>
           )}
-          <p>Please enter the actual received quantity for each item:</p>
+          <p>Enter only the products received now. Leave all other products blank; they will remain here until they arrive.</p>
           <div style={{ maxHeight: '300px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            {receiveOrderTarget?.items?.map((item, idx) => (
+            {(receiveOrderTarget?.receiptItems || receiveOrderTarget?.items || []).map((item, idx) => (
               <div key={idx} style={{ display: 'flex', justifyItems: 'space-between', alignItems: 'center', backgroundColor: 'var(--color-secondary)', padding: '0.5rem', borderRadius: '4px' }}>
                 <span style={{flex: 1}}>
-                  {getProductName(item.product_id)} (Expected: {item.quantity})
+                  {item.productName || getProductName(item.product_id)} (Outstanding: {item.remainingQty ?? item.quantity})
                 </span>
                 <Input 
                   type="number" 
                   min="0" 
-                  value={receiveItems[item.product_id] !== undefined ? receiveItems[item.product_id] : item.quantity}
+                  max={item.remainingQty ?? item.quantity}
+                  placeholder="0"
+                  value={receiveItems[item.product_id] ?? ''}
                   onChange={(e) => handleReceiveQtyChange(item.product_id, e.target.value)}
                 />
               </div>
@@ -1548,7 +1558,7 @@ const OutletView = () => {
               Cancel
             </Button>
             <Button variant="primary" onClick={handleReceiveSubmit} disabled={isReceiving}>
-              {isReceiving ? 'Receiving...' : 'Confirm Received'}
+              {isReceiving ? 'Saving...' : 'Save received quantities'}
             </Button>
           </div>
         </div>

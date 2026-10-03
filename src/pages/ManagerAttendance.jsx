@@ -6,6 +6,7 @@ import { Input, Select } from '../components/ui/Input';
 import { ErrorState, LoadingState } from '../components/ui/StateContainers';
 import { fetchManagerAttendance, fetchOutlets } from '../api/employees';
 import { outletLabel } from '../utils/outlets';
+import './ManagerAttendance.css';
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -61,27 +62,34 @@ const ManagerAttendance = () => {
   const rangeLabel = report ? (report.period === 'daily' ? report.selectedDate : `${report.startDate} to ${report.endDate}`) : '—';
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', flexWrap: 'wrap' }}>
+    <div className="attendance-page">
+      <div className="attendance-page-heading">
         <div>
-          <h2 style={{ margin: 0 }}>Attendance</h2>
-          <p className="text-muted" style={{ margin: '0.4rem 0 0' }}>Review employee attendance and verified selfie evidence by outlet.</p>
-        </div>
-        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-          <div style={{ minWidth: '260px' }}><Select label="Outlet" value={outletId} onChange={(event) => setOutletId(event.target.value)} options={outletOptions} disabled={!outlets.length || loading} /></div>
-          <div style={{ minWidth: '145px' }}><Select label="Report period" value={period} onChange={(event) => setPeriod(event.target.value)} options={[{ value: 'daily', label: 'Daily' }, { value: 'weekly', label: 'Weekly' }, { value: 'monthly', label: 'Monthly' }]} disabled={loading} /></div>
-          <div style={{ minWidth: '160px' }}><Input label={period === 'monthly' ? 'Any date in month' : 'Date'} type="date" value={date} onChange={(event) => setDate(event.target.value)} disabled={loading} /></div>
-          <Button onClick={() => loadReport()} disabled={loading || !outletId}>{loading ? 'Loading…' : 'Generate'}</Button>
+          <span className="attendance-eyebrow">Workforce operations</span>
+          <h2>Attendance review</h2>
+          <p>Review employee attendance and verified selfie evidence by outlet.</p>
         </div>
       </div>
+
+      <Card className="attendance-filters-card">
+        <CardHeader title="Attendance report filters" action={<span className="attendance-filter-hint">Choose an outlet, period and date</span>} />
+        <CardContent>
+          <div className="attendance-filters">
+            <Select label="Outlet" value={outletId} onChange={(event) => setOutletId(event.target.value)} options={outletOptions} disabled={!outlets.length || loading} />
+            <Select label="Report period" value={period} onChange={(event) => setPeriod(event.target.value)} options={[{ value: 'daily', label: 'Daily' }, { value: 'weekly', label: 'Weekly' }, { value: 'monthly', label: 'Monthly' }]} disabled={loading} />
+            <Input label={period === 'monthly' ? 'Any date in month' : 'Date'} type="date" value={date} onChange={(event) => setDate(event.target.value)} disabled={loading} />
+            <div className="attendance-filter-action"><Button onClick={() => loadReport()} disabled={loading || !outletId}>{loading ? 'Loading…' : 'Generate report'}</Button></div>
+          </div>
+        </CardContent>
+      </Card>
 
       {error && <ErrorState error={error} onRetry={() => loadReport()} />}
       {loading && !report ? <LoadingState message="Loading attendance records…" /> : report && (
         <>
-          <Card>
-            <CardHeader title={`${period[0].toUpperCase() + period.slice(1)} attendance — ${rangeLabel}`} action={<span className="text-muted">{outletLabel(outletId, outlets)}</span>} />
+          <Card className="attendance-overview-card">
+            <CardHeader title={<><span className="attendance-card-kicker">Attendance overview</span>{`${period[0].toUpperCase() + period.slice(1)} attendance — ${rangeLabel}`}</>} action={<span className="attendance-outlet-label">{outletLabel(outletId, outlets)}</span>} />
             <CardContent>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1rem' }}>
+              <div className="attendance-metrics">
                 <Metric icon={<UsersRound size={20} />} label="Employees" value={summary.employeeCount || 0} />
                 <Metric icon={<CalendarDays size={20} />} label="Attendance records" value={summary.attendanceRecords || 0} />
                 <Metric icon={<CheckCircle2 size={20} />} label="Present records" value={summary.presentRecords || 0} tone="#10b981" />
@@ -90,33 +98,33 @@ const ManagerAttendance = () => {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="attendance-table-card">
             <CardHeader title="Employee summary" />
-            <CardContent style={{ padding: 0, overflowX: 'auto' }}>
-              <table className="data-table" style={{ minWidth: '720px' }}>
+            <CardContent className="attendance-table-wrap">
+              <table className="attendance-table attendance-summary-table">
                 <thead><tr><th>Employee</th><th>Role</th><th>Work type</th><th>Present</th><th>Absent</th><th>Recorded days</th></tr></thead>
-                <tbody>{report.employees?.length ? report.employees.map((employee) => <tr key={employee.empId}><td>{employee.employeeName}</td><td>{employee.role || '—'}</td><td>{employee.workType || 'OFFICE'}</td><td>{employee.presentDays}</td><td>{employee.absentDays}</td><td>{employee.records}</td></tr>) : <tr><td colSpan="6" className="text-muted" style={{ textAlign: 'center', padding: '2rem' }}>No employees found for this outlet.</td></tr>}</tbody>
+                <tbody>{report.employees?.length ? report.employees.map((employee) => <tr key={employee.empId}><td className="attendance-employee-name">{employee.employeeName}</td><td>{employee.role || '—'}</td><td><span className="attendance-work-type">{employee.workType || 'OFFICE'}</span></td><td className="attendance-positive-value">{employee.presentDays}</td><td className="attendance-negative-value">{employee.absentDays}</td><td>{employee.records}</td></tr>) : <tr><td colSpan="6" className="attendance-empty-cell">No employees found for this outlet.</td></tr>}</tbody>
               </table>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="attendance-table-card">
             <CardHeader title="Attendance records and selfie evidence" action={<span className="text-muted">{report.attendance?.length || 0} record(s)</span>} />
-            <CardContent style={{ padding: 0, overflowX: 'auto' }}>
-              <table className="data-table" style={{ minWidth: '1040px' }}>
+            <CardContent className="attendance-table-wrap">
+              <table className="attendance-table attendance-records-table">
                 <thead><tr><th>Date</th><th>Employee</th><th>Status</th><th>Check-in</th><th>Mode</th><th>Distance</th><th>Selfie</th></tr></thead>
-                <tbody>{report.attendance?.length ? report.attendance.map((record, index) => <tr key={`${record.empId}-${record.date}-${index}`}><td>{record.date}</td><td><strong>{record.employeeName}</strong><br /><span className="text-muted">{record.role || record.workType}</span></td><td style={{ color: record.present ? '#10b981' : '#ef4444', fontWeight: 700 }}>{record.present ? 'PRESENT' : 'ABSENT'}</td><td>{record.checkIn || '—'}</td><td>{record.attendanceMode === 'FIELD_SELFIE' ? 'Field selfie' : record.attendanceMode === 'OFFICE_GEOFENCE' ? 'Office geo-fence' : '—'}</td><td>{record.distance === null || record.distance === undefined ? '—' : `${record.distance} m`}</td><td>{record.photoUrl ? <Button variant="secondary" style={{ padding: '0.35rem 0.6rem' }} onClick={() => setSelectedRecord(record)}><Camera size={15} /> View selfie</Button> : record.hasSelfie ? <span className="text-muted"><ImageOff size={15} /> Link unavailable</span> : 'No selfie'}</td></tr>) : <tr><td colSpan="7" className="text-muted" style={{ textAlign: 'center', padding: '2rem' }}>No attendance records in this period.</td></tr>}</tbody>
+                <tbody>{report.attendance?.length ? report.attendance.map((record, index) => <tr key={`${record.empId}-${record.date}-${index}`}><td className="attendance-date-cell">{record.date}</td><td><strong>{record.employeeName}</strong><span className="attendance-role">{record.role || record.workType}</span></td><td><span className={`attendance-status ${record.present ? 'is-present' : 'is-absent'}`}>{record.present ? 'Present' : 'Absent'}</span></td><td>{record.checkIn || '—'}</td><td>{record.attendanceMode === 'FIELD_SELFIE' ? 'Field selfie' : record.attendanceMode === 'OFFICE_GEOFENCE' ? 'Office geo-fence' : '—'}</td><td>{record.distance === null || record.distance === undefined ? '—' : `${record.distance} m`}</td><td>{record.photoUrl ? <Button variant="secondary" className="attendance-selfie-button" onClick={() => setSelectedRecord(record)}><Camera size={15} /> View selfie</Button> : record.hasSelfie ? <span className="attendance-selfie-unavailable"><ImageOff size={15} /> Link unavailable</span> : <span className="text-muted">No selfie</span>}</td></tr>) : <tr><td colSpan="7" className="attendance-empty-cell">No attendance records in this period.</td></tr>}</tbody>
               </table>
             </CardContent>
           </Card>
         </>
       )}
 
-      {selectedRecord && <div role="dialog" aria-modal="true" style={{ position: 'fixed', inset: 0, background: 'rgba(2, 6, 23, .72)', display: 'grid', placeItems: 'center', padding: '1.5rem', zIndex: 1000 }} onClick={() => setSelectedRecord(null)}><Card style={{ width: 'min(460px, 100%)' }} onClick={(event) => event.stopPropagation()}><CardHeader title={`Selfie — ${selectedRecord.employeeName}`} action={<Button variant="secondary" onClick={() => setSelectedRecord(null)}>Close</Button>} /><CardContent><img src={selectedRecord.photoUrl} alt={`Attendance selfie uploaded by ${selectedRecord.employeeName}`} style={{ display: 'block', width: '100%', maxHeight: '65vh', objectFit: 'contain', borderRadius: '0.75rem', background: '#111827' }} /><div style={{ marginTop: '1rem', display: 'grid', gap: '0.4rem' }}><span><Clock3 size={15} /> {selectedRecord.date} {selectedRecord.checkIn || ''}</span><span><MapPin size={15} /> {selectedRecord.distance === null || selectedRecord.distance === undefined ? 'Field attendance' : `${selectedRecord.distance} metres from outlet`}</span></div></CardContent></Card></div>}
+      {selectedRecord && <div className="attendance-selfie-modal" role="dialog" aria-modal="true" onClick={() => setSelectedRecord(null)}><Card className="attendance-selfie-dialog" onClick={(event) => event.stopPropagation()}><CardHeader title={`Selfie — ${selectedRecord.employeeName}`} action={<Button variant="secondary" onClick={() => setSelectedRecord(null)}>Close</Button>} /><CardContent><img src={selectedRecord.photoUrl} alt={`Attendance selfie uploaded by ${selectedRecord.employeeName}`} /><div className="attendance-selfie-meta"><span><Clock3 size={15} /> {selectedRecord.date} {selectedRecord.checkIn || ''}</span><span><MapPin size={15} /> {selectedRecord.distance === null || selectedRecord.distance === undefined ? 'Field attendance' : `${selectedRecord.distance} metres from outlet`}</span></div></CardContent></Card></div>}
     </div>
   );
 };
 
-const Metric = ({ icon, label, value, tone }) => <div style={{ padding: '1rem', border: '1px solid var(--color-border)', borderRadius: '0.75rem' }}><div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: tone || 'var(--color-primary)' }}>{icon}<span className="text-muted">{label}</span></div><strong style={{ display: 'block', fontSize: '1.6rem', marginTop: '0.45rem', color: tone }}>{value}</strong></div>;
+const Metric = ({ icon, label, value, tone }) => <div className="attendance-metric" style={{ '--attendance-metric-tone': tone || 'var(--color-primary)' }}><div className="attendance-metric-label">{icon}<span>{label}</span></div><strong>{value}</strong></div>;
 
 export default ManagerAttendance;
