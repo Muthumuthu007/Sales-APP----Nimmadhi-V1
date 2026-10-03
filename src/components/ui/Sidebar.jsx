@@ -1,6 +1,6 @@
 import React, { useContext } from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, ShoppingCart, CalendarDays, Truck, CreditCard, Store, UserPlus, UsersRound } from 'lucide-react';
+import { LayoutDashboard, ShoppingCart, CalendarDays, Truck, CreditCard, Store, UserPlus, UsersRound, Gift } from 'lucide-react';
 import { AuthContext } from '../../context/AuthContext';
 import './Sidebar.css';
 
@@ -14,6 +14,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     { to: '/dispatch', icon: <Truck size={20} />, label: 'Dispatch' },
     { to: '/salary', icon: <CreditCard size={20} />, label: 'Salary' },
     { to: '/outlets', icon: <Store size={20} />, label: 'Outlets' },
+    { to: '/offers', icon: <Gift size={20} />, label: 'Offers' },
     { to: '/employees', icon: <UsersRound size={20} />, label: 'Employees' },
     { to: '/create-user', icon: <UserPlus size={20} />, label: 'Create User' },
   ];

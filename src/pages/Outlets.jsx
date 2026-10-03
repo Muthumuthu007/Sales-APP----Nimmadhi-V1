@@ -6,7 +6,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
 import { LoadingState, ErrorState, EmptyState } from '../components/ui/StateContainers';
-import { createOutlet, deleteOutlet, fetchOutlets } from '../api/employees';
+import { createOutlet, deleteOutlet, fetchOutlets, fetchProductGroups } from '../api/employees';
 import './Outlets.css';
 
 const emptyForm = { outletId: '', outletName: '', address: '', phone: '' };
@@ -21,6 +21,9 @@ const Outlets = () => {
   const [outletToDelete, setOutletToDelete] = useState(null);
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const [productGroups, setProductGroups] = useState([]);
+  const [selectedGroupIds, setSelectedGroupIds] = useState([]);
+  const [groupsLoading, setGroupsLoading] = useState(true);
 
   const loadOutlets = async () => {
     setLoading(true);
@@ -37,12 +40,31 @@ const Outlets = () => {
 
   useEffect(() => { loadOutlets(); }, []);
 
+  useEffect(() => {
+    let active = true;
+    fetchProductGroups()
+      .then((response) => { if (active) setProductGroups(response?.groups || []); })
+      .catch(() => { if (active) setError('Unable to load production groups. Please refresh and try again.'); })
+      .finally(() => { if (active) setGroupsLoading(false); });
+    return () => { active = false; };
+  }, []);
+
   const update = (field) => (event) => setForm((current) => ({ ...current, [field]: event.target.value }));
+
+  const toggleProductGroup = (groupId) => {
+    setSelectedGroupIds((current) => current.includes(groupId)
+      ? current.filter((id) => id !== groupId)
+      : [...current, groupId]);
+  };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (!form.outletId.trim() || !form.outletName.trim()) {
       setError('Enter both an Outlet ID and outlet name.');
+      return;
+    }
+    if (!selectedGroupIds.length) {
+      setError('Select at least one production group this outlet is allowed to order.');
       return;
     }
     setSaving(true);
@@ -54,9 +76,11 @@ const Outlets = () => {
         outletName: form.outletName.trim(),
         address: form.address.trim(),
         phone: form.phone.trim(),
+        allowedGroupIds: selectedGroupIds,
       });
       setSuccess(`${result?.outlet?.outletName || form.outletName} created. You can now create employee logins for this outlet.`);
       setForm(emptyForm);
+      setSelectedGroupIds([]);
       await loadOutlets();
     } catch (requestError) {
       setError(requestError.response?.data?.error || requestError.response?.data?.outletId?.[0] || 'Unable to create the outlet.');
@@ -104,9 +128,15 @@ const Outlets = () => {
             <form className="outlets-form" onSubmit={handleSubmit}>
               <Input label="Outlet ID" placeholder="e.g. OUT010" value={form.outletId} onChange={update('outletId')} disabled={saving} />
               <Input label="Outlet name" placeholder="e.g. Chennai Silks – Thiruvallur" value={form.outletName} onChange={update('outletName')} disabled={saving} />
+              <section className="outlets-product-access" aria-labelledby="product-access-title">
+                <div className="outlets-product-access-heading"><div><span id="product-access-title">Product access</span><small>Select the production groups this outlet can view and order.</small></div><strong>{selectedGroupIds.length} selected</strong></div>
+                {groupsLoading ? <p className="outlets-product-access-loading">Loading production groups…</p> : <div className="outlets-product-groups">
+                  {productGroups.map((group) => <label key={group.groupId} className={`outlets-product-group ${selectedGroupIds.includes(group.groupId) ? 'selected' : ''}`}><input type="checkbox" checked={selectedGroupIds.includes(group.groupId)} onChange={() => toggleProductGroup(group.groupId)} disabled={saving} /><span>{group.groupName}</span></label>)}
+                </div>}
+              </section>
               <Input label="Address (optional)" placeholder="Store address" value={form.address} onChange={update('address')} disabled={saving} />
               <Input label="Phone (optional)" placeholder="Store contact number" value={form.phone} onChange={update('phone')} disabled={saving} />
-              <Button type="submit" variant="primary" className="outlets-submit" disabled={saving}><Plus size={18} />{saving ? 'Creating outlet…' : 'Create outlet'}</Button>
+              <Button type="submit" variant="primary" className="outlets-submit" disabled={saving || groupsLoading || !selectedGroupIds.length}><Plus size={18} />{saving ? 'Creating outlet…' : 'Create outlet'}</Button>
             </form>
           </CardContent>
         </Card>

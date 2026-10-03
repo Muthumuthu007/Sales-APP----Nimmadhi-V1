@@ -18,6 +18,7 @@ import OutletView from './pages/OutletView';
 import Salary from './pages/Salary';
 import Employees from './pages/Employees';
 import Outlets from './pages/Outlets';
+import Offers from './pages/Offers';
 
 // Root Redirect component
 const RootRedirect = () => {
@@ -91,6 +92,11 @@ function App() {
             <Route path="outlets" element={
               <ProtectedRoute allowedRoles={['MANAGER']}>
                 <Outlets />
+              </ProtectedRoute>
+            } />
+            <Route path="offers" element={
+              <ProtectedRoute allowedRoles={['MANAGER']}>
+                <Offers />
               </ProtectedRoute>
             } />
 

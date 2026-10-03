@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import api from '../api/axios';
-import { Calendar, FileText, Layers3, MapPin, PackageSearch, Plus, ShoppingBag, Trash2 } from 'lucide-react';
+import { Calendar, FileText, Gift, Layers3, MapPin, PackageSearch, Plus, ShoppingBag, Trash2 } from 'lucide-react';
 import { Card, CardHeader, CardContent } from '../components/ui/Card';
 import { Table } from '../components/ui/Table';
 import { Input, Select } from '../components/ui/Input';
@@ -12,6 +12,7 @@ import { createOrder, fetchOutletOrders, fetchOutletStock, receiveOrder, fetchOu
 import { LoadingState, ErrorState } from '../components/ui/StateContainers';
 import { fetchOutletEmployees, createOutletEmployee, updateEmployeeSalary } from '../api/employees';
 import { getOutletLocation, updateOutletLocation } from '../api/location';
+import { fetchActiveOutletOffers } from '../api/offers';
 
 import { AuthContext } from '../context/AuthContext';
 import EmployeeAttendance from './EmployeeAttendance';
@@ -157,6 +158,7 @@ const OutletView = () => {
   const [dueCustomersLoading, setDueCustomersLoading] = useState(false);
   const [dueCustomersError, setDueCustomersError] = useState(null);
   const [receipt, setReceipt] = useState(null);
+  const [activeOffers, setActiveOffers] = useState([]);
 
   const handleAddSalesItem = () => {
     if (!salesProduct) {
@@ -180,6 +182,11 @@ const OutletView = () => {
     setSalesError(null);
     setSalesSuccess(null);
   };
+
+  useEffect(() => {
+    if (activeTab !== 'SALES') return;
+    fetchActiveOutletOffers().then((response) => setActiveOffers(response?.offers || [])).catch(() => setActiveOffers([]));
+  }, [activeTab]);
 
   const removeSalesItem = (idxToRemove) => {
     setSalesItems(salesItems.filter((_, idx) => idx !== idxToRemove));
@@ -1019,6 +1026,13 @@ const OutletView = () => {
                 <div className="order-builder-alert order-builder-alert-success">
                   {salesSuccess}
                 </div>
+              )}
+
+              {activeOffers.length > 0 && (
+                <section className="sales-builder-offers" aria-label="Current outlet offers">
+                  <Gift size={19} />
+                  <div><strong>Current outlet offers</strong><span>{activeOffers.map((offer) => `${offer.scope === 'OUTLET' ? 'All products' : offer.productName || offer.groupId || offer.productId}: ${Number(offer.discountValue || 0) ? `${offer.discountValue}${offer.discountType === 'PERCENT' ? '%' : ' ₹'} off` : ''}${Number(offer.discountValue || 0) && Number(offer.freeQuantity || 0) ? ' · ' : ''}${Number(offer.freeQuantity || 0) ? `${offer.freeQuantity} complimentary` : ''}`).join('  |  ')}</span></div>
+                </section>
               )}
 
               <div className="sales-builder-workspace">

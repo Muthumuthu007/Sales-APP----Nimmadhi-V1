@@ -49,6 +49,10 @@ export async function createOutlet(outletData) {
   return api.post('/outlets/create', outletData);
 }
 
+export async function fetchProductGroups() {
+  return api.get('/product-groups');
+}
+
 export async function deleteOutlet(outletId) {
   return api.delete(`/outlets/${encodeURIComponent(outletId)}`);
 }
