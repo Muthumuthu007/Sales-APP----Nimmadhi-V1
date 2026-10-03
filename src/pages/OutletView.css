@@ -57,6 +57,20 @@
   color: var(--color-text-main);
 }
 
+.pending-payment-products {
+  display: grid;
+  gap: .28rem;
+  min-width: 13rem;
+  color: var(--color-text-main);
+  font-size: .82rem;
+  line-height: 1.35;
+}
+
+.pending-payment-products strong {
+  color: #fbbf24;
+  font-weight: 700;
+}
+
 /* ── Responsive breakpoints ── */
 @media (max-width: 800px) {
   .order-builder-workspace, .sales-builder-workspace { grid-template-columns: 1fr; }

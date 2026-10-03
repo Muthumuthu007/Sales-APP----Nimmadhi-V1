@@ -39,6 +39,7 @@ const OutletView = () => {
     { id: 'MY_ORDERS', label: 'My Orders' },
     { id: 'STOCK', label: 'Stock View' },
     { id: 'SALES', label: 'Sales Entry' },
+    { id: 'DUE_CUSTOMERS', label: 'Pending Payments' },
     { id: 'REPORTS', label: 'Reports' },
   ];
   const tabs = ['OUTLET', 'EMPLOYEE', 'CASHIER', 'SUPERVISOR'].includes(role) ? employeeTabs : outletTabs;
@@ -1091,6 +1092,15 @@ const OutletView = () => {
                     { key: 'customerName', label: 'Customer' },
                     { key: 'customerPhone', label: 'Phone' },
                     { key: 'customerAddress', label: 'Address', render: (row) => row.customerAddress || '-' },
+                    { key: 'products', label: 'Products', render: (row) => (
+                      <div className="pending-payment-products">
+                        {(row.products || []).map((product) => (
+                          <div key={product.productId || product.productName}>
+                            {product.productName || product.productId} <strong>× {product.quantity}</strong>
+                          </div>
+                        ))}
+                      </div>
+                    ) },
                     { key: 'saleDate', label: 'Invoice date', render: (row) => row.saleDate ? new Date(row.saleDate).toLocaleDateString() : '-' },
                     { key: 'billAmount', label: 'Bill', align: 'right', render: (row) => formatCurrency(row.billAmount) },
                     { key: 'advanceAmount', label: 'Paid', align: 'right', render: (row) => formatCurrency(row.advanceAmount) },
