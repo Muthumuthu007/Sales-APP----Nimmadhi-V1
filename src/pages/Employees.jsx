@@ -39,6 +39,7 @@ const Employees = () => {
     { key: 'name', label: 'Employee' },
     { key: 'phone', label: 'Login username' },
     { key: 'role', label: 'Role' },
+    { key: 'workType', label: 'Work type', render: (row) => row.workType === 'FIELD' ? 'Field work' : 'Office' },
     { key: 'salaryModel', label: 'Salary model', render: (row) => row.salary?.salaryModel || row.salaryModel || '-' },
     { key: 'status', label: 'Status', render: (row) => row.isActive === false ? 'Inactive' : 'Active' },
     { key: 'createdAt', label: 'Created', render: (row) => row.createdAt ? new Date(row.createdAt).toLocaleDateString() : '-' },

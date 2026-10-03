@@ -94,9 +94,14 @@ function App() {
                 <Outlets />
               </ProtectedRoute>
             } />
-            <Route path="offers" element={
+            <Route path="complimentary-products" element={
               <ProtectedRoute allowedRoles={['MANAGER']}>
-                <Offers />
+                <Offers ruleType="COMPLIMENTARY" />
+              </ProtectedRoute>
+            } />
+            <Route path="discounts" element={
+              <ProtectedRoute allowedRoles={['MANAGER']}>
+                <Offers ruleType="DISCOUNT" />
               </ProtectedRoute>
             } />
 

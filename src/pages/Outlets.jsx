@@ -7,6 +7,7 @@ import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
 import { LoadingState, ErrorState, EmptyState } from '../components/ui/StateContainers';
 import { createOutlet, deleteOutlet, fetchOutlets, fetchProductGroups } from '../api/employees';
+import { getOutletLocation, updateOutletLocation } from '../api/location';
 import './Outlets.css';
 
 const emptyForm = { outletId: '', outletName: '', address: '', phone: '' };
@@ -24,6 +25,12 @@ const Outlets = () => {
   const [productGroups, setProductGroups] = useState([]);
   const [selectedGroupIds, setSelectedGroupIds] = useState([]);
   const [groupsLoading, setGroupsLoading] = useState(true);
+  const [locationOutlet, setLocationOutlet] = useState(null);
+  const [locationLat, setLocationLat] = useState('');
+  const [locationLng, setLocationLng] = useState('');
+  const [locationSaving, setLocationSaving] = useState(false);
+  const [locationDetecting, setLocationDetecting] = useState(false);
+  const [locationMessage, setLocationMessage] = useState('');
 
   const loadOutlets = async () => {
     setLoading(true);
@@ -113,6 +120,29 @@ const Outlets = () => {
     }
   };
 
+  const openLocation = async (outlet) => {
+    setLocationOutlet(outlet); setLocationMessage(''); setLocationLat(''); setLocationLng('');
+    try {
+      const data = await getOutletLocation(outlet.outletId);
+      setLocationLat(data?.latitude ?? ''); setLocationLng(data?.longitude ?? '');
+    } catch (requestError) { setLocationMessage(requestError.response?.data?.error || 'Unable to load the saved location.'); }
+  };
+
+  const detectLocation = () => {
+    if (!navigator.geolocation) { setLocationMessage('This browser does not support location detection.'); return; }
+    setLocationDetecting(true); setLocationMessage('');
+    navigator.geolocation.getCurrentPosition((position) => { setLocationLat(String(position.coords.latitude)); setLocationLng(String(position.coords.longitude)); setLocationDetecting(false); }, (geoError) => { setLocationMessage(geoError.code === geoError.PERMISSION_DENIED ? 'Allow location access in the browser, then try again.' : 'Unable to detect this location.'); setLocationDetecting(false); }, { enableHighAccuracy: true, timeout: 10000 });
+  };
+
+  const saveLocation = async () => {
+    const latitude = Number(locationLat); const longitude = Number(locationLng);
+    if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90 || !Number.isFinite(longitude) || longitude < -180 || longitude > 180) { setLocationMessage('Enter valid latitude and longitude values.'); return; }
+    setLocationSaving(true); setLocationMessage('');
+    try { await updateOutletLocation(locationOutlet.outletId, { latitude, longitude }); setLocationMessage('Attendance location saved. Employees must be within 100 metres to mark present.'); await loadOutlets(); }
+    catch (requestError) { setLocationMessage(requestError.response?.data?.error || 'Unable to save the attendance location.'); }
+    finally { setLocationSaving(false); }
+  };
+
   return (
     <main className="outlets-page">
       <section className="outlets-intro">
@@ -156,7 +186,7 @@ const Outlets = () => {
                 <h3>{outlet.outletName || outlet.outletId}</h3>
                 <p><MapPin size={15} />{outlet.address || 'Address not added'}</p>
                 <p><Phone size={15} />{outlet.phone || 'Phone not added'}</p>
-                <Button variant="secondary" className="outlet-delete-button" onClick={() => openDeleteConfirmation(outlet)}><Trash2 size={16} />Delete outlet</Button>
+                <div className="outlet-card-actions"><Button variant="secondary" className="outlet-location-button" onClick={() => openLocation(outlet)}><MapPin size={16} />Attendance location</Button><Button variant="secondary" className="outlet-delete-button" onClick={() => openDeleteConfirmation(outlet)}><Trash2 size={16} />Delete outlet</Button></div>
               </article>)}
             </div>
           )}
@@ -167,6 +197,12 @@ const Outlets = () => {
         <p className="outlet-delete-preserved">Orders, load plans, dispatch, sales, and stock history are kept for audit.</p>
         <Input label={`Type ${outletToDelete?.outletId || 'the Outlet ID'} to confirm`} value={deleteConfirmation} onChange={(event) => setDeleteConfirmation(event.target.value)} disabled={deleting} />
         <div className="outlet-delete-actions"><Button variant="secondary" onClick={() => setOutletToDelete(null)} disabled={deleting}>Cancel</Button><Button variant="danger" onClick={handleDelete} disabled={deleting || deleteConfirmation.trim().toUpperCase() !== outletToDelete?.outletId?.toUpperCase()}>{deleting ? 'Deleting…' : 'Delete outlet and employees'}</Button></div>
+      </Modal>
+      <Modal isOpen={Boolean(locationOutlet)} onClose={() => !locationSaving && setLocationOutlet(null)} title={`Attendance location — ${locationOutlet?.outletName || locationOutlet?.outletId || ''}`}>
+        <p className="outlet-location-note">Save the storefront GPS point while you are at the outlet. Employees can mark attendance only within <strong>100 metres</strong> of this saved point.</p>
+        {locationMessage && <div className="outlets-alert">{locationMessage}</div>}
+        <div className="outlet-location-inputs"><Input label="Latitude" value={locationLat} onChange={(event) => setLocationLat(event.target.value)} disabled={locationSaving || locationDetecting} /><Input label="Longitude" value={locationLng} onChange={(event) => setLocationLng(event.target.value)} disabled={locationSaving || locationDetecting} /></div>
+        <div className="outlet-delete-actions"><Button variant="secondary" onClick={detectLocation} disabled={locationSaving || locationDetecting}>{locationDetecting ? 'Detecting…' : 'Detect current location'}</Button><Button variant="primary" onClick={saveLocation} disabled={locationSaving || locationDetecting || !locationLat || !locationLng}>{locationSaving ? 'Saving…' : 'Save 100 m boundary'}</Button></div>
       </Modal>
     </main>
   );
