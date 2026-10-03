@@ -16,6 +16,7 @@ import { fetchActiveOutletOffers } from '../api/offers';
 
 import { AuthContext } from '../context/AuthContext';
 import EmployeeAttendance from './EmployeeAttendance';
+import QRUnitReceive from './QRUnitReceive';
 import './OutletView.css';
 
 const OutletView = () => {
@@ -28,6 +29,7 @@ const OutletView = () => {
     { id: 'CREATE_ORDER', label: 'Create Order' },
     { id: 'MY_ORDERS', label: 'My Orders' },
     { id: 'STOCK', label: 'Stock View' },
+    { id: 'QR_RECEIVE', label: 'Receive QR Units' },
     { id: 'SALES', label: 'Sales Entry' },
     { id: 'DUE_CUSTOMERS', label: 'Pending Payments' },
     { id: 'REPORTS', label: 'Reports' },
@@ -39,6 +41,7 @@ const OutletView = () => {
     { id: 'CREATE_ORDER', label: 'Create Order' },
     { id: 'MY_ORDERS', label: 'My Orders' },
     { id: 'STOCK', label: 'Stock View' },
+    { id: 'QR_RECEIVE', label: 'Receive QR Units' },
     { id: 'SALES', label: 'Sales Entry' },
     { id: 'DUE_CUSTOMERS', label: 'Pending Payments' },
     { id: 'REPORTS', label: 'Reports' },
@@ -1054,6 +1057,8 @@ const OutletView = () => {
             </CardContent>
           </Card>
         )}
+
+        {activeTab === 'QR_RECEIVE' && <QRUnitReceive />}
 
         {activeTab === 'SALES' && (
           <Card className="sales-builder-card">
