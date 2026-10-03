@@ -19,6 +19,7 @@ import Salary from './pages/Salary';
 import Employees from './pages/Employees';
 import Outlets from './pages/Outlets';
 import Offers from './pages/Offers';
+import ManagerAttendance from './pages/ManagerAttendance';
 
 // Root Redirect component
 const RootRedirect = () => {
@@ -77,6 +78,11 @@ function App() {
             <Route path="salary" element={
               <ProtectedRoute allowedRoles={['MANAGER']}>
                 <Salary />
+              </ProtectedRoute>
+            } />
+            <Route path="attendance" element={
+              <ProtectedRoute allowedRoles={['MANAGER']}>
+                <ManagerAttendance />
               </ProtectedRoute>
             } />
             <Route path="create-user" element={

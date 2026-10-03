@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { isNimmadhiOutlet } from '../utils/outlets';
 import { Building2, Crosshair, MapPin, Phone, Plus, Search, Trash2, UsersRound } from 'lucide-react';
 import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
@@ -267,7 +268,7 @@ const Outlets = () => {
             <div className="outlet-directory">
               {outlets.map((outlet) => <article className="outlet-directory-card" key={outlet.outletId}>
                 <div className="outlet-directory-header"><span>{outlet.outletId}</span><Building2 size={19} /></div>
-                <h3>{outlet.outletName || outlet.outletId}</h3>
+                <h3>{isNimmadhiOutlet(outlet) ? `NIMMADHI Outlet — ${outlet.outletName || outlet.outletId}` : (outlet.outletName || outlet.outletId)}</h3>
                 <p><MapPin size={15} />{outlet.address || 'Address not added'}</p>
                 <p><Phone size={15} />{outlet.phone || 'Phone not added'}</p>
                 <div className="outlet-card-actions"><Button variant="secondary" className="outlet-location-button" onClick={() => openLocation(outlet)}><MapPin size={16} />Attendance location</Button><Button variant="secondary" className="outlet-delete-button" onClick={() => openDeleteConfirmation(outlet)}><Trash2 size={16} />Delete outlet</Button></div>

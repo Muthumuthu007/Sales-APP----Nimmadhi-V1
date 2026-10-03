@@ -1,6 +1,6 @@
 import React, { useContext } from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, ShoppingCart, CalendarDays, Truck, CreditCard, Store, UserPlus, UsersRound, Gift, BadgeIndianRupee } from 'lucide-react';
+import { LayoutDashboard, ShoppingCart, CalendarDays, Truck, CreditCard, Store, UserPlus, UsersRound, Gift, BadgeIndianRupee, ClipboardCheck } from 'lucide-react';
 import { AuthContext } from '../../context/AuthContext';
 import './Sidebar.css';
 
@@ -13,6 +13,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     { to: '/load-plans', icon: <CalendarDays size={20} />, label: 'Load Plans' },
     { to: '/dispatch', icon: <Truck size={20} />, label: 'Dispatch' },
     { to: '/salary', icon: <CreditCard size={20} />, label: 'Salary' },
+    { to: '/attendance', icon: <ClipboardCheck size={20} />, label: 'Attendance' },
     { to: '/outlets', icon: <Store size={20} />, label: 'Outlets' },
     { to: '/complimentary-products', icon: <Gift size={20} />, label: 'Complimentary Products' },
     { to: '/discounts', icon: <BadgeIndianRupee size={20} />, label: 'Discounts' },

@@ -60,3 +60,7 @@ export async function deleteOutlet(outletId) {
 export async function fetchOutletIncentives(outletId, month) {
   return api.get('/manager/incentives', { params: { outletId, month } });
 }
+
+export async function fetchManagerAttendance(outletId, period, date) {
+  return api.get('/manager/attendance', { params: { outletId, period, date } });
+}

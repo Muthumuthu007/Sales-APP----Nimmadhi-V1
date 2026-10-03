@@ -156,6 +156,7 @@ const OutletView = () => {
 
   // --- Sales Entry State ---
   const [salesProductOptions, setSalesProductOptions] = useState([{ label: 'Loading products...', value: '' }]);
+  const [ownedShowroomSales, setOwnedShowroomSales] = useState(false);
   const [salesItems, setSalesItems] = useState([]);
   const [salesProduct, setSalesProduct] = useState('');
   const [salesQuantity, setSalesQuantity] = useState(1);
@@ -688,10 +689,11 @@ const OutletView = () => {
       fetchOutletProductNames(outletId).then(response => {
         if (isMounted) {
           const list = Array.isArray(response) ? response : (response?.products || []);
+          setOwnedShowroomSales(Boolean(response?.ownedShowroom));
           const options = [
              { label: 'Select a product...', value: '' },
              ...list.map(p => ({
-               label: p.name || p.product_name || p.productName || p.title || String(p.id || p.product_id),
+               label: `${p.name || p.product_name || p.productName || p.title || String(p.id || p.product_id)}${response?.ownedShowroom ? ` — max produce: ${p.maxProduce ?? 0}` : ''}`,
                value: String(p.id || p.product_id)
              }))
           ];
@@ -699,6 +701,7 @@ const OutletView = () => {
         }
       }).catch(() => {
         if (isMounted) {
+           setOwnedShowroomSales(false);
            setSalesProductOptions([{ label: 'Error loading options', value: '' }]);
         }
       });
@@ -1072,6 +1075,13 @@ const OutletView = () => {
                 </section>
               )}
 
+              {ownedShowroomSales && (
+                <div className="order-builder-alert order-builder-alert-info">
+                  <strong>NIMMADHI Outlet — Factory delivery</strong><br />
+                  Products can be ordered without local showroom stock. Each quantity is checked against the current max producible quantity before the order is accepted.
+                </div>
+              )}
+
               <div className="sales-builder-workspace">
                 <section className="sales-builder-date-card">
                   <div className="order-builder-section-label"><span>1</span><div><strong>Sales date</strong><small>Choose the date for this entry</small></div></div>
@@ -1092,8 +1102,8 @@ const OutletView = () => {
                   {billAmount && <div className="sales-builder-payment-summary">Balance due: <strong>{formatCurrency(Math.max(0, Number(billAmount) - Number(advanceAmount || 0)))}</strong></div>}
                 </section>
                 <section className="sales-builder-entry-card">
-                  <div className="order-builder-section-label"><span>3</span><div><strong>Sold product</strong><small>Only products available at this outlet are listed</small></div></div>
-                  <SearchableSelect label="Select product" options={salesProductOptions} value={salesProduct} onChange={(val) => setSalesProduct(val)} placeholder="Search available products..." />
+                  <div className="order-builder-section-label"><span>3</span><div><strong>Sold product</strong><small>{ownedShowroomSales ? 'Factory-delivery products are limited by max producible quantity' : 'Only products available at this outlet are listed'}</small></div></div>
+                  <SearchableSelect label="Select product" options={salesProductOptions} value={salesProduct} onChange={(val) => setSalesProduct(val)} placeholder={ownedShowroomSales ? 'Search factory products...' : 'Search available products...'} />
                   <div className="sales-builder-add-row">
                     <Input label="Quantity sold" type="number" min="1" value={salesQuantity} onChange={(e) => setSalesQuantity(e.target.value)} />
                     <Button className="order-builder-add-button" onClick={handleAddSalesItem} disabled={isSubmittingSales}><Plus size={18} /> Add sale</Button>
