@@ -11,6 +11,21 @@ const createKey = () => {
   return `receive-unit-${random}`;
 };
 
+// Factory labels encode a small JSON payload so the QR can be extended later
+// without changing the printed format. The receipt API needs the raw unit ID.
+const unitIdFromScan = (value) => {
+  const scanned = String(value || '').trim();
+  if (!scanned) return '';
+  try {
+    const payload = JSON.parse(scanned);
+    return typeof payload?.unit_id === 'string' && payload.unit_id.trim()
+      ? payload.unit_id.trim()
+      : scanned;
+  } catch {
+    return scanned;
+  }
+};
+
 /**
  * Physical-unit receipt. Most QR scanners type the encoded unit ID and submit
  * Enter, so this works with both dedicated scanners and a mobile camera app.
@@ -47,7 +62,7 @@ export default function QRUnitReceive() {
           { fps: 10, qrbox: { width: 240, height: 240 } },
           async (decodedText) => {
             if (cancelled) return;
-            setUnitId(decodedText.trim());
+            setUnitId(unitIdFromScan(decodedText));
             setCameraError(null);
             await stopCamera();
           },
@@ -71,11 +86,12 @@ export default function QRUnitReceive() {
 
   const receive = async (event) => {
     event?.preventDefault();
-    const value = unitId.trim();
+    const value = unitIdFromScan(unitId);
     if (!value) {
       setError('Scan or enter the QR unit ID first.');
       return;
     }
+    if (value !== unitId) setUnitId(value);
     setLoading(true); setError(null); setResult(null);
     const key = keys.current.get(value) || createKey();
     keys.current.set(value, key);
