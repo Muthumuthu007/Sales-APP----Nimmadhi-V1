@@ -45,7 +45,7 @@ const Offers = ({ ruleType = 'DISCOUNT' }) => {
   const complimentaryProducts = useMemo(() => catalog?.complimentaryProducts || [], [catalog]);
   const update = (field, value) => setOffer((current) => ({ ...current, [field]: value }));
   const changeScope = (scope) => setOffer({ ...defaultOffer(ruleType), scope });
-  const targetLabel = (item) => item.scope === 'OUTLET' ? 'Entire outlet' : item.scope === 'GROUP' ? `Group: ${item.groupId}` : item.productName || `Product: ${item.productId}`;
+  const targetLabel = (item) => item.scope === 'OUTLET' ? 'Entire outlet' : item.scope === 'GROUP' ? `Group: ${item.groupName || item.groupId}` : item.productName || `Product: ${item.productId}`;
 
   const submit = async (event) => {
     event.preventDefault();
@@ -99,7 +99,7 @@ const Offers = ({ ruleType = 'DISCOUNT' }) => {
           <Button type="submit" variant="primary" disabled={saving || loading}>{saving ? 'Saving…' : isComplimentary ? 'Save complimentary product' : 'Save discount'}</Button>
         </form>}
       </CardContent></Card>
-      <Card><CardHeader title={`Current offers${catalog?.outlet?.outletName ? ` — ${catalog.outlet.outletName}` : ''}`} /><CardContent>{loading ? <LoadingState /> : !(catalog?.offers || []).length ? <EmptyState title="No offers configured for this outlet." /> : <div className="offers-list">{catalog.offers.map((item) => <article key={item.offerId} className="offer-rule"><div><strong>{targetLabel(item)}</strong><p>{Number(item.discountValue || 0) > 0 && <><BadgeIndianRupee size={15} /> {item.discountType === 'PERCENT' ? `${item.discountValue}% discount` : `₹${item.discountValue} discount`}</>}{Number(item.freeQuantity || 0) > 0 && <><Gift size={15} /> {item.freeQuantity} complimentary</>}</p></div><Button variant="secondary" className="offer-remove" onClick={() => remove(item.offerId)}><Trash2 size={16} />Remove</Button></article>)}</div>}</CardContent></Card>
+      <Card><CardHeader title={`Current offers${catalog?.outlet?.outletName ? ` — ${catalog.outlet.outletName}` : ''}`} /><CardContent>{loading ? <LoadingState /> : !(catalog?.offers || []).length ? <EmptyState title="No offers configured for this outlet." /> : <div className="offers-list">{catalog.offers.map((item) => <article key={item.offerId} className="offer-rule"><div><strong>{targetLabel(item)}</strong><p>{Number(item.discountValue || 0) > 0 && <><BadgeIndianRupee size={15} /> {item.discountType === 'PERCENT' ? `${item.discountValue}% discount` : `₹${item.discountValue} discount`}</>}{Number(item.freeQuantity || 0) > 0 && <><Gift size={15} /> Main: {item.qualifyingLabel || targetLabel(item)} → Complimentary: {item.freeProductName || item.freeProductId} × {item.freeQuantity}</>}</p></div><Button variant="secondary" className="offer-remove" onClick={() => remove(item.offerId)}><Trash2 size={16} />Remove</Button></article>)}</div>}</CardContent></Card>
     </div>
   </main>;
 };

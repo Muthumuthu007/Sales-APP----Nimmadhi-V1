@@ -1,6 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Building2, MapPin, Phone, Plus, Trash2, UsersRound } from 'lucide-react';
+import { Building2, Crosshair, MapPin, Phone, Plus, Search, Trash2, UsersRound } from 'lucide-react';
+import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { Card, CardContent, CardHeader } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -10,7 +13,38 @@ import { createOutlet, deleteOutlet, fetchOutlets, fetchProductGroups } from '..
 import { getOutletLocation, updateOutletLocation } from '../api/location';
 import './Outlets.css';
 
-const emptyForm = { outletId: '', outletName: '', address: '', phone: '' };
+const emptyForm = { outletId: '', outletName: '', address: '', phone: '', latitude: '', longitude: '' };
+const DEFAULT_MAP_CENTER = [13.0827, 80.2707];
+
+const outletMarkerIcon = L.divIcon({
+  className: 'outlet-map-marker',
+  html: '<span aria-hidden="true">⌖</span>',
+  iconSize: [36, 36],
+  iconAnchor: [18, 18],
+});
+
+function RecenterMap({ coordinates }) {
+  const map = useMap();
+  useEffect(() => {
+    map.flyTo([coordinates.latitude, coordinates.longitude], Math.max(map.getZoom(), 16), { duration: 0.45 });
+  }, [coordinates.latitude, coordinates.longitude, map]);
+  return null;
+}
+
+function DraggableLocationMarker({ coordinates, onChange }) {
+  const markerHandlers = useMemo(() => ({
+    dragend(event) {
+      const next = event.target.getLatLng();
+      onChange({ latitude: next.lat, longitude: next.lng });
+    },
+  }), [onChange]);
+  useMapEvents({
+    click(event) {
+      onChange({ latitude: event.latlng.lat, longitude: event.latlng.lng });
+    },
+  });
+  return <Marker position={[coordinates.latitude, coordinates.longitude]} icon={outletMarkerIcon} draggable eventHandlers={markerHandlers} />;
+}
 
 const Outlets = () => {
   const [outlets, setOutlets] = useState([]);
@@ -31,6 +65,9 @@ const Outlets = () => {
   const [locationSaving, setLocationSaving] = useState(false);
   const [locationDetecting, setLocationDetecting] = useState(false);
   const [locationMessage, setLocationMessage] = useState('');
+  const [mapCoordinates, setMapCoordinates] = useState({ latitude: DEFAULT_MAP_CENTER[0], longitude: DEFAULT_MAP_CENTER[1] });
+  const [mapSearching, setMapSearching] = useState(false);
+  const [mapMessage, setMapMessage] = useState('');
 
   const loadOutlets = async () => {
     setLoading(true);
@@ -64,6 +101,32 @@ const Outlets = () => {
       : [...current, groupId]);
   };
 
+  const findAddressOnMap = async () => {
+    const query = form.address.trim() || form.outletName.trim();
+    if (!query) { setMapMessage('Enter an outlet name or address first.'); return; }
+    setMapSearching(true);
+    setMapMessage('Searching for the location…');
+    try {
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(query)}`);
+      const results = await response.json();
+      if (!results.length) { setMapMessage('Location not found. Add more detail such as city or area, then search again.'); return; }
+      const result = results[0];
+      setMapCoordinates({ latitude: Number(result.lat), longitude: Number(result.lon) });
+      setMapMessage('Location found. Drag the pin or click the exact storefront, then confirm the pin.');
+    } catch {
+      setMapMessage('Unable to search the map right now. Check your connection and try again.');
+    } finally { setMapSearching(false); }
+  };
+
+  const confirmMapLocation = () => {
+    setForm((current) => ({
+      ...current,
+      latitude: mapCoordinates.latitude.toFixed(6),
+      longitude: mapCoordinates.longitude.toFixed(6),
+    }));
+    setMapMessage(`Location confirmed: ${mapCoordinates.latitude.toFixed(6)}, ${mapCoordinates.longitude.toFixed(6)}. This will be the 100 m attendance boundary.`);
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (!form.outletId.trim() || !form.outletName.trim()) {
@@ -72,6 +135,10 @@ const Outlets = () => {
     }
     if (!selectedGroupIds.length) {
       setError('Select at least one production group this outlet is allowed to order.');
+      return;
+    }
+    if (!form.latitude || !form.longitude) {
+      setError('Find the outlet on the map and confirm its pin before creating the outlet.');
       return;
     }
     setSaving(true);
@@ -84,10 +151,14 @@ const Outlets = () => {
         address: form.address.trim(),
         phone: form.phone.trim(),
         allowedGroupIds: selectedGroupIds,
+        latitude: Number(form.latitude),
+        longitude: Number(form.longitude),
       });
       setSuccess(`${result?.outlet?.outletName || form.outletName} created. You can now create employee logins for this outlet.`);
       setForm(emptyForm);
       setSelectedGroupIds([]);
+      setMapCoordinates({ latitude: DEFAULT_MAP_CENTER[0], longitude: DEFAULT_MAP_CENTER[1] });
+      setMapMessage('');
       await loadOutlets();
     } catch (requestError) {
       setError(requestError.response?.data?.error || requestError.response?.data?.outletId?.[0] || 'Unable to create the outlet.');
@@ -164,7 +235,20 @@ const Outlets = () => {
                   {productGroups.map((group) => <label key={group.groupId} className={`outlets-product-group ${selectedGroupIds.includes(group.groupId) ? 'selected' : ''}`}><input type="checkbox" checked={selectedGroupIds.includes(group.groupId)} onChange={() => toggleProductGroup(group.groupId)} disabled={saving} /><span>{group.groupName}</span></label>)}
                 </div>}
               </section>
-              <Input label="Address (optional)" placeholder="Store address" value={form.address} onChange={update('address')} disabled={saving} />
+              <div className="outlet-address-map">
+                <Input label="Address" placeholder="e.g. Saravana Stores Porur, Chennai" value={form.address} onChange={update('address')} disabled={saving || mapSearching} />
+                <Button type="button" variant="secondary" onClick={findAddressOnMap} disabled={saving || mapSearching}><Search size={16} />{mapSearching ? 'Searching…' : 'Find on map'}</Button>
+                <div className="outlet-map-help"><MapPin size={16} /><span>Search the address, then drag the pin or click the exact storefront location.</span></div>
+                <div className="outlet-location-map" aria-label="Outlet location picker">
+                  <MapContainer center={DEFAULT_MAP_CENTER} zoom={12} scrollWheelZoom className="outlet-leaflet-map">
+                    <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                    <RecenterMap coordinates={mapCoordinates} />
+                    <DraggableLocationMarker coordinates={mapCoordinates} onChange={setMapCoordinates} />
+                  </MapContainer>
+                </div>
+                <div className="outlet-map-actions"><span>{mapMessage || 'No pin confirmed yet.'}</span><Button type="button" variant="primary" onClick={confirmMapLocation} disabled={saving}><Crosshair size={16} />Confirm pin & save coordinates</Button></div>
+                {form.latitude && form.longitude && <p className="outlet-map-confirmed">Saved coordinates: {form.latitude}, {form.longitude}</p>}
+              </div>
               <Input label="Phone (optional)" placeholder="Store contact number" value={form.phone} onChange={update('phone')} disabled={saving} />
               <Button type="submit" variant="primary" className="outlets-submit" disabled={saving || groupsLoading || !selectedGroupIds.length}><Plus size={18} />{saving ? 'Creating outlet…' : 'Create outlet'}</Button>
             </form>

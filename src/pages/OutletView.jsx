@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import api from '../api/axios';
-import { Calendar, FileText, Gift, Layers3, MapPin, PackageSearch, Plus, ShoppingBag, Trash2 } from 'lucide-react';
+import { Calendar, FileText, Gift, MapPin, PackageSearch, Plus, ShoppingBag, Trash2 } from 'lucide-react';
 import { Card, CardHeader, CardContent } from '../components/ui/Card';
 import { Table } from '../components/ui/Table';
 import { Input, Select } from '../components/ui/Input';
@@ -106,12 +106,27 @@ const OutletView = () => {
     )].sort((left, right) => left.localeCompare(right))
   ), [productOptions]);
 
+  // An outlet may only order from groups assigned to it by the manager. Keep a
+  // concrete group selected, rather than offering an "all products" view that
+  // can make the outlet's permitted catalogue look unrestricted.
+  useEffect(() => {
+    if (!productGroups.length) {
+      setSelectedProductGroup('');
+      setSelectedProduct('');
+      return;
+    }
+    if (!productGroups.includes(selectedProductGroup)) {
+      setSelectedProductGroup(productGroups[0]);
+      setSelectedProduct('');
+    }
+  }, [productGroups, selectedProductGroup]);
+
   const visibleProductOptions = useMemo(() => {
     const placeholder = productOptions.find(option => !option.value) || { label: 'Select a product...', value: '' };
     const products = productOptions.filter(option => option.value);
     return [
       placeholder,
-      ...products.filter(option => !selectedProductGroup || option.group === selectedProductGroup)
+      ...products.filter(option => option.group === selectedProductGroup)
     ];
   }, [productOptions, selectedProductGroup]);
 
@@ -184,7 +199,7 @@ const OutletView = () => {
   };
 
   useEffect(() => {
-    if (activeTab !== 'SALES') return;
+    if (!['SALES', 'CREATE_ORDER'].includes(activeTab)) return;
     fetchActiveOutletOffers().then((response) => setActiveOffers(response?.offers || [])).catch(() => setActiveOffers([]));
   }, [activeTab]);
 
@@ -802,6 +817,22 @@ const OutletView = () => {
 
   const formatCurrency = (amount) => `₹${Number(amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
+  const offerSummary = (offer) => {
+    const purchasedProducts = (offer.qualifyingProducts || [])
+      .map((product) => product.productName || product.productId)
+      .filter(Boolean);
+    const main = purchasedProducts.join(', ') || offer.qualifyingLabel || (offer.scope === 'OUTLET' ? 'Any product at this outlet' : offer.groupName || offer.productName || offer.groupId || offer.productId || 'Eligible product');
+    const complimentary = Number(offer.freeQuantity || 0) > 0
+      ? `Main: ${main} → Complimentary: ${offer.freeProductName || offer.freeProductId || 'Product'} × ${offer.freeQuantity}`
+      : `Main: ${main} → ${offer.discountType === 'PERCENT' ? `${offer.discountValue}% discount` : `₹${offer.discountValue} discount`}`;
+    return complimentary;
+  };
+
+  const complimentarySummary = (offers = []) => offers
+    .filter((offer) => Number(offer.freeQuantity || 0) > 0)
+    .map(offerSummary)
+    .join(' | ') || '-';
+
   const sendReceiptToCustomer = async () => {
     if (!receipt) return;
     const text = [
@@ -864,11 +895,17 @@ const OutletView = () => {
                 </div>
               )}
 
+              {activeOffers.length > 0 && (
+                <section className="sales-builder-offers" aria-label="Current outlet offers">
+                  <Gift size={19} />
+                  <div><strong>Complimentary products and discounts</strong><span>{activeOffers.map(offerSummary).join(' | ')}</span></div>
+                </section>
+              )}
+
               <div className="order-builder-workspace">
                 <section className="order-builder-groups">
                   <div className="order-builder-section-label"><span>1</span><div><strong>Production group</strong><small>Start with a collection</small></div></div>
                   <div className="order-builder-group-grid">
-                    <button type="button" className={`order-builder-group ${!selectedProductGroup ? 'selected' : ''}`} onClick={() => { setSelectedProductGroup(''); setSelectedProduct(''); }}><Layers3 size={17} /><span>All products</span><small>{productOptions.filter(option => option.value).length}</small></button>
                     {productGroups.map(group => {
                       const count = productOptions.filter(option => option.group === group).length;
                       return <button type="button" key={group} className={`order-builder-group ${selectedProductGroup === group ? 'selected' : ''}`} onClick={() => { setSelectedProductGroup(group); setSelectedProduct(''); }}><span>{group}</span><small>{count}</small></button>;
@@ -876,8 +913,8 @@ const OutletView = () => {
                   </div>
                 </section>
                 <section className="order-builder-selection">
-                  <div className="order-builder-section-label"><span>2</span><div><strong>Product and quantity</strong><small>{selectedProductGroup ? `${selectedProductGroup} products` : 'All production groups'}</small></div></div>
-                  <SearchableSelect label="Select product" options={visibleProductOptions} value={selectedProduct} onChange={(val) => setSelectedProduct(val)} placeholder={selectedProductGroup ? `Select a ${selectedProductGroup} product...` : 'Search all products...'} />
+                  <div className="order-builder-section-label"><span>2</span><div><strong>Product and quantity</strong><small>{selectedProductGroup ? `${selectedProductGroup} products only` : 'Select a production group'}</small></div></div>
+                  <SearchableSelect label="Select product" options={visibleProductOptions} value={selectedProduct} onChange={(val) => setSelectedProduct(val)} placeholder={selectedProductGroup ? `Select a ${selectedProductGroup} product...` : 'Select a production group first'} />
                   <div className="order-builder-add-row">
                     <Input label="Quantity" type="number" min="1" value={quantity} onChange={(e) => setQuantity(e.target.value)} />
                     <Button className="order-builder-add-button" onClick={handleAddItem} disabled={isSubmitting}><Plus size={18} /> Add item</Button>
@@ -1031,7 +1068,7 @@ const OutletView = () => {
               {activeOffers.length > 0 && (
                 <section className="sales-builder-offers" aria-label="Current outlet offers">
                   <Gift size={19} />
-                  <div><strong>Current outlet offers</strong><span>{activeOffers.map((offer) => `${offer.scope === 'OUTLET' ? 'All products' : offer.productName || offer.groupId || offer.productId}: ${Number(offer.discountValue || 0) ? `${offer.discountValue}${offer.discountType === 'PERCENT' ? '%' : ' ₹'} off` : ''}${Number(offer.discountValue || 0) && Number(offer.freeQuantity || 0) ? ' · ' : ''}${Number(offer.freeQuantity || 0) ? `${offer.freeQuantity} complimentary` : ''}`).join('  |  ')}</span></div>
+                  <div><strong>Current outlet offers</strong><span>{activeOffers.map(offerSummary).join(' | ')}</span></div>
                 </section>
               )}
 
@@ -1134,6 +1171,7 @@ const OutletView = () => {
               <header className="sales-receipt-header"><div><p className="sales-receipt-kicker">NIMMADHI</p><h2>MATTRESS</h2><span>Get your sleep</span></div><div className="sales-receipt-invoice"><span>INVOICE</span><strong>{receipt.saleReferenceId || '-'}</strong><small>{receipt.saleDate}</small></div></header>
               <section className="sales-receipt-customer"><div><span>BILLED TO</span><strong>{receipt.customerName}</strong><p>{receipt.customerPhone}<br />{receipt.customerAddress}</p></div><div><span>PAYMENT</span><strong>{receipt.paymentMethod}</strong><p>{receipt.paymentStatus === 'PAID' ? 'Paid in full' : 'Advance payment received'}</p></div></section>
               <table className="sales-receipt-items"><thead><tr><th>Product</th><th>Quantity</th></tr></thead><tbody>{(receipt.items || []).map((item, index) => <tr key={`${item.product_id}-${index}`}><td>{item.productName || item.product_id}</td><td>{item.quantity}</td></tr>)}</tbody></table>
+              {(receipt.eligibleOffers || []).some((offer) => Number(offer.freeQuantity || 0) > 0) && <section className="sales-receipt-offers"><strong>Complimentary items</strong>{(receipt.eligibleOffers || []).filter((offer) => Number(offer.freeQuantity || 0) > 0).map((offer) => <p key={offer.offerId}>{offerSummary(offer)}</p>)}</section>}
               <section className="sales-receipt-totals"><div><span>Total bill</span><strong>{formatCurrency(receipt.billAmount)}</strong></div><div><span>Paid now</span><strong>{formatCurrency(receipt.advanceAmount)}</strong></div><div className="sales-receipt-balance"><span>Balance due</span><strong>{formatCurrency(receipt.balanceDue)}</strong></div></section>
               <footer>Thank you for choosing Nimmadhi Mattress. Please retain this invoice for your records.</footer>
               <div className="sales-receipt-actions"><Button variant="secondary" onClick={() => window.print()}>Print receipt</Button><Button onClick={sendReceiptToCustomer}>Send receipt</Button></div>
@@ -1291,8 +1329,9 @@ const OutletView = () => {
                             <Table 
                               columns={[
                                 { key: 'id', label: 'S.No', render: (row, i) => (i !== undefined ? i + 1 : '-') },
-                                { key: 'product', label: 'Product Name', render: (row) => getProductName(row.productId || row.product_id || row.productName || row.product_name || row.name) },
+                                { key: 'product', label: 'Product Name', render: (row) => row.productName || row.product_name || getProductName(row.productId || row.product_id || row.name) },
                                 { key: 'total_qty', label: 'Total Qty', align: 'center', render: (row) => row.totalQty ?? row.total_qty ?? row.quantity ?? 0 },
+                                { key: 'complimentary', label: 'Complimentary', render: (row) => complimentarySummary(row.eligibleOffers) },
                                 { key: 'amount', label: 'Amount', align: 'right', render: (row) => row.amount || row.totalAmount || row.revenue ? `₹${Number(row.amount || row.totalAmount || row.revenue).toLocaleString()}` : '-' },
                                 { key: 'date', label: 'Date', render: (row) => (row.saleTimestamp || row.saleDate || row.date) ? new Date(row.saleTimestamp || row.saleDate || row.date).toLocaleDateString() : '-' }
                               ]}
