@@ -56,7 +56,22 @@ const Offers = ({ ruleType = 'DISCOUNT' }) => {
     if (!isComplimentary && !(Number(offer.discountValue || 0) > 0)) { setError('Set a discount value.'); return; }
     setSaving(true); setError(''); setSuccess('');
     try {
-      await saveOutletOffer({ ...offer, outletId, discountValue: isComplimentary ? 0 : Number(offer.discountValue || 0), freeQuantity: isComplimentary ? Number(offer.freeQuantity || 0) : 0, freeProductId: isComplimentary ? offer.freeProductId : undefined });
+      // Do not send blank identifiers. Django REST Framework correctly treats
+      // an explicitly supplied blank ID as invalid, even when that field is
+      // irrelevant to the selected offer scope.
+      const payload = {
+        outletId,
+        ruleType,
+        scope: offer.scope,
+        active: offer.active,
+        discountType: offer.discountType,
+        discountValue: isComplimentary ? 0 : Number(offer.discountValue || 0),
+        freeQuantity: isComplimentary ? Number(offer.freeQuantity || 0) : 0,
+      };
+      if (offer.scope === 'GROUP') payload.groupId = offer.groupId;
+      if (offer.scope === 'PRODUCT') payload.productId = offer.productId;
+      if (isComplimentary) payload.freeProductId = offer.freeProductId;
+      await saveOutletOffer(payload);
       setOffer(defaultOffer(ruleType)); setSuccess(`${isComplimentary ? 'Complimentary product' : 'Discount'} saved.`); await loadCatalog();
     } catch (requestError) { setError(requestError.response?.data?.error || requestError.response?.data?.non_field_errors?.[0] || 'Unable to save this offer.'); }
     finally { setSaving(false); }
