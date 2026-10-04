@@ -52,3 +52,8 @@ export async function fetchGodownFulfillments() { return api.get('/godown/fulfil
 export async function dispatchGodownUnit(line, unitId) { return api.post(`/godown/fulfillments/${encodeURIComponent(line.orderId)}/${encodeURIComponent(line.loadPlanId)}/${encodeURIComponent(line.lineId)}/units/scan/dispatch`, { unit_id: unitId }); }
 export async function fetchLoadPlanFulfillment(loadPlanId, orderId) { return api.get(`/load-plans/${encodeURIComponent(loadPlanId)}/fulfillment?orderId=${encodeURIComponent(orderId)}`); }
 export async function saveLoadPlanFulfillment(loadPlanId, payload) { return api.post(`/load-plans/${encodeURIComponent(loadPlanId)}/fulfillment`, payload); }
+export async function fetchDispatchPlans({ sourceType = 'ALL', godownId = '' } = {}) {
+  const params = new URLSearchParams({ sourceType });
+  if (godownId) params.set('godownId', godownId);
+  return api.get(`/dispatch-plans?${params.toString()}`);
+}

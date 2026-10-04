@@ -14,6 +14,7 @@ import Orders from './pages/Orders';
 import OrderDetails from './pages/OrderDetails';
 import LoadPlans from './pages/LoadPlans';
 import Dispatch from './pages/Dispatch';
+import DispatchPlans from './pages/DispatchPlans';
 import OutletView from './pages/OutletView';
 import GodownView from './pages/GodownView';
 import Salary from './pages/Salary';
@@ -76,6 +77,11 @@ function App() {
             <Route path="dispatch" element={
               <ProtectedRoute allowedRoles={['MANAGER']}>
                 <Dispatch />
+              </ProtectedRoute>
+            } />
+            <Route path="dispatch-plans" element={
+              <ProtectedRoute allowedRoles={['MANAGER']}>
+                <DispatchPlans />
               </ProtectedRoute>
             } />
             <Route path="salary" element={

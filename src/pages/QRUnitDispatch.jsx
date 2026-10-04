@@ -17,7 +17,7 @@ const unitIdFromScan = (value) => {
   }
 };
 
-export default function QRUnitDispatch({ loadPlan, onDispatched }) {
+export default function QRUnitDispatch({ loadPlan, fulfillment, onDispatched }) {
   const [unitId, setUnitId] = useState('');
   const [error, setError] = useState(null);
   const [result, setResult] = useState(null);
@@ -27,6 +27,7 @@ export default function QRUnitDispatch({ loadPlan, onDispatched }) {
   const requestKeys = useRef(new Map());
   const loadPlanId = loadPlan?.loadPlanId || loadPlan?.id;
   const orderId = loadPlan?.orderId;
+  const isGodownDispatch = fulfillment?.sourceType === 'GODOWN';
 
   const stopCamera = async () => {
     const active = scanner.current;
@@ -77,7 +78,7 @@ export default function QRUnitDispatch({ loadPlan, onDispatched }) {
       setError('Scan or enter a QR unit ID first.');
       return;
     }
-    if (!loadPlanId || !orderId) {
+    if (!loadPlanId || !orderId || (isGodownDispatch && !fulfillment?.lineId)) {
       setError('This load plan is missing its order reference. Refresh the Load Plans page and try again.');
       return;
     }
@@ -88,11 +89,16 @@ export default function QRUnitDispatch({ loadPlan, onDispatched }) {
     const idempotencyKey = requestKeys.current.get(value) || newKey();
     requestKeys.current.set(value, idempotencyKey);
     try {
-      const response = await api.post(
-        '/factory/units/scan/dispatch/',
-        { unit_id: value, load_plan_id: loadPlanId, order_id: orderId },
-        { headers: { 'Idempotency-Key': idempotencyKey } },
-      );
+      const response = isGodownDispatch
+        ? await api.post(
+          `/dispatch-plans/${encodeURIComponent(orderId)}/${encodeURIComponent(loadPlanId)}/${encodeURIComponent(fulfillment.lineId)}/godown-dispatch`,
+          { unit_id: value },
+        )
+        : await api.post(
+          '/factory/units/scan/dispatch/',
+          { unit_id: value, load_plan_id: loadPlanId, order_id: orderId },
+          { headers: { 'Idempotency-Key': idempotencyKey } },
+        );
       setResult(response);
       setUnitId('');
       if (response.load_plan_dispatched) onDispatched?.(response);
@@ -108,8 +114,10 @@ export default function QRUnitDispatch({ loadPlan, onDispatched }) {
       <div className="sales-builder-intro">
         <div className="sales-builder-intro-icon"><QrCode size={20} /></div>
         <div>
-          <h3>Scan every physical unit in this plan</h3>
-          <p>Only QR labels for the selected plan&apos;s products are accepted. The plan moves to Dispatch only after all its quantities are scanned.</p>
+          <h3>Scan a physical unit to mark it dispatched</h3>
+          <p>{isGodownDispatch
+            ? `Only a QR unit currently held at ${fulfillment.sourceLocationId} for this assigned product is accepted.`
+            : 'Only QR labels for the selected Factory-assigned plan products are accepted.'} The plan moves to Dispatch only after every assigned source completes its units.</p>
         </div>
       </div>
       {error && <div className="order-builder-alert order-builder-alert-error" role="alert">{error}</div>}
@@ -117,7 +125,7 @@ export default function QRUnitDispatch({ loadPlan, onDispatched }) {
         <div className="order-builder-alert order-builder-alert-success" role="status">
           <CheckCircle2 size={18} /> {result.product_name || 'Product'} scanned. {result.load_plan_dispatched
             ? 'All units are scanned — the load plan is now dispatched.'
-            : `${result.scanned_units} of ${result.required_units} unit(s) scanned.`}
+            : (isGodownDispatch ? `${result.lineDispatchedQty} of ${result.lineQuantity} unit(s) dispatched from this godown.` : `${result.scanned_units} of ${result.required_units} unit(s) scanned.`)}
         </div>
       )}
       <form onSubmit={dispatch} className="mt-6" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
