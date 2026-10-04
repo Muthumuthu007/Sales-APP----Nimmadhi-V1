@@ -5,8 +5,9 @@ import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 import { Select } from '../components/ui/Input';
 import { LoadingState, ErrorState } from '../components/ui/StateContainers';
-import { fetchLoadPlans, dispatchLoadPlan, downloadLoadPlansExcel, fetchOutlets } from '../api/manager';
+import { fetchLoadPlans, downloadLoadPlansExcel, fetchOutlets } from '../api/manager';
 import { outletLabel } from '../utils/outlets';
+import QRUnitDispatch from './QRUnitDispatch';
 import './LoadPlans.css';
 
 const compactId = (value) => {
@@ -34,8 +35,6 @@ const LoadPlans = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [detailsPlan, setDetailsPlan] = useState(null);
-  const [isDispatching, setIsDispatching] = useState(false);
-  const [dispatchError, setDispatchError] = useState(null);
 
   const [isDownloading, setIsDownloading] = useState(false);
   const [outlets, setOutlets] = useState([]);
@@ -80,35 +79,8 @@ const LoadPlans = () => {
 
   const handleDispatchPrompt = (plan) => {
     setSelectedPlan(plan);
-    setDispatchError(null);
     setSuccessMsg(null);
     setModalOpen(true);
-  };
-
-  const handleConfirmDispatch = async () => {
-    if (!selectedPlan) return;
-    
-    setIsDispatching(true);
-    setDispatchError(null);
-    
-    try {
-      const planId = selectedPlan.loadPlanId || selectedPlan.id || selectedPlan.orderId;
-      const payload = {
-        orderId: selectedPlan.orderId || selectedPlan.id || 'Unknown',
-        dispatchedAt: new Date().toISOString()
-      };
-      
-      await dispatchLoadPlan(planId, payload);
-      
-      setSuccessMsg(`Plan ${planId} marked as dispatched successfully!`);
-      
-      setPlans(plans.filter(p => (p.loadPlanId || p.id || p.orderId) !== planId));
-      setModalOpen(false);
-    } catch (err) {
-      setDispatchError(err.response?.data?.message || err.message || 'Dispatch modification failed.');
-    } finally {
-      setIsDispatching(false);
-    }
   };
 
   const handleDownloadExcel = async () => {
@@ -189,7 +161,7 @@ const LoadPlans = () => {
       <div className="load-plans-toolbar">
         <div>
           <h2>Production Load Plans</h2>
-          <p>Review approved production plans and dispatch them to outlets.</p>
+          <p>Scan the QR label on every physical unit for an approved plan. The plan is dispatched only when all planned quantities are scanned.</p>
         </div>
         <div className="load-plan-toolbar-actions">
           <Select
@@ -252,37 +224,21 @@ const LoadPlans = () => {
         )}
       </Card>
 
-      <Modal 
-        isOpen={modalOpen} 
-        onClose={() => !isDispatching && setModalOpen(false)} 
-        title="Confirm Operational Dispatch"
+      <Modal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title="Scan QR units to dispatch this load plan"
       >
-        <p style={{ marginTop: '0.5rem' }}>
-          Are you sure you want to officially mark load plan/order <strong>{selectedPlan?.loadPlanId || selectedPlan?.orderId || selectedPlan?.id}</strong> as dispatched?
-        </p>
-        
-        {dispatchError && (
-          <div style={{ padding: '0.75rem', marginTop: '1rem', backgroundColor: 'var(--color-red)', color: 'white', borderRadius: '4px', fontSize: '0.875rem' }}>
-            {dispatchError}
-          </div>
-        )}
-
-        <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'flex-end' }}>
-          <Button 
-            variant="secondary" 
-            onClick={() => setModalOpen(false)}
-            disabled={isDispatching}
-          >
-            Cancel
-          </Button>
-          <Button 
-            variant="primary" 
-            onClick={handleConfirmDispatch}
-            disabled={isDispatching}
-          >
-            {isDispatching ? 'Transmitting...' : 'Confirm Dispatch'}
-          </Button>
-        </div>
+        <QRUnitDispatch
+          loadPlan={selectedPlan}
+          onDispatched={(result) => {
+            const planId = selectedPlan?.loadPlanId || selectedPlan?.id;
+            if (!result?.load_plan_dispatched) return;
+            setPlans((current) => current.filter((plan) => (plan.loadPlanId || plan.id) !== planId));
+            setSuccessMsg(`Plan ${selectedPlan?.displayId || compactId(planId)} marked as dispatched successfully.`);
+            setModalOpen(false);
+          }}
+        />
       </Modal>
 
       <Modal

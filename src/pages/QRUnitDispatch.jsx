@@ -1,19 +1,141 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Html5Qrcode } from 'html5-qrcode';
 import { Camera, CheckCircle2, QrCode, ScanLine, X } from 'lucide-react';
+import { Html5Qrcode } from 'html5-qrcode';
 import api from '../api/axios';
-import { Card, CardContent, CardHeader } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 
-const keyForDispatch = () => `dispatch-unit-${globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`}`;
-const unitIdFromScan = (value) => { try { const parsed = JSON.parse(String(value || '').trim()); return typeof parsed?.unit_id === 'string' ? parsed.unit_id.trim() : String(value || '').trim(); } catch { return String(value || '').trim(); } };
+const newKey = () => `load-plan-dispatch-${globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`}`;
 
-export default function QRUnitDispatch({ onDispatched }) {
-  const [unitId, setUnitId] = useState(''); const [error, setError] = useState(null); const [result, setResult] = useState(null);
-  const [loading, setLoading] = useState(false); const [cameraOpen, setCameraOpen] = useState(false); const scanner = useRef(null); const keys = useRef(new Map());
-  const stopCamera = async () => { const active = scanner.current; scanner.current = null; if (active?.isScanning) { try { await active.stop(); } catch {} } active?.clear?.(); setCameraOpen(false); };
-  useEffect(() => { if (!cameraOpen) return undefined; let cancelled = false; (async () => { try { const active = new Html5Qrcode('manager-qr-dispatch-camera'); scanner.current = active; await active.start({ facingMode: 'environment' }, { fps: 10, qrbox: { width: 240, height: 240 } }, async (value) => { if (cancelled) return; setUnitId(unitIdFromScan(value)); await stopCamera(); }, () => {}); } catch (err) { if (!cancelled) { setError(err?.message || 'Unable to open camera.'); setCameraOpen(false); } } })(); return () => { cancelled = true; const active = scanner.current; scanner.current = null; if (active?.isScanning) active.stop().catch(() => {}); }; }, [cameraOpen]);
-  const dispatch = async (event) => { event?.preventDefault(); const value = unitIdFromScan(unitId); if (!value) { setError('Scan or enter the QR unit ID first.'); return; } setUnitId(value); setLoading(true); setError(null); setResult(null); const key = keys.current.get(value) || keyForDispatch(); keys.current.set(value, key); try { const response = await api.post('/factory/units/scan/dispatch/', { unit_id: value }, { headers: { 'Idempotency-Key': key } }); setResult(response); onDispatched?.(); } catch (err) { setError(err.response?.data?.message || err.response?.data?.error || err.message || 'Unable to dispatch this unit.'); } finally { setLoading(false); } };
-  return <Card className="sales-builder-card"><CardHeader title="Dispatch QR-labelled unit" action={<span className="sales-builder-step">Factory dispatch</span>} /><CardContent className="sales-builder-content"><div className="sales-builder-intro"><div className="sales-builder-intro-icon"><QrCode size={20} /></div><div><h3>Scan each physical unit before it leaves the factory</h3><p>Scanning changes only that QR unit to In Transit. The outlet employee will scan it again when received.</p></div></div>{error && <div className="order-builder-alert order-builder-alert-error" role="alert">{error}</div>}{result && <div className="order-builder-alert order-builder-alert-success" role="status">Unit dispatched successfully and is now in transit.</div>}<form onSubmit={dispatch} className="mt-6" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxWidth: 680 }}><Input label="QR unit ID" placeholder="Scan QR code or paste the unit ID" value={unitId} onChange={(event) => setUnitId(event.target.value)} autoComplete="off" /><div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}><Button type="button" variant="secondary" onClick={() => setCameraOpen(true)} disabled={cameraOpen || loading}><Camera size={18} />Scan with camera</Button><Button type="submit" disabled={loading} className="order-builder-add-button"><ScanLine size={18} />{loading ? 'Dispatching…' : 'Confirm dispatch'}</Button></div></form>{cameraOpen && <section className="mt-5 rounded-xl border" style={{ padding: '1rem', maxWidth: 680 }}><div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}><strong>Point the camera at the QR label</strong><Button type="button" size="sm" variant="secondary" onClick={stopCamera}><X size={16} />Close</Button></div><div id="manager-qr-dispatch-camera" style={{ width: '100%', overflow: 'hidden', borderRadius: 12 }} /></section>}{result && <div className="mt-5" style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}><CheckCircle2 size={20} color="#10b981" /><span>{result.product_name || 'Product'} — {result.unit_id}</span></div>}</CardContent></Card>;
+const unitIdFromScan = (value) => {
+  const raw = String(value || '').trim();
+  try {
+    const parsed = JSON.parse(raw);
+    return typeof parsed?.unit_id === 'string' ? parsed.unit_id.trim() : raw;
+  } catch {
+    return raw;
+  }
+};
+
+export default function QRUnitDispatch({ loadPlan, onDispatched }) {
+  const [unitId, setUnitId] = useState('');
+  const [error, setError] = useState(null);
+  const [result, setResult] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const scanner = useRef(null);
+  const requestKeys = useRef(new Map());
+  const loadPlanId = loadPlan?.loadPlanId || loadPlan?.id;
+  const orderId = loadPlan?.orderId;
+
+  const stopCamera = async () => {
+    const active = scanner.current;
+    scanner.current = null;
+    if (active?.isScanning) {
+      try { await active.stop(); } catch { /* Scanner was already closed. */ }
+    }
+    active?.clear?.();
+    setCameraOpen(false);
+  };
+
+  useEffect(() => {
+    if (!cameraOpen) return undefined;
+    let cancelled = false;
+    (async () => {
+      try {
+        const active = new Html5Qrcode('load-plan-qr-dispatch-camera');
+        scanner.current = active;
+        await active.start(
+          { facingMode: 'environment' },
+          { fps: 10, qrbox: { width: 240, height: 240 } },
+          async (value) => {
+            if (cancelled) return;
+            setUnitId(unitIdFromScan(value));
+            await stopCamera();
+          },
+          () => {},
+        );
+      } catch (scanError) {
+        if (!cancelled) {
+          setError(scanError?.message || 'Unable to open the camera.');
+          setCameraOpen(false);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+      const active = scanner.current;
+      scanner.current = null;
+      if (active?.isScanning) active.stop().catch(() => {});
+    };
+  }, [cameraOpen]);
+
+  const dispatch = async (event) => {
+    event?.preventDefault();
+    const value = unitIdFromScan(unitId);
+    if (!value) {
+      setError('Scan or enter a QR unit ID first.');
+      return;
+    }
+    if (!loadPlanId || !orderId) {
+      setError('This load plan is missing its order reference. Refresh the Load Plans page and try again.');
+      return;
+    }
+    setUnitId(value);
+    setLoading(true);
+    setError(null);
+    setResult(null);
+    const idempotencyKey = requestKeys.current.get(value) || newKey();
+    requestKeys.current.set(value, idempotencyKey);
+    try {
+      const response = await api.post(
+        '/factory/units/scan/dispatch/',
+        { unit_id: value, load_plan_id: loadPlanId, order_id: orderId },
+        { headers: { 'Idempotency-Key': idempotencyKey } },
+      );
+      setResult(response);
+      setUnitId('');
+      if (response.load_plan_dispatched) onDispatched?.(response);
+    } catch (requestError) {
+      setError(requestError.response?.data?.message || requestError.response?.data?.error || requestError.message || 'Unable to dispatch this unit.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="sales-builder-content">
+      <div className="sales-builder-intro">
+        <div className="sales-builder-intro-icon"><QrCode size={20} /></div>
+        <div>
+          <h3>Scan every physical unit in this plan</h3>
+          <p>Only QR labels for the selected plan&apos;s products are accepted. The plan moves to Dispatch only after all its quantities are scanned.</p>
+        </div>
+      </div>
+      {error && <div className="order-builder-alert order-builder-alert-error" role="alert">{error}</div>}
+      {result && (
+        <div className="order-builder-alert order-builder-alert-success" role="status">
+          <CheckCircle2 size={18} /> {result.product_name || 'Product'} scanned. {result.load_plan_dispatched
+            ? 'All units are scanned — the load plan is now dispatched.'
+            : `${result.scanned_units} of ${result.required_units} unit(s) scanned.`}
+        </div>
+      )}
+      <form onSubmit={dispatch} className="mt-6" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <Input label="QR unit ID" placeholder="Scan QR code or paste the unit ID" value={unitId} onChange={(event) => setUnitId(event.target.value)} autoComplete="off" />
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <Button type="button" variant="secondary" onClick={() => setCameraOpen(true)} disabled={cameraOpen || loading}><Camera size={18} /> Scan with camera</Button>
+          <Button type="submit" disabled={loading} className="order-builder-add-button"><ScanLine size={18} /> {loading ? 'Recording…' : 'Confirm QR scan'}</Button>
+        </div>
+      </form>
+      {cameraOpen && (
+        <section className="mt-5 rounded-xl border" style={{ padding: '1rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+            <strong>Point the camera at the QR label</strong>
+            <Button type="button" size="sm" variant="secondary" onClick={stopCamera}><X size={16} /> Close</Button>
+          </div>
+          <div id="load-plan-qr-dispatch-camera" style={{ width: '100%', overflow: 'hidden', borderRadius: 12 }} />
+        </section>
+      )}
+    </div>
+  );
 }
