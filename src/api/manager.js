@@ -57,3 +57,6 @@ export async function fetchDispatchPlans({ sourceType = 'ALL', godownId = '' } =
   if (godownId) params.set('godownId', godownId);
   return api.get(`/dispatch-plans?${params.toString()}`);
 }
+export async function manuallyDispatchFulfillment(line) {
+  return api.post(`/dispatch-plans/${encodeURIComponent(line.orderId)}/${encodeURIComponent(line.loadPlanId)}/${encodeURIComponent(line.lineId)}/dispatch`);
+}

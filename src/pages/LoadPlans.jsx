@@ -10,7 +10,6 @@ import {
   fetchLoadPlanFulfillment, saveLoadPlanFulfillment,
 } from '../api/manager';
 import { outletLabel } from '../utils/outlets';
-import QRUnitDispatch from './QRUnitDispatch';
 import './LoadPlans.css';
 
 const compactId = (value) => {
@@ -35,8 +34,6 @@ const LoadPlans = () => {
   const [error, setError] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
 
-  const [modalOpen, setModalOpen] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState(null);
   const [detailsPlan, setDetailsPlan] = useState(null);
   const [allocationPlan, setAllocationPlan] = useState(null);
   const [allocationRows, setAllocationRows] = useState([]);
@@ -94,12 +91,6 @@ const LoadPlans = () => {
     loadData();
     return () => { isMounted = false; };
   }, [activeTab]);
-
-  const handleDispatchPrompt = (plan) => {
-    setSelectedPlan(plan);
-    setSuccessMsg(null);
-    setModalOpen(true);
-  };
 
   const planItems = (plan) => {
     const items = plan?.items?.length ? plan.items : [plan];
@@ -216,13 +207,6 @@ const LoadPlans = () => {
             <Button variant="secondary" className="assign-source-button" onClick={() => openAllocation(row)}>
               Assign source
             </Button>
-            <Button
-              variant="primary"
-              className="dispatch-button"
-              onClick={() => handleDispatchPrompt(row)}
-            >
-              Factory scan
-            </Button>
           </>
         ) : (
           <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>-</span>
@@ -250,7 +234,7 @@ const LoadPlans = () => {
       <div className="load-plans-toolbar">
         <div>
           <h2>Production Load Plans</h2>
-          <p>Assign each item to Factory or a Godown, then scan every physical QR unit. A plan is dispatched only after every assigned source completes its units.</p>
+          <p>Assign each item to Factory or a Godown. Use Dispatch Plans to confirm each source&apos;s product dispatch.</p>
         </div>
         <div className="load-plan-toolbar-actions">
           <Select
@@ -312,23 +296,6 @@ const LoadPlans = () => {
           </CardContent>
         )}
       </Card>
-
-      <Modal
-        isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
-        title="Scan QR units to dispatch this load plan"
-      >
-        <QRUnitDispatch
-          loadPlan={selectedPlan}
-          onDispatched={(result) => {
-            const planId = selectedPlan?.loadPlanId || selectedPlan?.id;
-            if (!result?.load_plan_dispatched) return;
-            setPlans((current) => current.filter((plan) => (plan.loadPlanId || plan.id) !== planId));
-            setSuccessMsg(`Plan ${selectedPlan?.displayId || compactId(planId)} marked as dispatched successfully.`);
-            setModalOpen(false);
-          }}
-        />
-      </Modal>
 
       <Modal
         isOpen={Boolean(allocationPlan)}

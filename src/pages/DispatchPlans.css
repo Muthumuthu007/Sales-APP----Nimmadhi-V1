@@ -9,4 +9,11 @@
 .dispatch-source { display: inline-flex; align-items: center; gap: .4rem; font-weight: 600; }
 .dispatch-source--factory { color: var(--color-primary); }
 .dispatch-source--godown { color: var(--color-green); }
+.manual-dispatch-confirmation { display: grid; gap: 1rem; color: var(--color-text-muted); }
+.manual-dispatch-confirmation > svg { color: var(--color-primary); }
+.manual-dispatch-confirmation p { margin: 0; line-height: 1.6; }
+.manual-dispatch-confirmation strong { color: var(--color-text); }
+.manual-dispatch-confirmation small { padding: .75rem; border-radius: 8px; background: rgba(255, 184, 0, .1); color: var(--color-text-muted); }
+.manual-dispatch-error { padding: .75rem; border-radius: 8px; color: #fecaca; background: rgba(220, 38, 38, .18); }
+.manual-dispatch-actions { display: flex; justify-content: flex-end; gap: .75rem; }
 @media (max-width: 640px) { .dispatch-plans-hero h2 { font-size: 1.55rem; } .dispatch-plan-filters .input-group { width: 100%; } }

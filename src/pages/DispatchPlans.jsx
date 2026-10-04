@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Factory, MapPin, QrCode, RefreshCw, Warehouse } from 'lucide-react';
-import { fetchDispatchPlans, fetchGodowns, fetchOutlets } from '../api/manager';
+import { CheckCircle2, Factory, MapPin, RefreshCw, Truck, Warehouse } from 'lucide-react';
+import { fetchDispatchPlans, fetchGodowns, fetchOutlets, manuallyDispatchFulfillment } from '../api/manager';
 import { outletLabel } from '../utils/outlets';
 import { Button } from '../components/ui/Button';
 import { Card, CardContent, CardHeader } from '../components/ui/Card';
@@ -8,7 +8,6 @@ import { Modal } from '../components/ui/Modal';
 import { Select } from '../components/ui/Input';
 import { ErrorState, LoadingState } from '../components/ui/StateContainers';
 import { Table } from '../components/ui/Table';
-import QRUnitDispatch from './QRUnitDispatch';
 import './DispatchPlans.css';
 
 const sourceLabel = (line, godowns) => {
@@ -26,6 +25,8 @@ export default function DispatchPlans() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedLine, setSelectedLine] = useState(null);
+  const [dispatching, setDispatching] = useState(false);
+  const [dispatchError, setDispatchError] = useState('');
 
   const load = async () => {
     setLoading(true);
@@ -51,11 +52,23 @@ export default function DispatchPlans() {
     { key: 'destinationOutletId', label: 'Destination outlet', render: (line) => outletLabel(line.destinationOutletId, outlets) },
     { key: 'productName', label: 'Product', render: (line) => line.productName || line.productId },
     { key: 'quantity', label: 'Progress', align: 'center', render: (line) => `${line.dispatchedQty || 0} / ${line.quantity || 0}` },
-    { key: 'action', label: 'Action', align: 'right', render: (line) => <Button variant="primary" onClick={() => setSelectedLine(line)}><QrCode size={17} /> Mark dispatched</Button> },
+    { key: 'action', label: 'Action', align: 'right', render: (line) => <Button variant="primary" onClick={() => { setDispatchError(''); setSelectedLine(line); }}><Truck size={17} /> Mark dispatched</Button> },
   ];
 
+  const confirmDispatch = async () => {
+    if (!selectedLine) return;
+    setDispatching(true); setDispatchError('');
+    try {
+      await manuallyDispatchFulfillment(selectedLine);
+      setSelectedLine(null);
+      await load();
+    } catch (requestError) {
+      setDispatchError(requestError.response?.data?.error || 'Unable to mark this product as dispatched.');
+    } finally { setDispatching(false); }
+  };
+
   return <main className="dispatch-plans-page">
-    <section className="dispatch-plans-hero"><QrCode size={29} /><div><p>FULFILLMENT CONTROL</p><h2>Dispatch Plans</h2><span>Scan each assigned QR unit to mark it dispatched from Factory or Godown.</span></div></section>
+    <section className="dispatch-plans-hero"><Truck size={29} /><div><p>FULFILLMENT CONTROL</p><h2>Dispatch Plans</h2><span>Confirm each assigned product line manually from Factory or Godown.</span></div></section>
     <Card>
       <CardHeader title="Assigned products awaiting dispatch" action={<Button variant="secondary" onClick={load} disabled={loading}><RefreshCw size={16} /> Refresh</Button>} />
       <CardContent>
@@ -67,8 +80,14 @@ export default function DispatchPlans() {
         {loading ? <LoadingState message="Loading assigned dispatch plans..." /> : error ? <ErrorState error={error} onRetry={load} /> : <Table columns={columns} data={lines} emptyStateMessage="No assigned product lines are awaiting dispatch for this filter." />}
       </CardContent>
     </Card>
-    <Modal isOpen={Boolean(selectedLine)} onClose={() => setSelectedLine(null)} title={`Mark dispatched — ${selectedLine?.productName || 'Product'}`}>
-      {selectedLine && <QRUnitDispatch loadPlan={{ loadPlanId: selectedLine.loadPlanId, orderId: selectedLine.orderId }} fulfillment={selectedLine} onRecorded={() => { load(); }} />}
+    <Modal isOpen={Boolean(selectedLine)} onClose={() => !dispatching && setSelectedLine(null)} title={`Mark dispatched — ${selectedLine?.productName || 'Product'}`}>
+      {selectedLine && <div className="manual-dispatch-confirmation">
+        <CheckCircle2 size={28} />
+        <p>Confirm that the remaining <strong>{Number(selectedLine.quantity || 0) - Number(selectedLine.dispatchedQty || 0)} unit(s)</strong> have left <strong>{sourceLabel(selectedLine, godowns)}</strong> for <strong>{outletLabel(selectedLine.destinationOutletId, outlets)}</strong>.</p>
+        {selectedLine.sourceType === 'GODOWN' && <small>The same quantity will be deducted from this godown&apos;s reserved stock.</small>}
+        {dispatchError && <div className="manual-dispatch-error">{dispatchError}</div>}
+        <div className="manual-dispatch-actions"><Button variant="secondary" onClick={() => setSelectedLine(null)} disabled={dispatching}>Cancel</Button><Button variant="primary" onClick={confirmDispatch} disabled={dispatching}><Truck size={17} />{dispatching ? 'Marking…' : 'Confirm dispatch'}</Button></div>
+      </div>}
     </Modal>
   </main>;
 }
