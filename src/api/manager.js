@@ -48,5 +48,7 @@ export async function fetchOutlets() {
 export async function fetchGodowns() { return api.get('/godowns'); }
 export async function fetchGodownStock(godownId) { return api.get(`/godowns/${encodeURIComponent(godownId)}/stock`); }
 export async function receiveGodownUnit(unitId) { return api.post('/godown/units/scan/receive', { unit_id: unitId }); }
+export async function fetchGodownFulfillments() { return api.get('/godown/fulfillments'); }
+export async function dispatchGodownUnit(line, unitId) { return api.post(`/godown/fulfillments/${encodeURIComponent(line.orderId)}/${encodeURIComponent(line.loadPlanId)}/${encodeURIComponent(line.lineId)}/units/scan/dispatch`, { unit_id: unitId }); }
 export async function fetchLoadPlanFulfillment(loadPlanId, orderId) { return api.get(`/load-plans/${encodeURIComponent(loadPlanId)}/fulfillment?orderId=${encodeURIComponent(orderId)}`); }
 export async function saveLoadPlanFulfillment(loadPlanId, payload) { return api.post(`/load-plans/${encodeURIComponent(loadPlanId)}/fulfillment`, payload); }
