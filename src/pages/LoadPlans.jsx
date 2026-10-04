@@ -5,7 +5,10 @@ import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 import { Select } from '../components/ui/Input';
 import { LoadingState, ErrorState } from '../components/ui/StateContainers';
-import { fetchLoadPlans, downloadLoadPlansExcel, fetchOutlets } from '../api/manager';
+import {
+  fetchLoadPlans, downloadLoadPlansExcel, fetchOutlets, fetchGodowns,
+  fetchLoadPlanFulfillment, saveLoadPlanFulfillment,
+} from '../api/manager';
 import { outletLabel } from '../utils/outlets';
 import QRUnitDispatch from './QRUnitDispatch';
 import './LoadPlans.css';
@@ -35,9 +38,14 @@ const LoadPlans = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [detailsPlan, setDetailsPlan] = useState(null);
+  const [allocationPlan, setAllocationPlan] = useState(null);
+  const [allocationRows, setAllocationRows] = useState([]);
+  const [allocationError, setAllocationError] = useState(null);
+  const [savingAllocation, setSavingAllocation] = useState(false);
 
   const [isDownloading, setIsDownloading] = useState(false);
   const [outlets, setOutlets] = useState([]);
+  const [godowns, setGodowns] = useState([]);
   const [selectedOutletId, setSelectedOutletId] = useState(() => sessionStorage.getItem('managerLogisticsOutletId') || 'ALL');
 
   useEffect(() => {
@@ -46,6 +54,16 @@ const LoadPlans = () => {
       if (isMounted) setOutlets(response?.outlets || []);
     }).catch(() => {
       if (isMounted) setOutlets([]);
+    });
+    return () => { isMounted = false; };
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    fetchGodowns().then((response) => {
+      if (isMounted) setGodowns(response?.godowns || []);
+    }).catch(() => {
+      if (isMounted) setGodowns([]);
     });
     return () => { isMounted = false; };
   }, []);
@@ -81,6 +99,72 @@ const LoadPlans = () => {
     setSelectedPlan(plan);
     setSuccessMsg(null);
     setModalOpen(true);
+  };
+
+  const planItems = (plan) => {
+    const items = plan?.items?.length ? plan.items : [plan];
+    return items.map((item, index) => ({
+      id: `${item.productId || item.product_id || index}-${index}`,
+      productId: item.productId || item.product_id,
+      productName: item.productName || item.product_name || item.productId || item.product_id,
+      quantity: Number(item.quantity || 0),
+    })).filter((item) => item.productId && item.quantity > 0);
+  };
+
+  const openAllocation = async (plan) => {
+    setAllocationPlan(plan);
+    setAllocationError(null);
+    const items = planItems(plan);
+    setAllocationRows(items.map((item) => ({ ...item, sourceType: 'FACTORY', sourceLocationId: 'FACTORY' })));
+    try {
+      const existing = await fetchLoadPlanFulfillment(plan.loadPlanId || plan.id, plan.orderId);
+      const lines = existing?.fulfillments || [];
+      if (lines.length) {
+        setAllocationRows(lines.map((line, index) => ({
+          id: `${line.productId}-${index}`,
+          productId: line.productId,
+          productName: line.productName || line.productId,
+          quantity: Number(line.quantity || 0),
+          sourceType: line.sourceType,
+          sourceLocationId: line.sourceLocationId || 'FACTORY',
+        })));
+      }
+    } catch {
+      setAllocationError('Unable to load the saved source assignments. You can still assign sources below.');
+    }
+  };
+
+  const updateAllocationRow = (index, patch) => {
+    setAllocationRows((rows) => rows.map((row, rowIndex) => (
+      rowIndex === index ? { ...row, ...patch } : row
+    )));
+  };
+
+  const saveAllocation = async () => {
+    if (!allocationPlan) return;
+    if (allocationRows.some((row) => row.sourceType === 'GODOWN' && !row.sourceLocationId)) {
+      setAllocationError('Select a godown for every Godown-sourced product.');
+      return;
+    }
+    setSavingAllocation(true);
+    setAllocationError(null);
+    try {
+      await saveLoadPlanFulfillment(allocationPlan.loadPlanId || allocationPlan.id, {
+        orderId: allocationPlan.orderId,
+        allocations: allocationRows.map((row) => ({
+          productId: row.productId,
+          quantity: row.quantity,
+          sourceType: row.sourceType,
+          ...(row.sourceType === 'GODOWN' ? { sourceLocationId: row.sourceLocationId } : {}),
+        })),
+      });
+      setSuccessMsg(`Sources assigned for ${allocationPlan.displayId || compactId(allocationPlan.loadPlanId || allocationPlan.id)}.`);
+      setAllocationPlan(null);
+    } catch (err) {
+      setAllocationError(err.response?.data?.error || err.response?.data?.message || 'Unable to save source assignments.');
+    } finally {
+      setSavingAllocation(false);
+    }
   };
 
   const handleDownloadExcel = async () => {
@@ -128,13 +212,18 @@ const LoadPlans = () => {
           View
         </Button>
         {activeTab === 'APPROVED' ? (
-          <Button 
-            variant="primary" 
-            className="dispatch-button"
-            onClick={() => handleDispatchPrompt(row)}
-          >
-            Dispatch
-          </Button>
+          <>
+            <Button variant="secondary" className="assign-source-button" onClick={() => openAllocation(row)}>
+              Assign source
+            </Button>
+            <Button
+              variant="primary"
+              className="dispatch-button"
+              onClick={() => handleDispatchPrompt(row)}
+            >
+              Factory scan
+            </Button>
+          </>
         ) : (
           <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>-</span>
         )}
@@ -161,7 +250,7 @@ const LoadPlans = () => {
       <div className="load-plans-toolbar">
         <div>
           <h2>Production Load Plans</h2>
-          <p>Scan the QR label on every physical unit for an approved plan. The plan is dispatched only when all planned quantities are scanned.</p>
+          <p>Assign each item to Factory or a Godown, then scan every physical QR unit. A plan is dispatched only after every assigned source completes its units.</p>
         </div>
         <div className="load-plan-toolbar-actions">
           <Select
@@ -239,6 +328,43 @@ const LoadPlans = () => {
             setModalOpen(false);
           }}
         />
+      </Modal>
+
+      <Modal
+        isOpen={Boolean(allocationPlan)}
+        onClose={() => setAllocationPlan(null)}
+        title={`Assign fulfillment source — ${allocationPlan?.displayId || compactId(allocationPlan?.loadPlanId)}`}
+      >
+        <p className="allocation-help">Choose where each product will be dispatched from. Godown quantities are reserved immediately; Factory quantities stay available for factory QR scanning.</p>
+        {allocationError && <div className="allocation-error">{allocationError}</div>}
+        <div className="allocation-list">
+          {allocationRows.map((row, index) => (
+            <div className="allocation-row" key={row.id}>
+              <div className="allocation-product"><strong>{row.productName}</strong><span>{row.quantity} unit{row.quantity === 1 ? '' : 's'}</span></div>
+              <Select
+                label="Dispatch from"
+                value={row.sourceType}
+                onChange={(event) => updateAllocationRow(index, {
+                  sourceType: event.target.value,
+                  sourceLocationId: event.target.value === 'FACTORY' ? 'FACTORY' : '',
+                })}
+                options={[{ value: 'FACTORY', label: 'Factory' }, { value: 'GODOWN', label: 'Godown' }]}
+              />
+              {row.sourceType === 'GODOWN' && (
+                <Select
+                  label="Godown"
+                  value={row.sourceLocationId === 'FACTORY' ? '' : row.sourceLocationId}
+                  onChange={(event) => updateAllocationRow(index, { sourceLocationId: event.target.value })}
+                  options={[{ value: '', label: 'Select Godown' }, ...godowns.map((godown) => ({ value: godown.godownId, label: `${godown.godownName || godown.godownId} (${godown.godownId})` }))]}
+                />
+              )}
+            </div>
+          ))}
+        </div>
+        <div className="allocation-actions">
+          <Button variant="secondary" onClick={() => setAllocationPlan(null)} disabled={savingAllocation}>Cancel</Button>
+          <Button variant="primary" onClick={saveAllocation} disabled={savingAllocation || allocationRows.length === 0}>{savingAllocation ? 'Saving...' : 'Save source assignments'}</Button>
+        </div>
       </Modal>
 
       <Modal
