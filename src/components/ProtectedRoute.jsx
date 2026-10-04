@@ -14,6 +14,8 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     // Role not allowed. Fallback based on their role
     if (role === 'MANAGER') {
       return <Navigate to="/dashboard" replace />;
+    } else if (role === 'GODOWN') {
+      return <Navigate to="/godown" replace />;
     } else if (role === 'EMPLOYEE') {
       return <Navigate to="/employee/attendance" replace />;
     } else {

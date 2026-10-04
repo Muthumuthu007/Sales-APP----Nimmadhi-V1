@@ -46,9 +46,11 @@ const Login = () => {
       // Role-based dynamic routing
       if (role === 'MANAGER') {
         navigate('/dashboard', { replace: true });
+      } else if (role === 'GODOWN') {
+        navigate('/godown', { replace: true });
       } else if (role === 'OUTLET') {
         navigate('/outlet', { replace: true });
-      } else if (role === 'EMPLOYEE') {
+      } else if (['EMPLOYEE', 'CASHIER', 'SUPERVISOR'].includes(role)) {
         navigate('/employee/attendance', { replace: true });
       } else {
         setError('Unauthorized role detected.');

@@ -15,6 +15,7 @@ import OrderDetails from './pages/OrderDetails';
 import LoadPlans from './pages/LoadPlans';
 import Dispatch from './pages/Dispatch';
 import OutletView from './pages/OutletView';
+import GodownView from './pages/GodownView';
 import Salary from './pages/Salary';
 import Employees from './pages/Employees';
 import Outlets from './pages/Outlets';
@@ -31,6 +32,8 @@ const RootRedirect = () => {
   
   if (role === 'MANAGER') {
     return <Navigate to="/dashboard" replace />;
+  } else if (role === 'GODOWN') {
+    return <Navigate to="/godown" replace />;
   } else if (['OUTLET', 'EMPLOYEE', 'CASHIER', 'SUPERVISOR'].includes(role)) {
     return <Navigate to="/employee" replace />;
   }
@@ -124,6 +127,7 @@ function App() {
                 <OutletView />
               </ProtectedRoute>
             } />
+            <Route path="godown" element={<ProtectedRoute allowedRoles={['GODOWN']}><GodownView /></ProtectedRoute>} />
 
             <Route path="*" element={<RootRedirect />} />
           </Route>

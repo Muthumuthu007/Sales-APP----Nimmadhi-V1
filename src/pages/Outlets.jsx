@@ -7,14 +7,14 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Card, CardContent, CardHeader } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
+import { Input, Select } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
 import { LoadingState, ErrorState, EmptyState } from '../components/ui/StateContainers';
 import { createOutlet, deleteOutlet, fetchOutlets, fetchProductGroups } from '../api/employees';
 import { getOutletLocation, updateOutletLocation } from '../api/location';
 import './Outlets.css';
 
-const emptyForm = { outletId: '', outletName: '', address: '', phone: '', latitude: '', longitude: '' };
+const emptyForm = { outletId: '', outletName: '', locationType: 'OUTLET', address: '', phone: '', latitude: '', longitude: '' };
 const DEFAULT_MAP_CENTER = [13.0827, 80.2707];
 
 const outletMarkerIcon = L.divIcon({
@@ -134,7 +134,7 @@ const Outlets = () => {
       setError('Enter both an Outlet ID and outlet name.');
       return;
     }
-    if (!selectedGroupIds.length) {
+    if (form.locationType === 'OUTLET' && !selectedGroupIds.length) {
       setError('Select at least one production group this outlet is allowed to order.');
       return;
     }
@@ -149,13 +149,14 @@ const Outlets = () => {
       const result = await createOutlet({
         outletId: form.outletId.trim().toUpperCase(),
         outletName: form.outletName.trim(),
+        locationType: form.locationType,
         address: form.address.trim(),
         phone: form.phone.trim(),
         allowedGroupIds: selectedGroupIds,
         latitude: Number(form.latitude),
         longitude: Number(form.longitude),
       });
-      setSuccess(`${result?.outlet?.outletName || form.outletName} created. You can now create employee logins for this outlet.`);
+      setSuccess(`${result?.outlet?.outletName || form.outletName} created. You can now create ${form.locationType === 'GODOWN' ? 'a godown' : 'employee'} login(s) for this location.`);
       setForm(emptyForm);
       setSelectedGroupIds([]);
       setMapCoordinates({ latitude: DEFAULT_MAP_CENTER[0], longitude: DEFAULT_MAP_CENTER[1] });
@@ -230,12 +231,13 @@ const Outlets = () => {
             <form className="outlets-form" onSubmit={handleSubmit}>
               <Input label="Outlet ID" placeholder="e.g. OUT010" value={form.outletId} onChange={update('outletId')} disabled={saving} />
               <Input label="Outlet name" placeholder="e.g. Chennai Silks – Thiruvallur" value={form.outletName} onChange={update('outletName')} disabled={saving} />
-              <section className="outlets-product-access" aria-labelledby="product-access-title">
+              <Select label="Location type" value={form.locationType} onChange={update('locationType')} disabled={saving} options={[{ value: 'OUTLET', label: 'Outlet' }, { value: 'GODOWN', label: 'Godown' }]} />
+              {form.locationType === 'OUTLET' && <section className="outlets-product-access" aria-labelledby="product-access-title">
                 <div className="outlets-product-access-heading"><div><span id="product-access-title">Product access</span><small>Select the production groups this outlet can view and order.</small></div><strong>{selectedGroupIds.length} selected</strong></div>
                 {groupsLoading ? <p className="outlets-product-access-loading">Loading production groups…</p> : <div className="outlets-product-groups">
                   {productGroups.map((group) => <label key={group.groupId} className={`outlets-product-group ${selectedGroupIds.includes(group.groupId) ? 'selected' : ''}`}><input type="checkbox" checked={selectedGroupIds.includes(group.groupId)} onChange={() => toggleProductGroup(group.groupId)} disabled={saving} /><span>{group.groupName}</span></label>)}
                 </div>}
-              </section>
+              </section>}
               <div className="outlet-address-map">
                 <Input label="Address" placeholder="e.g. Saravana Stores Porur, Chennai" value={form.address} onChange={update('address')} disabled={saving || mapSearching} />
                 <Button type="button" variant="secondary" onClick={findAddressOnMap} disabled={saving || mapSearching}><Search size={16} />{mapSearching ? 'Searching…' : 'Find on map'}</Button>

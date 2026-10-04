@@ -44,3 +44,8 @@ export async function fetchDashboardSummary() {
 export async function fetchOutlets() {
   return api.get('/outlets');
 }
+
+export async function fetchGodowns() { return api.get('/godowns'); }
+export async function fetchGodownStock(godownId) { return api.get(`/godowns/${encodeURIComponent(godownId)}/stock`); }
+export async function fetchLoadPlanFulfillment(loadPlanId, orderId) { return api.get(`/load-plans/${encodeURIComponent(loadPlanId)}/fulfillment?orderId=${encodeURIComponent(orderId)}`); }
+export async function saveLoadPlanFulfillment(loadPlanId, payload) { return api.post(`/load-plans/${encodeURIComponent(loadPlanId)}/fulfillment`, payload); }
