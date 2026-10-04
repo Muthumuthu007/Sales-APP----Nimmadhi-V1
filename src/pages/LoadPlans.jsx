@@ -191,7 +191,6 @@ const LoadPlans = () => {
     { key: 'outletId', label: 'Outlet', className: 'outlet-column', render: (row) => outletLabel(row.outletId, outlets) },
     { key: 'productName', label: 'Product', className: 'product-column', render: (row) => row.productName || (row.items && row.items[0]?.productName) || 'Multiple products' },
     { key: 'quantity', label: 'Qty', className: 'quantity-column', align: 'center', render: (row) => row.quantity ?? (row.items && row.items[0]?.quantity) ?? '—' },
-    { key: 'maxProduce', label: 'Capacity', className: 'capacity-column', align: 'center', render: (row) => row.maxProduce ?? '—' },
     { key: 'createdAt', label: 'Created', className: 'created-column', render: (row) => <span title={row.createdAt}>{formatDateTime(row.createdAt)}</span> },
     { key: 'actions', label: 'Action', className: 'action-column', align: 'right', render: (row) => (
       <div className="load-plan-actions">
@@ -351,7 +350,6 @@ const LoadPlans = () => {
             columns={[
               { key: 'productName', label: 'Product', render: (item) => item.productName || item.product_id || '—' },
               { key: 'quantity', label: 'Quantity', align: 'center', render: (item) => item.quantity ?? '—' },
-              { key: 'maxProduce', label: 'Capacity', align: 'center', render: (item) => item.maxProduce ?? '—' },
               { key: 'isFree', label: 'Type', render: (item) => item.isFree ? 'Free item' : 'Ordered item' },
             ]}
             data={detailsPlan?.items || []}

@@ -102,17 +102,16 @@
 }
 
 .load-plans-table {
-  min-width: 1080px;
+  min-width: 1040px;
   table-layout: fixed;
 }
 
-.load-plans-table .id-column { width: 155px; }
-.load-plans-table .outlet-column { width: 190px; }
-.load-plans-table .product-column { width: 250px; }
-.load-plans-table .quantity-column { width: 72px; }
-.load-plans-table .capacity-column { width: 92px; }
-.load-plans-table .created-column { width: 175px; }
-.load-plans-table .action-column { width: 180px; }
+.load-plans-table .id-column { width: 112px; }
+.load-plans-table .outlet-column { width: 245px; }
+.load-plans-table .product-column { width: 285px; }
+.load-plans-table .quantity-column { width: 60px; }
+.load-plans-table .created-column { width: 170px; }
+.load-plans-table .action-column { width: 150px; }
 
 .load-plans-table th,
 .load-plans-table td {
@@ -137,9 +136,13 @@
 }
 
 .load-plans-table .outlet-column,
-.load-plans-table .quantity-column,
-.load-plans-table .capacity-column {
+.load-plans-table .quantity-column {
   white-space: nowrap;
+}
+
+.load-plans-table .outlet-column {
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .dispatch-button {
@@ -153,6 +156,14 @@
   white-space: nowrap;
   font-size: 0.78rem !important;
   padding: 0.48rem 0.7rem !important;
+}
+
+@media (max-width: 1180px) {
+  .load-plans-table { min-width: 940px; }
+  .load-plans-table .outlet-column { width: 210px; }
+  .load-plans-table .product-column { width: 240px; }
+  .load-plans-table th,
+  .load-plans-table td { padding: 0.8rem 0.7rem; }
 }
 
 .view-plan-button {
