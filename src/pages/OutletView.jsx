@@ -8,7 +8,7 @@ import { SearchableSelect } from '../components/ui/SearchableSelect';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Modal } from '../components/ui/Modal';
-import { createOrder, fetchOutletOrders, fetchOutletStock, fetchOutletProductNames, recordSales, fetchDueCustomers, downloadSalesReport, fetchReportData } from '../api/orders';
+import { createOrder, fetchOutletOrders, fetchOutletStock, fetchOutletProductNames, receiveOrder, recordSales, fetchDueCustomers, downloadSalesReport, fetchReportData } from '../api/orders';
 import { LoadingState, ErrorState } from '../components/ui/StateContainers';
 import { fetchOutletEmployees, createOutletEmployee, updateEmployeeSalary } from '../api/employees';
 import { getOutletLocation, updateOutletLocation } from '../api/location';
@@ -16,7 +16,6 @@ import { fetchActiveOutletOffers } from '../api/offers';
 
 import { AuthContext } from '../context/AuthContext';
 import EmployeeAttendance from './EmployeeAttendance';
-import QRUnitReceive from './QRUnitReceive';
 import './OutletView.css';
 
 const OutletView = () => {
@@ -29,7 +28,7 @@ const OutletView = () => {
     { id: 'CREATE_ORDER', label: 'Create Order' },
     { id: 'MY_ORDERS', label: 'My Orders' },
     { id: 'STOCK', label: 'Stock View' },
-    { id: 'QR_RECEIVE', label: 'Receive QR Units' },
+    { id: 'RECEIVE_STOCK', label: 'Receive Stock' },
     { id: 'SALES', label: 'Sales Entry' },
     { id: 'DUE_CUSTOMERS', label: 'Pending Payments' },
     { id: 'REPORTS', label: 'Reports' },
@@ -41,7 +40,7 @@ const OutletView = () => {
     { id: 'CREATE_ORDER', label: 'Create Order' },
     { id: 'MY_ORDERS', label: 'My Orders' },
     { id: 'STOCK', label: 'Stock View' },
-    { id: 'QR_RECEIVE', label: 'Receive QR Units' },
+    { id: 'RECEIVE_STOCK', label: 'Receive Stock' },
     { id: 'SALES', label: 'Sales Entry' },
     { id: 'DUE_CUSTOMERS', label: 'Pending Payments' },
     { id: 'REPORTS', label: 'Reports' },
@@ -144,6 +143,11 @@ const OutletView = () => {
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [ordersError, setOrdersError] = useState(null);
   const [viewOrderTarget, setViewOrderTarget] = useState(null);
+  const [receiptTarget, setReceiptTarget] = useState(null);
+  const [receiptQuantities, setReceiptQuantities] = useState({});
+  const [receiptError, setReceiptError] = useState(null);
+  const [receiptNotice, setReceiptNotice] = useState(null);
+  const [receivingStock, setReceivingStock] = useState(false);
 
   // --- Stock View State ---
   const [stockItems, setStockItems] = useState([]);
@@ -589,7 +593,7 @@ const OutletView = () => {
   useEffect(() => {
     let isMounted = true;
     
-    if (activeTab === 'MY_ORDERS' && outletId) {
+    if (['MY_ORDERS', 'RECEIVE_STOCK'].includes(activeTab) && outletId) {
       setOrdersLoading(true);
       setOrdersError(null);
       
@@ -682,6 +686,54 @@ const OutletView = () => {
     
     return () => { isMounted = false; };
   }, [activeTab, outletId, productNameById]);
+
+  const openManualReceipt = (order) => {
+    setReceiptTarget(order);
+    setReceiptQuantities(Object.fromEntries((order.receiptItems || []).map((item) => [item.product_id, ''])));
+    setReceiptError(null);
+    setReceiptNotice(null);
+  };
+
+  const submitManualReceipt = async () => {
+    if (!receiptTarget) return;
+    const receivedItems = (receiptTarget.receiptItems || []).flatMap((item) => {
+      const rawQuantity = receiptQuantities[item.product_id];
+      if (rawQuantity === '' || rawQuantity === undefined || rawQuantity === null) return [];
+      const qty = Number(rawQuantity);
+      return Number.isInteger(qty) && qty > 0 ? [{ product_id: item.product_id, qty }] : [];
+    });
+    if (!receivedItems.length) {
+      setReceiptError('Enter a received quantity for at least one product. Leave products not received yet blank.');
+      return;
+    }
+    const invalidItem = receivedItems.find((received) => {
+      const expected = (receiptTarget.receiptItems || []).find((item) => item.product_id === received.product_id);
+      return received.qty > Number(expected?.remainingQty || 0);
+    });
+    if (invalidItem) {
+      setReceiptError('A received quantity cannot be more than the pending quantity.');
+      return;
+    }
+    setReceivingStock(true);
+    setReceiptError(null);
+    try {
+      const result = await receiveOrder(receiptTarget.loadPlanId, {
+        orderId: receiptTarget.orderId,
+        outletId,
+        receivedItems,
+      });
+      setReceiptTarget(null);
+      setReceiptNotice(result?.isReceived
+        ? 'All products were received and added to Stock View.'
+        : 'Received quantities were added to Stock View. The remaining products stay pending.');
+      const response = await fetchOutletOrders(outletId);
+      setMyOrders(Array.isArray(response) ? response : (response?.orders || []));
+    } catch (err) {
+      setReceiptError(err.response?.data?.error || err.response?.data?.message || 'Unable to save the received quantities.');
+    } finally {
+      setReceivingStock(false);
+    }
+  };
 
   const handleAddItem = () => {
     if (!selectedProduct) {
@@ -898,7 +950,7 @@ const OutletView = () => {
           <Card>
             <CardHeader title="Order History" />
             <CardContent style={{ padding: 0 }}>
-              <p className="text-muted" style={{ margin: '1rem 1rem 0' }}>Receive delivered stock by scanning each physical QR label in <strong>Receive QR Units</strong>. Manual quantity entry is no longer available.</p>
+              <p className="text-muted" style={{ margin: '1rem 1rem 0' }}>Use <strong>Receive Stock</strong> to enter the quantities that arrived. Products left blank remain pending for the next delivery.</p>
               {ordersLoading ? (
                 <div style={{ padding: '3rem 0' }}>
                   <LoadingState message="Fetching your historical orders..." />
@@ -958,6 +1010,53 @@ const OutletView = () => {
           )}
         </Modal>
 
+        {activeTab === 'RECEIVE_STOCK' && (
+          <Card>
+            <CardHeader title="Receive dispatched stock manually" action={<span className="sales-builder-step">Outlet receipt</span>} />
+            <CardContent style={{ padding: 0 }}>
+              <p className="text-muted" style={{ margin: '1rem 1rem 0' }}>Select a dispatched load plan, enter only the quantities physically received, then confirm. Blank products remain on this page until received.</p>
+              {receiptNotice && <div className="order-builder-alert order-builder-alert-success" style={{ margin: '1rem' }}>{receiptNotice}</div>}
+              {ordersLoading ? (
+                <div style={{ padding: '3rem 0' }}><LoadingState message="Loading dispatched stock..." /></div>
+              ) : ordersError ? (
+                <div style={{ padding: '1.5rem' }}><ErrorState error={ordersError} onRetry={() => setActiveTab('RECEIVE_STOCK')} /></div>
+              ) : (
+                <Table
+                  columns={[
+                    { key: 'displayId', label: 'Order', render: (row) => row.displayId || row.orderId },
+                    { key: 'dispatchedAt', label: 'Dispatched', render: (row) => row.dispatchedAt ? new Date(row.dispatchedAt).toLocaleString() : '—' },
+                    { key: 'receiptItems', label: 'Pending products', align: 'center', render: (row) => row.receiptItems?.length || 0 },
+                    { key: 'action', label: 'Action', render: (row) => <Button size="sm" onClick={() => openManualReceipt(row)}>Receive manually</Button> },
+                  ]}
+                  data={myOrders.filter((order) => order.status === 'DISPATCHED' && order.loadPlanId && order.receiptItems?.length)}
+                  emptyStateMessage="No dispatched products are awaiting receipt."
+                />
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        <Modal
+          isOpen={Boolean(receiptTarget)}
+          onClose={() => { if (!receivingStock) setReceiptTarget(null); }}
+          title={`Receive stock — ${receiptTarget?.displayId || receiptTarget?.orderId || ''}`}
+        >
+          <p className="text-muted" style={{ marginTop: 0 }}>Enter quantities only for products that arrived now. Leave the other products blank.</p>
+          {receiptError && <div className="order-builder-alert order-builder-alert-error">{receiptError}</div>}
+          <div style={{ display: 'grid', gap: '0.85rem' }}>
+            {(receiptTarget?.receiptItems || []).map((item) => (
+              <div key={item.product_id} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 150px', gap: '1rem', alignItems: 'end', padding: '0.85rem', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}>
+                <div><strong>{item.productName || getProductName(item.product_id) || item.product_id}</strong><div className="text-muted" style={{ fontSize: '0.82rem', marginTop: '0.25rem' }}>Pending: {item.remainingQty} of {item.quantity}</div></div>
+                <Input label="Received now" type="number" min="1" max={item.remainingQty} placeholder="Leave blank" value={receiptQuantities[item.product_id] ?? ''} onChange={(event) => setReceiptQuantities((current) => ({ ...current, [item.product_id]: event.target.value }))} disabled={receivingStock} />
+              </div>
+            ))}
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.25rem' }}>
+            <Button variant="secondary" onClick={() => setReceiptTarget(null)} disabled={receivingStock}>Cancel</Button>
+            <Button onClick={submitManualReceipt} disabled={receivingStock}>{receivingStock ? 'Saving...' : 'Confirm receipt'}</Button>
+          </div>
+        </Modal>
+
         {activeTab === 'STOCK' && (
           <Card>
             <CardHeader title="Current Inventory & Stock Flow" />
@@ -987,8 +1086,6 @@ const OutletView = () => {
             </CardContent>
           </Card>
         )}
-
-        {activeTab === 'QR_RECEIVE' && <QRUnitReceive />}
 
         {activeTab === 'SALES' && (
           <Card className="sales-builder-card">
