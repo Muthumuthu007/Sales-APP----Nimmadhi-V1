@@ -8,7 +8,7 @@ import { SearchableSelect } from '../components/ui/SearchableSelect';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Modal } from '../components/ui/Modal';
-import { createOrder, fetchOutletOrders, fetchOutletStock, fetchOutletProductNames, receiveOrder, recordSales, fetchDueCustomers, downloadSalesReport, fetchReportData } from '../api/orders';
+import { createOrder, fetchOutletOrders, fetchOutletStock, fetchOutletProductNames, receiveOrder, recordSales, fetchDueCustomers, settleDuePayment, downloadSalesReport, fetchReportData } from '../api/orders';
 import { LoadingState, ErrorState } from '../components/ui/StateContainers';
 import { fetchOutletEmployees, createOutletEmployee, updateEmployeeSalary } from '../api/employees';
 import { getOutletLocation, updateOutletLocation } from '../api/location';
@@ -167,6 +167,9 @@ const OutletView = () => {
   const [paymentMethod, setPaymentMethod] = useState('CASH');
   const [billAmount, setBillAmount] = useState('');
   const [advanceAmount, setAdvanceAmount] = useState('');
+  const [extraDiscountType, setExtraDiscountType] = useState('PERCENT');
+  const [extraDiscountValue, setExtraDiscountValue] = useState('');
+  const [extraDiscountReason, setExtraDiscountReason] = useState('');
   const [isSubmittingSales, setIsSubmittingSales] = useState(false);
   const [salesError, setSalesError] = useState(null);
   const [salesSuccess, setSalesSuccess] = useState(null);
@@ -175,6 +178,18 @@ const OutletView = () => {
   const [dueCustomersError, setDueCustomersError] = useState(null);
   const [receipt, setReceipt] = useState(null);
   const [activeOffers, setActiveOffers] = useState([]);
+  const [paymentTarget, setPaymentTarget] = useState(null);
+  const [settlementAmount, setSettlementAmount] = useState('');
+  const [settlementMethod, setSettlementMethod] = useState('CASH');
+  const [settlementError, setSettlementError] = useState('');
+  const [settlingPayment, setSettlingPayment] = useState(false);
+
+  const grossAmount = Number(billAmount || 0);
+  const enteredDiscount = Number(extraDiscountValue || 0);
+  const calculatedExtraDiscount = extraDiscountType === 'PERCENT'
+    ? grossAmount * enteredDiscount / 100
+    : enteredDiscount;
+  const netBillAmount = Math.max(0, grossAmount - calculatedExtraDiscount);
 
   const handleAddSalesItem = () => {
     if (!salesProduct) {
@@ -220,7 +235,7 @@ const OutletView = () => {
     }
     const parsedBillAmount = Number(billAmount);
     const parsedAdvanceAmount = Number(advanceAmount || 0);
-    if (!Number.isFinite(parsedBillAmount) || parsedBillAmount <= 0 || !Number.isFinite(parsedAdvanceAmount) || parsedAdvanceAmount < 0 || parsedAdvanceAmount > parsedBillAmount) {
+    if (!Number.isFinite(parsedBillAmount) || parsedBillAmount <= 0 || !Number.isFinite(enteredDiscount) || enteredDiscount < 0 || (extraDiscountType === 'PERCENT' && enteredDiscount > 100) || calculatedExtraDiscount >= parsedBillAmount || !Number.isFinite(parsedAdvanceAmount) || parsedAdvanceAmount < 0 || parsedAdvanceAmount > netBillAmount) {
       setSalesError('Enter a valid bill amount and an advance amount that does not exceed it.');
       return;
     }
@@ -239,6 +254,9 @@ const OutletView = () => {
         paymentMethod,
         billAmount: parsedBillAmount,
         advanceAmount: parsedAdvanceAmount,
+        extraDiscountType,
+        extraDiscountValue: enteredDiscount,
+        extraDiscountReason: extraDiscountReason.trim(),
         soldItems: salesItems.map(i => ({ product_id: i.product_id, qty: i.quantity }))
       });
       setReceipt({ ...result, items: submittedItems });
@@ -250,11 +268,32 @@ const OutletView = () => {
       setPaymentMethod('CASH');
       setBillAmount('');
       setAdvanceAmount('');
+      setExtraDiscountType('PERCENT');
+      setExtraDiscountValue('');
+      setExtraDiscountReason('');
     } catch (err) {
       setSalesError(err.response?.data?.message || err.message || 'Failed to record sales.');
     } finally {
       setIsSubmittingSales(false);
     }
+  };
+
+  const openSettlement = (invoice) => {
+    setPaymentTarget(invoice); setSettlementAmount(String(invoice.balanceDue || '')); setSettlementMethod('CASH'); setSettlementError('');
+  };
+  const confirmSettlement = async () => {
+    const paidAmount = Number(settlementAmount);
+    if (!paymentTarget || !Number.isFinite(paidAmount) || paidAmount <= 0 || paidAmount > Number(paymentTarget.balanceDue || 0)) {
+      setSettlementError('Enter an amount up to the balance due.'); return;
+    }
+    setSettlingPayment(true); setSettlementError('');
+    try {
+      const result = await settleDuePayment(paymentTarget.saleReferenceId, { outletId, paymentMethod: settlementMethod, paidAmount });
+      setReceipt(result); setPaymentTarget(null);
+      const response = await fetchDueCustomers(outletId); setDueCustomers(response?.customers || []);
+    } catch (error) {
+      setSettlementError(error.response?.data?.error || 'Unable to record the payment.');
+    } finally { setSettlingPayment(false); }
   };
 
   // --- Reports State ---
@@ -1137,9 +1176,13 @@ const OutletView = () => {
                     { value: 'CARD', label: 'Card' },
                     { value: 'UPI', label: 'UPI' },
                   ]} />
-                  <Input label="Total bill amount" type="number" min="0.01" step="0.01" placeholder="0.00" value={billAmount} onChange={(e) => setBillAmount(e.target.value)} />
+                  <Input label="Bill amount before extra discount" type="number" min="0.01" step="0.01" placeholder="0.00" value={billAmount} onChange={(e) => setBillAmount(e.target.value)} />
+                  <Select label="Extra discount type" value={extraDiscountType} onChange={(e) => setExtraDiscountType(e.target.value)} options={[{ value: 'PERCENT', label: 'Percentage (%)' }, { value: 'AMOUNT', label: 'Amount (₹)' }]} />
+                  <Input label={extraDiscountType === 'PERCENT' ? 'Extra discount (%)' : 'Extra discount amount (₹)'} type="number" min="0" step="0.01" placeholder="0.00" value={extraDiscountValue} onChange={(e) => setExtraDiscountValue(e.target.value)} />
+                  <Input label="Extra discount reason (optional)" placeholder="Customer negotiation, damaged display, etc." value={extraDiscountReason} onChange={(e) => setExtraDiscountReason(e.target.value)} />
+                  {billAmount && <div className="sales-builder-payment-summary">Extra discount: <strong>{formatCurrency(calculatedExtraDiscount)}</strong><br />Net bill amount: <strong>{formatCurrency(netBillAmount)}</strong></div>}
                   <Input label="Amount paid now (advance)" type="number" min="0" step="0.01" placeholder="0.00" value={advanceAmount} onChange={(e) => setAdvanceAmount(e.target.value)} />
-                  {billAmount && <div className="sales-builder-payment-summary">Balance due: <strong>{formatCurrency(Math.max(0, Number(billAmount) - Number(advanceAmount || 0)))}</strong></div>}
+                  {billAmount && <div className="sales-builder-payment-summary">Balance due: <strong>{formatCurrency(Math.max(0, netBillAmount - Number(advanceAmount || 0)))}</strong></div>}
                 </section>
                 <section className="sales-builder-entry-card">
                   <div className="order-builder-section-label"><span>3</span><div><strong>Sold product</strong><small>{ownedShowroomSales ? 'Factory-delivery products are limited by max producible quantity' : 'Only products available at this outlet are listed'}</small></div></div>
@@ -1206,6 +1249,7 @@ const OutletView = () => {
                     { key: 'billAmount', label: 'Bill', align: 'right', render: (row) => formatCurrency(row.billAmount) },
                     { key: 'advanceAmount', label: 'Paid', align: 'right', render: (row) => formatCurrency(row.advanceAmount) },
                     { key: 'balanceDue', label: 'Balance due', align: 'right', render: (row) => <strong>{formatCurrency(row.balanceDue)}</strong> },
+                    { key: 'action', label: 'Action', align: 'right', render: (row) => <Button onClick={() => openSettlement(row)}>Record payment</Button> },
                   ]}
                   data={dueCustomers}
                   emptyStateMessage="No pending customer payments for this outlet."
@@ -1222,11 +1266,21 @@ const OutletView = () => {
               <section className="sales-receipt-customer"><div><span>BILLED TO</span><strong>{receipt.customerName}</strong><p>{receipt.customerPhone}<br />{receipt.customerAddress}</p></div><div><span>PAYMENT</span><strong>{receipt.paymentMethod}</strong><p>{receipt.paymentStatus === 'PAID' ? 'Paid in full' : 'Advance payment received'}</p></div></section>
               <table className="sales-receipt-items"><thead><tr><th>Product</th><th>Quantity</th></tr></thead><tbody>{(receipt.items || []).map((item, index) => <tr key={`${item.product_id}-${index}`}><td>{item.productName || item.product_id}</td><td>{item.quantity}</td></tr>)}</tbody></table>
               {(receipt.eligibleOffers || []).some((offer) => Number(offer.freeQuantity || 0) > 0) && <section className="sales-receipt-offers"><strong>Complimentary items</strong>{(receipt.eligibleOffers || []).filter((offer) => Number(offer.freeQuantity || 0) > 0).map((offer) => <p key={offer.offerId}>{offerSummary(offer)}</p>)}</section>}
-              <section className="sales-receipt-totals"><div><span>Total bill</span><strong>{formatCurrency(receipt.billAmount)}</strong></div><div><span>Paid now</span><strong>{formatCurrency(receipt.advanceAmount)}</strong></div><div className="sales-receipt-balance"><span>Balance due</span><strong>{formatCurrency(receipt.balanceDue)}</strong></div></section>
+              <section className="sales-receipt-totals">{Number(receipt.extraDiscountAmount || 0) > 0 && <><div><span>Bill before discount</span><strong>{formatCurrency(receipt.grossBillAmount)}</strong></div><div><span>Extra discount</span><strong>− {formatCurrency(receipt.extraDiscountAmount)}</strong></div></>}<div><span>Total bill</span><strong>{formatCurrency(receipt.billAmount)}</strong></div><div><span>Total paid</span><strong>{formatCurrency(receipt.advanceAmount)}</strong></div><div className="sales-receipt-balance"><span>Balance due</span><strong>{formatCurrency(receipt.balanceDue)}</strong></div></section>
               <footer>Thank you for choosing Nimmadhi Mattress. Please retain this invoice for your records.</footer>
               <div className="sales-receipt-actions"><Button variant="secondary" onClick={() => window.print()}>Print receipt</Button><Button onClick={sendReceiptToCustomer}>Send receipt</Button></div>
             </article>
           )}
+        </Modal>
+
+        <Modal isOpen={Boolean(paymentTarget)} onClose={() => !settlingPayment && setPaymentTarget(null)} title={`Record pending payment — ${paymentTarget?.customerName || ''}`}>
+          {paymentTarget && <div className="sales-builder-content" style={{ display: 'grid', gap: '1rem' }}>
+            <p className="text-muted">Invoice <strong>{paymentTarget.saleReferenceId}</strong> · Balance due: <strong>{formatCurrency(paymentTarget.balanceDue)}</strong></p>
+            <Select label="Payment method" value={settlementMethod} onChange={(event) => setSettlementMethod(event.target.value)} options={[{ value: 'CASH', label: 'Cash' }, { value: 'CARD', label: 'Card' }, { value: 'UPI', label: 'UPI' }]} />
+            <Input label="Amount paid now" type="number" min="0.01" max={paymentTarget.balanceDue} step="0.01" value={settlementAmount} onChange={(event) => setSettlementAmount(event.target.value)} />
+            {settlementError && <div className="order-builder-alert order-builder-alert-error">{settlementError}</div>}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '.75rem' }}><Button variant="secondary" onClick={() => setPaymentTarget(null)} disabled={settlingPayment}>Cancel</Button><Button onClick={confirmSettlement} disabled={settlingPayment}>{settlingPayment ? 'Saving…' : 'Confirm payment & bill'}</Button></div>
+          </div>}
         </Modal>
 
         {activeTab === 'REPORTS' && (
