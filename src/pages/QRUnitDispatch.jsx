@@ -17,7 +17,7 @@ const unitIdFromScan = (value) => {
   }
 };
 
-export default function QRUnitDispatch({ loadPlan, fulfillment, onDispatched }) {
+export default function QRUnitDispatch({ loadPlan, fulfillment, onDispatched, onRecorded }) {
   const [unitId, setUnitId] = useState('');
   const [error, setError] = useState(null);
   const [result, setResult] = useState(null);
@@ -101,6 +101,7 @@ export default function QRUnitDispatch({ loadPlan, fulfillment, onDispatched }) 
         );
       setResult(response);
       setUnitId('');
+      onRecorded?.(response);
       if (response.load_plan_dispatched) onDispatched?.(response);
     } catch (requestError) {
       setError(requestError.response?.data?.message || requestError.response?.data?.error || requestError.message || 'Unable to dispatch this unit.');

@@ -68,7 +68,7 @@ export default function DispatchPlans() {
       </CardContent>
     </Card>
     <Modal isOpen={Boolean(selectedLine)} onClose={() => setSelectedLine(null)} title={`Mark dispatched — ${selectedLine?.productName || 'Product'}`}>
-      {selectedLine && <QRUnitDispatch loadPlan={{ loadPlanId: selectedLine.loadPlanId, orderId: selectedLine.orderId }} fulfillment={selectedLine} onDispatched={() => { load(); }} />}
+      {selectedLine && <QRUnitDispatch loadPlan={{ loadPlanId: selectedLine.loadPlanId, orderId: selectedLine.orderId }} fulfillment={selectedLine} onRecorded={() => { load(); }} />}
     </Modal>
   </main>;
 }
