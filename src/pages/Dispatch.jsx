@@ -8,6 +8,7 @@ import { Select } from '../components/ui/Input';
 import { fetchDispatchedLoadPlans, fetchOutlets, downloadDispatchedLoadPlansExcel } from '../api/manager';
 import { outletLabel } from '../utils/outlets';
 import { LoadingState, ErrorState } from '../components/ui/StateContainers';
+import QRUnitDispatch from './QRUnitDispatch';
 import './Dispatch.css';
 
 const Dispatch = () => {
@@ -121,6 +122,7 @@ const Dispatch = () => {
           </Button>
         </div>
       </div>
+      <QRUnitDispatch onDispatched={loadDispatchedHistory} />
       
       <Card>
         <CardHeader title="Successfully Dispatched Shipments — Grouped by Outlet" />
