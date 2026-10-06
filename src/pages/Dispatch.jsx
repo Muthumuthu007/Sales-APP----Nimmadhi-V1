@@ -14,7 +14,7 @@ import UndoPlanButton from '../components/UndoPlanButton';
 const Dispatch = () => {
   const [orders, setOrders] = useState([]);
   const [batches, setBatches] = useState([]);
-  const [historyTab, setHistoryTab] = useState('PLANS');
+  const [historyTab, setHistoryTab] = useState('BATCHES');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [outlets, setOutlets] = useState([]);
@@ -27,8 +27,10 @@ const Dispatch = () => {
     setError(null);
     try {
       const [response, history] = await Promise.all([fetchDispatchedLoadPlans(), fetchDispatchHistory()]);
-      setBatches(history.dispatches || []);
-      setOrders(Array.isArray(response) ? response : (response.loadPlans || []));
+      const plans = Array.isArray(response) ? response : (response.loadPlans || []);
+      const plansById = new Map(plans.map(plan => [plan.loadPlanId, plan]));
+      setBatches((history.dispatches || []).map(batch => ({ ...batch, planDisplayId: plansById.get(batch.loadPlanId)?.displayId })));
+      setOrders(plans);
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Failed to fetch dispatched history.');
     } finally {
@@ -83,9 +85,15 @@ const Dispatch = () => {
     },
   ];
 
+  const batchReference = row => `DSP-${row.dispatchId?.slice(0, 8).toUpperCase() || '—'}`;
+  const showBatchDetails = row => setDetailsPlan({ ...row, isBatch: true,
+    displayId: row.planDisplayId || row.loadPlanId,
+    items: [{ productName: row.productName, product_id: row.productId, quantity: row.quantity }],
+  });
   const batchColumns = [
+    { key: 'dispatchId', label: 'Dispatch ID', render: row => <span title={row.dispatchId}>{batchReference(row)}</span> },
     { key: 'orderDisplayId', label: 'Order Ref', render: row => row.orderDisplayId || row.orderId },
-    { key: 'loadPlanId', label: 'Load plan', render: row => <span title={row.loadPlanId}>{row.loadPlanId?.slice(0, 8) || '—'}</span> },
+    { key: 'loadPlanId', label: 'Load plan', render: row => <span title={row.loadPlanId}>{row.planDisplayId || row.loadPlanId?.slice(0, 8) || '—'}</span> },
     { key: 'outletId', label: 'Destination outlet', render: row => outletLabel(row.outletId, outlets) },
     { key: 'productName', label: 'Product', className: 'dispatch-batch-product', render: row => row.productName || row.productId },
     { key: 'quantity', label: 'Batch quantity', align: 'center' },
@@ -93,6 +101,7 @@ const Dispatch = () => {
     { key: 'dispatchOrigin', label: 'Dispatch type', render: row => <span className={`dispatch-batch-tag ${row.dispatchOrigin === 'PENDING' ? 'dispatch-batch-tag--pending' : ''}`}>{row.dispatchOrigin === 'PENDING' ? 'From Dispatch Pending' : 'Original dispatch'}</span> },
     { key: 'dispatchedAt', label: 'Dispatched at', render: row => new Date(row.dispatchedAt).toLocaleString() },
     { key: 'dispatchedBy', label: 'Dispatched by' },
+    { key: 'actions', label: 'Details', render: row => <Button variant="secondary" onClick={() => showBatchDetails(row)}>View dispatch</Button> },
   ];
 
   const outletOptions = [
@@ -149,11 +158,11 @@ const Dispatch = () => {
         </div>
       </div>
       <div className="dispatch-history-tabs" aria-label="Dispatch history views">
-        {[['PLANS', 'Load plan history', visibleOrders.length], ['BATCHES', 'Dispatch batches', outletBatches.length], ['PENDING', 'From Dispatch Pending', pendingBatches.length]].map(([value, label, count]) =>
+        {[['BATCHES', 'Dispatches', outletBatches.length], ['PENDING', 'From Dispatch Pending', pendingBatches.length], ['PLANS', 'Load plan totals', visibleOrders.length]].map(([value, label, count]) =>
           <button key={value} type="button" className={historyTab === value ? 'active' : ''} aria-pressed={historyTab === value} onClick={() => setHistoryTab(value)}>{label}<span>{count}</span></button>
         )}
       </div>
-      {historyTab !== 'PLANS' && <p className="dispatch-history-note">Each row shows only the quantity sent in that dispatch. Earlier shipments remain available in Load plan history; individual batches are recorded from this update onward.</p>}
+      {historyTab !== 'PLANS' && <p className="dispatch-history-note">Each row shows only the quantity sent in that dispatch. Earlier shipments remain available in Load plan totals; individual batches are recorded from this update onward.</p>}
       <Card>
         <CardHeader title={historyTab === 'PLANS' ? 'Completed load plans' : historyTab === 'PENDING' ? 'Shipments completed from Dispatch Pending' : 'Individual dispatch batches'} />
         
@@ -177,9 +186,10 @@ const Dispatch = () => {
       <Modal
         isOpen={Boolean(detailsPlan)}
         onClose={() => setDetailsPlan(null)}
-        title={`Dispatched order ${detailsPlan?.orderDisplayId || '—'}`}
+        title={detailsPlan?.isBatch ? `Dispatch ${batchReference(detailsPlan)}` : `Load plan total · ${detailsPlan?.orderDisplayId || '—'}`}
       >
         <div className="dispatch-detail-summary">
+          {detailsPlan?.isBatch && <><div><span>Dispatch ID</span><strong title={detailsPlan.dispatchId}>{batchReference(detailsPlan)}</strong></div><div><span>Order</span><strong>{detailsPlan.orderDisplayId || detailsPlan.orderId}</strong></div></>}
           <div><span>Outlet</span><strong>{outletLabel(detailsPlan?.outletId, outlets)}</strong></div>
           <div><span>Load plan</span><strong>{detailsPlan?.displayId || '—'}</strong></div>
           <div><span>Dispatched</span><strong>{detailsPlan?.dispatchedAt ? new Date(detailsPlan.dispatchedAt).toLocaleString() : '—'}</strong></div>
@@ -191,7 +201,7 @@ const Dispatch = () => {
             columns={[
               { key: 'productName', label: 'Product', render: (item) => item.productName || item.product_id || '—' },
               { key: 'quantity', label: 'Quantity', align: 'center', render: (item) => item.quantity ?? '—' },
-              { key: 'maxProduce', label: 'Capacity', align: 'center', render: (item) => item.maxProduce ?? '—' },
+              ...(!detailsPlan?.isBatch ? [{ key: 'maxProduce', label: 'Capacity', align: 'center', render: (item) => item.maxProduce ?? '—' }] : []),
               { key: 'isFree', label: 'Type', render: (item) => item.isFree ? 'Free item' : 'Ordered item' },
             ]}
             data={detailsPlan?.items || []}
