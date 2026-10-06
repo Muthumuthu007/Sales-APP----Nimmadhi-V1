@@ -9,6 +9,7 @@ import { Button } from '../components/ui/Button';
 import { fetchOrders, fetchOutlets } from '../api/manager';
 import { outletLabel } from '../utils/outlets';
 import './Orders.css';
+import DispatchPlans from './DispatchPlans';
 
 const Orders = () => {
   const [orders, setOrders] = useState([]);
@@ -23,12 +24,14 @@ const Orders = () => {
     { id: 'PENDING', label: 'Pending' },
     { id: 'PARTIALLY_APPROVED', label: 'Partial' },
     { id: 'APPROVED', label: 'Approved' },
+    { id: 'DISPATCH_PENDING', label: 'Dispatch Pending' },
     { id: 'DISPATCHED', label: 'Dispatched' },
     { id: 'RECEIVED', label: 'Received' },
     { id: 'REJECTED', label: 'Rejected' },
   ];
 
   useEffect(() => {
+    if (activeTab === 'DISPATCH_PENDING') return;
     let isMounted = true;
     
     async function loadOrders() {
@@ -64,6 +67,8 @@ const Orders = () => {
   const columns = [
     { key: 'displayId', label: 'Order Ref', render: (row) => <span title={row.orderId}>{row.displayId || row.orderId}</span> },
     { key: 'outletId', label: 'Outlet', render: (row) => outletLabel(row.outletId, outlets) },
+    { key: 'createdBy', label: 'Created by', render: (row) => row.createdBy || 'Not recorded' },
+    { key: 'isCustomized', label: 'Order type', render: (row) => row.isCustomized ? <strong style={{ color: 'var(--color-primary)' }}>Customized</strong> : 'Standard' },
     { key: 'createdAt', label: 'Created At' },
     { key: 'status', label: 'Status', render: (row) => (
       <Badge status={(row.status === 'PENDING' && activeTab === 'PARTIALLY_APPROVED') ? 'PARTIALLY_APPROVED' : row.status} />
@@ -119,7 +124,7 @@ const Orders = () => {
         </div>
       </div>
 
-      <Card>
+      {activeTab === 'DISPATCH_PENDING' ? <DispatchPlans pendingOnly outletFilter={outletFilter} /> : <Card>
         {loading ? (
           <LoadingState />
         ) : error ? (
@@ -133,7 +138,7 @@ const Orders = () => {
             />
           </CardContent>
         )}
-      </Card>
+      </Card>}
     </div>
   );
 };

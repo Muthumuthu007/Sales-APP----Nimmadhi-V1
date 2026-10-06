@@ -64,3 +64,15 @@ export async function fetchOutletIncentives(outletId, month) {
 export async function fetchManagerAttendance(outletId, period, date) {
   return api.get('/manager/attendance', { params: { outletId, period, date } });
 }
+
+export async function reassignEmployee(empId, fromOutletId, toOutletId) {
+  return api.post(`/manager/employees/${encodeURIComponent(empId)}/reassign`, { fromOutletId, toOutletId });
+}
+
+export async function fetchOutletProductGroups(outletId) {
+  return api.get(`/manager/outlets/${encodeURIComponent(outletId)}/product-groups`);
+}
+
+export async function assignOutletProductGroups(outletId, groupIds) {
+  return api.post(`/manager/outlets/${encodeURIComponent(outletId)}/product-groups`, { groupIds });
+}

@@ -96,6 +96,9 @@ const OutletView = () => {
   const [selectedProductGroup, setSelectedProductGroup] = useState('');
   const [selectedProduct, setSelectedProduct] = useState('');
   const [quantity, setQuantity] = useState(1);
+  const [customized, setCustomized] = useState(false);
+  const [customSize, setCustomSize] = useState({ length: '', width: '', thickness: '', unit: 'inches' });
+  const customSizeText = (size) => size ? `${size.length} × ${size.width}${size.thickness ? ` × ${size.thickness}` : ''} ${size.unit}` : '';
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiError, setApiError] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
@@ -779,20 +782,26 @@ const OutletView = () => {
       setApiError('Please select a product.');
       return;
     }
-    if (quantity <= 0) {
-      setApiError('Quantity must be greater than 0.');
+    if (!Number.isInteger(Number(quantity)) || Number(quantity) <= 0) {
+      setApiError('Quantity must be a positive whole number.');
       return;
     }
-    // Check if product already exists in items, maybe increment quantity
-    const existingIndex = items.findIndex(item => item.product_id === selectedProduct);
-    if (existingIndex >= 0) {
-      const newItems = [...items];
-      newItems[existingIndex].quantity += Number(quantity);
-      setItems(newItems);
-    } else {
-      setItems([...items, { product_id: selectedProduct, quantity: Number(quantity) }]);
+    let size;
+    if (customized) {
+      const validDimension = (value) => Number.isFinite(Number(value)) && Number(value) > 0 && Number(value) <= 99999.99 && Math.abs(Number(value) * 100 - Math.round(Number(value) * 100)) < 0.000001;
+      if (!validDimension(customSize.length) || !validDimension(customSize.width) || (customSize.thickness !== '' && !validDimension(customSize.thickness))) {
+        setApiError('Enter positive length and width, and optional thickness, using at most two decimal places.');
+        return;
+      }
+      size = { length: Number(customSize.length), width: Number(customSize.width), unit: customSize.unit,
+        ...(customSize.thickness !== '' ? { thickness: Number(customSize.thickness) } : {}) };
     }
-    
+    const existingIndex = items.findIndex(item => item.product_id === selectedProduct && JSON.stringify(item.customSize) === JSON.stringify(size));
+    if (existingIndex >= 0) {
+      setItems(items.map((item, index) => index === existingIndex ? { ...item, quantity: item.quantity + Number(quantity) } : item));
+    } else {
+      setItems([...items, { product_id: selectedProduct, quantity: Number(quantity), ...(size ? { customSize: size } : {}) }]);
+    }
     setSelectedProduct('');
     setQuantity(1);
     setApiError(null);
@@ -823,6 +832,8 @@ const OutletView = () => {
       
       setSuccessMsg(`Order created successfully! Tracking ID: ${data.orderId}`);
       setItems([]); // reset form
+      setCustomized(false);
+      setCustomSize({ length: '', width: '', thickness: '', unit: 'inches' });
     } catch (err) {
       setApiError(err.response?.data?.error || err.response?.data?.message || err.message || 'Failed to create order.');
     } finally {
@@ -950,6 +961,13 @@ const OutletView = () => {
                 <section className="order-builder-selection">
                   <div className="order-builder-section-label"><span>2</span><div><strong>Product and quantity</strong><small>{selectedProductGroup ? `${selectedProductGroup} products only` : 'Select a production group'}</small></div></div>
                   <SearchableSelect label="Select product" options={visibleProductOptions} value={selectedProduct} onChange={(val) => setSelectedProduct(val)} placeholder={selectedProductGroup ? `Select a ${selectedProductGroup} product...` : 'Select a production group first'} />
+                  <Select label="Size option" value={customized ? 'CUSTOM' : 'STANDARD'} onChange={(event) => setCustomized(event.target.value === 'CUSTOM')} options={[{ value: 'STANDARD', label: 'Standard product size' }, { value: 'CUSTOM', label: 'Customized size' }]} />
+                  {customized && <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.75rem' }}>
+                    <Input label="Length" type="number" min="0.01" step="0.01" value={customSize.length} onChange={(event) => setCustomSize({ ...customSize, length: event.target.value })} />
+                    <Input label="Width" type="number" min="0.01" step="0.01" value={customSize.width} onChange={(event) => setCustomSize({ ...customSize, width: event.target.value })} />
+                    <Input label="Thickness (optional)" type="number" min="0.01" step="0.01" value={customSize.thickness} onChange={(event) => setCustomSize({ ...customSize, thickness: event.target.value })} />
+                    <Select label="Unit" value={customSize.unit} onChange={(event) => setCustomSize({ ...customSize, unit: event.target.value })} options={[{ value: 'inches', label: 'Inches' }, { value: 'cm', label: 'Centimetres' }]} />
+                  </div>}
                   <div className="order-builder-add-row">
                     <Input label="Quantity" type="number" min="1" value={quantity} onChange={(e) => setQuantity(e.target.value)} />
                     <Button className="order-builder-add-button" onClick={handleAddItem} disabled={isSubmitting}><Plus size={18} /> Add item</Button>
@@ -968,7 +986,7 @@ const OutletView = () => {
                     {items.map((item, idx) => (
                       <div key={idx} className="order-builder-item">
                         <span className="order-builder-item-quantity">{item.quantity}</span>
-                        <span className="order-builder-item-name">{getProductName(item.product_id)}</span>
+                        <span className="order-builder-item-name">{getProductName(item.product_id)}{item.customSize && <small style={{ display: 'block' }}>Customized: {customSizeText(item.customSize)}</small>}</span>
                         <Button variant="secondary" className="order-builder-remove" onClick={() => removeItem(idx)} disabled={isSubmitting} aria-label={`Remove ${getProductName(item.product_id)}`}>
                           <Trash2 size={16} />
                         </Button>
@@ -1002,6 +1020,8 @@ const OutletView = () => {
                 <Table 
                   columns={[
                     { key: 'orderId', label: 'Order ID' },
+                    { key: 'createdBy', label: 'Created by', render: (row) => row.createdBy || 'Not recorded' },
+                    { key: 'isCustomized', label: 'Order type', render: (row) => row.isCustomized ? 'Customized' : 'Standard' },
                     { key: 'createdAt', label: 'Date', render: (row) => row.createdAt ? new Date(row.createdAt).toLocaleDateString() : '-' },
                     { key: 'items', label: 'Items Count', align: 'center', render: (row) => row.items?.length || 0 },
                     { key: 'status', label: 'Status', render: (row) => <Badge status={row.status} /> },
@@ -1031,6 +1051,7 @@ const OutletView = () => {
                 <Badge status={viewOrderTarget.status} />
               </div>
               <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', fontSize: '0.9rem' }}>
+                <span><strong>Created by:</strong> {viewOrderTarget.createdBy || 'Not recorded'}</span>
                 <span><strong>Created:</strong> {viewOrderTarget.createdAt ? new Date(viewOrderTarget.createdAt).toLocaleString() : '-'}</span>
                 {viewOrderTarget.remarks && <span><strong>Remarks:</strong> {viewOrderTarget.remarks}</span>}
               </div>
@@ -1063,6 +1084,8 @@ const OutletView = () => {
                 <Table
                   columns={[
                     { key: 'displayId', label: 'Order', render: (row) => row.displayId || row.orderId },
+                    { key: 'createdBy', label: 'Created by', render: (row) => row.createdBy || 'Not recorded' },
+                    { key: 'isCustomized', label: 'Order type', render: (row) => row.isCustomized ? 'Customized' : 'Standard' },
                     { key: 'dispatchedAt', label: 'Dispatched', render: (row) => row.dispatchedAt ? new Date(row.dispatchedAt).toLocaleString() : '—' },
                     { key: 'receiptItems', label: 'Pending products', align: 'center', render: (row) => row.receiptItems?.length || 0 },
                     { key: 'action', label: 'Action', render: (row) => <Button size="sm" onClick={() => openManualReceipt(row)}>Receive manually</Button> },

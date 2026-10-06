@@ -8,7 +8,7 @@ import { fetchManagerAttendance, fetchOutlets } from '../api/employees';
 import { outletLabel } from '../utils/outlets';
 import './ManagerAttendance.css';
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 
 const ManagerAttendance = () => {
   const [outlets, setOutlets] = useState([]);
@@ -102,8 +102,8 @@ const ManagerAttendance = () => {
             <CardHeader title="Employee summary" />
             <CardContent className="attendance-table-wrap">
               <table className="attendance-table attendance-summary-table">
-                <thead><tr><th>Employee</th><th>Role</th><th>Work type</th><th>Present</th><th>Absent</th><th>Recorded days</th></tr></thead>
-                <tbody>{report.employees?.length ? report.employees.map((employee) => <tr key={employee.empId}><td className="attendance-employee-name">{employee.employeeName}</td><td>{employee.role || '—'}</td><td><span className="attendance-work-type">{employee.workType || 'OFFICE'}</span></td><td className="attendance-positive-value">{employee.presentDays}</td><td className="attendance-negative-value">{employee.absentDays}</td><td>{employee.records}</td></tr>) : <tr><td colSpan="6" className="attendance-empty-cell">No employees found for this outlet.</td></tr>}</tbody>
+                <thead><tr><th>Employee</th><th>Role</th><th>Work type</th><th>Present</th><th>Absent</th><th>Recorded days</th><th>Hours worked</th></tr></thead>
+                <tbody>{report.employees?.length ? report.employees.map((employee) => <tr key={employee.empId}><td className="attendance-employee-name">{employee.employeeName}</td><td>{employee.role || '—'}</td><td><span className="attendance-work-type">{employee.workType === 'FIELD' ? 'Field work' : 'Demonstrative employee'}</span></td><td className="attendance-positive-value">{employee.presentDays}</td><td className="attendance-negative-value">{employee.absentDays}</td><td>{employee.records}</td><td>{formatHours(employee.workedSeconds || 0)}</td></tr>) : <tr><td colSpan="7" className="attendance-empty-cell">No employees found for this outlet.</td></tr>}</tbody>
               </table>
             </CardContent>
           </Card>
@@ -112,18 +112,20 @@ const ManagerAttendance = () => {
             <CardHeader title="Attendance records and selfie evidence" action={<span className="text-muted">{report.attendance?.length || 0} record(s)</span>} />
             <CardContent className="attendance-table-wrap">
               <table className="attendance-table attendance-records-table">
-                <thead><tr><th>Date</th><th>Employee</th><th>Status</th><th>Check-in</th><th>Mode</th><th>Distance</th><th>Selfie</th></tr></thead>
-                <tbody>{report.attendance?.length ? report.attendance.map((record, index) => <tr key={`${record.empId}-${record.date}-${index}`}><td className="attendance-date-cell">{record.date}</td><td><strong>{record.employeeName}</strong><span className="attendance-role">{record.role || record.workType}</span></td><td><span className={`attendance-status ${record.present ? 'is-present' : 'is-absent'}`}>{record.present ? 'Present' : 'Absent'}</span></td><td>{record.checkIn || '—'}</td><td>{record.attendanceMode === 'FIELD_SELFIE' ? 'Field selfie' : record.attendanceMode === 'OFFICE_GEOFENCE' ? 'Office geo-fence' : '—'}</td><td>{record.distance === null || record.distance === undefined ? '—' : `${record.distance} m`}</td><td>{record.photoUrl ? <Button variant="secondary" className="attendance-selfie-button" onClick={() => setSelectedRecord(record)}><Camera size={15} /> View selfie</Button> : record.hasSelfie ? <span className="attendance-selfie-unavailable"><ImageOff size={15} /> Link unavailable</span> : <span className="text-muted">No selfie</span>}</td></tr>) : <tr><td colSpan="7" className="attendance-empty-cell">No attendance records in this period.</td></tr>}</tbody>
+                <thead><tr><th>Date</th><th>Employee</th><th>Presence</th><th>Status</th><th>Opening</th><th>Closing</th><th>Hours worked</th><th>Mode</th><th>Distance</th><th>Selfie</th></tr></thead>
+                <tbody>{report.attendance?.length ? report.attendance.map((record, index) => <tr key={`${record.empId}-${record.date}-${index}`}><td className="attendance-date-cell">{record.date}</td><td><strong>{record.employeeName}</strong><span className="attendance-role">{record.role || (record.workType === 'FIELD' ? 'Field work' : 'Demonstrative employee')}</span></td><td><span className={`attendance-status ${record.present ? 'is-present' : 'is-absent'}`}>{record.present ? 'Present' : 'Absent'}</span></td><td><span className={`attendance-status ${record.attendanceStatus === 'ACTIVE' ? 'is-present' : 'is-absent'}`}>{record.attendanceStatus === 'ACTIVE' ? 'Active' : 'Inactive'}</span></td><td>{record.checkIn || '—'}</td><td>{record.closingDate && record.closingDate !== record.date ? `${record.closingDate} ` : ''}{record.checkOut || '—'}</td><td>{record.workedSeconds == null ? '—' : formatHours(record.workedSeconds)}</td><td>{record.attendanceMode === 'FIELD_SELFIE' ? 'Field selfie' : record.attendanceMode === 'OFFICE_GEOFENCE' ? 'Demonstrative employee geo-fence' : '—'}</td><td>{record.distance === null || record.distance === undefined ? '—' : `${record.distance} m`}</td><td>{record.photoUrl ? <Button variant="secondary" className="attendance-selfie-button" onClick={() => setSelectedRecord(record)}><Camera size={15} /> Opening selfie</Button> : record.hasSelfie ? <span className="attendance-selfie-unavailable"><ImageOff size={15} /> Link unavailable</span> : <span className="text-muted">No selfie</span>}{record.closingPhotoUrl && <Button variant="secondary" className="attendance-selfie-button" onClick={() => setSelectedRecord({ ...record, photoUrl: record.closingPhotoUrl, checkIn: record.checkOut, latitude: record.closingLatitude, longitude: record.closingLongitude, evidenceLabel: 'Closing' })}>Closing selfie</Button>}</td></tr>) : <tr><td colSpan="10" className="attendance-empty-cell">No attendance records in this period.</td></tr>}</tbody>
               </table>
             </CardContent>
           </Card>
         </>
       )}
 
-      {selectedRecord && <div className="attendance-selfie-modal" role="dialog" aria-modal="true" onClick={() => setSelectedRecord(null)}><Card className="attendance-selfie-dialog" onClick={(event) => event.stopPropagation()}><CardHeader title={`Selfie — ${selectedRecord.employeeName}`} action={<Button variant="secondary" onClick={() => setSelectedRecord(null)}>Close</Button>} /><CardContent><img src={selectedRecord.photoUrl} alt={`Attendance selfie uploaded by ${selectedRecord.employeeName}`} /><div className="attendance-selfie-meta"><span><Clock3 size={15} /> {selectedRecord.date} {selectedRecord.checkIn || ''}</span><span><MapPin size={15} /> {selectedRecord.distance === null || selectedRecord.distance === undefined ? 'Field attendance' : `${selectedRecord.distance} metres from outlet`}</span></div></CardContent></Card></div>}
+      {selectedRecord && <div className="attendance-selfie-modal" role="dialog" aria-modal="true" onClick={() => setSelectedRecord(null)}><Card className="attendance-selfie-dialog" onClick={(event) => event.stopPropagation()}><CardHeader title={`${selectedRecord.evidenceLabel || 'Opening'} selfie — ${selectedRecord.employeeName}`} action={<Button variant="secondary" onClick={() => setSelectedRecord(null)}>Close</Button>} /><CardContent><img src={selectedRecord.photoUrl} alt={`Attendance selfie uploaded by ${selectedRecord.employeeName}`} /><div className="attendance-selfie-meta"><span>GPS: {selectedRecord.latitude || '—'}, {selectedRecord.longitude || '—'}</span><span><Clock3 size={15} /> {selectedRecord.date} {selectedRecord.checkIn || ''}</span><span><MapPin size={15} /> {selectedRecord.distance === null || selectedRecord.distance === undefined ? 'Field attendance' : `${selectedRecord.distance} metres from outlet`}</span></div></CardContent></Card></div>}
     </div>
   );
 };
+
+const formatHours = (seconds) => `${Math.floor(Number(seconds) / 3600)}h ${Math.floor(Number(seconds) % 3600 / 60)}m`;
 
 const Metric = ({ icon, label, value, tone }) => <div className="attendance-metric" style={{ '--attendance-metric-tone': tone || 'var(--color-primary)' }}><div className="attendance-metric-label">{icon}<span>{label}</span></div><strong>{value}</strong></div>;
 

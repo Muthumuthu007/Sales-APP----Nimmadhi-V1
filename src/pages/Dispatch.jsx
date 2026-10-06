@@ -9,6 +9,7 @@ import { fetchDispatchedLoadPlans, fetchOutlets, downloadDispatchedLoadPlansExce
 import { outletLabel } from '../utils/outlets';
 import { LoadingState, ErrorState } from '../components/ui/StateContainers';
 import './Dispatch.css';
+import UndoPlanButton from '../components/UndoPlanButton';
 
 const Dispatch = () => {
   const [orders, setOrders] = useState([]);
@@ -52,6 +53,8 @@ const Dispatch = () => {
       label: 'Order Ref',
       render: (row) => <span title={row.orderId}>{row.orderDisplayId || '—'}</span>,
     },
+    { key: 'createdBy', label: 'Created by', render: (row) => row.createdBy || 'Not recorded' },
+    { key: 'isCustomized', label: 'Order type', render: (row) => row.isCustomized ? <strong style={{ color: 'var(--color-primary)' }}>Customized</strong> : 'Standard' },
     { key: 'outletId', label: 'Destination Outlet', render: (row) => outletLabel(row.outletId, outlets) },
     {
       key: 'createdAt',
@@ -70,6 +73,10 @@ const Dispatch = () => {
           View products
         </Button>
       ),
+    },
+    {
+      key: 'undo', label: 'Undo',
+      render: (row) => <UndoPlanButton plan={row} action="dispatch" onUndone={loadDispatchedHistory} />,
     },
   ];
 

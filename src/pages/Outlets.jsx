@@ -10,7 +10,7 @@ import { Button } from '../components/ui/Button';
 import { Input, Select } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
 import { LoadingState, ErrorState, EmptyState } from '../components/ui/StateContainers';
-import { createOutlet, deleteOutlet, fetchOutlets, fetchProductGroups } from '../api/employees';
+import { createOutlet, deleteOutlet, fetchOutlets, fetchProductGroups, fetchOutletProductGroups, assignOutletProductGroups } from '../api/employees';
 import { getOutletLocation, updateOutletLocation } from '../api/location';
 import './Outlets.css';
 
@@ -60,6 +60,26 @@ const Outlets = () => {
   const [productGroups, setProductGroups] = useState([]);
   const [selectedGroupIds, setSelectedGroupIds] = useState([]);
   const [groupsLoading, setGroupsLoading] = useState(true);
+  const [groupOutlet, setGroupOutlet] = useState(null);
+  const [groupAccess, setGroupAccess] = useState(null);
+  const [newGroupIds, setNewGroupIds] = useState([]);
+  const [groupBusy, setGroupBusy] = useState(false);
+  const [groupError, setGroupError] = useState('');
+  const openGroupAssignment = async (outlet) => {
+    setGroupOutlet(outlet); setGroupAccess(null); setNewGroupIds([]); setGroupError(''); setGroupBusy(true);
+    try { setGroupAccess(await fetchOutletProductGroups(outlet.outletId)); }
+    catch (err) { setGroupError(err.response?.data?.error || 'Unable to load product groups. Please reopen and try again.'); }
+    finally { setGroupBusy(false); }
+  };
+  const saveGroupAssignment = async () => {
+    setGroupBusy(true); setGroupError('');
+    try {
+      await assignOutletProductGroups(groupOutlet.outletId, newGroupIds);
+      setSuccess(`Product groups assigned to ${groupOutlet.outletName || groupOutlet.outletId}.`);
+      setGroupOutlet(null); await loadOutlets();
+    } catch (err) { setGroupError(err.response?.data?.error || 'Unable to assign product groups.'); }
+    finally { setGroupBusy(false); }
+  };
   const [locationOutlet, setLocationOutlet] = useState(null);
   const [locationLat, setLocationLat] = useState('');
   const [locationLng, setLocationLng] = useState('');
@@ -273,12 +293,29 @@ const Outlets = () => {
                 <h3>{isNimmadhiOutlet(outlet) ? `NIMMADHI Outlet — ${outlet.outletName || outlet.outletId}` : (outlet.outletName || outlet.outletId)}</h3>
                 <p><MapPin size={15} />{outlet.address || 'Address not added'}</p>
                 <p><Phone size={15} />{outlet.phone || 'Phone not added'}</p>
-                <div className="outlet-card-actions"><Button variant="secondary" className="outlet-location-button" onClick={() => openLocation(outlet)}><MapPin size={16} />Attendance location</Button><Button variant="secondary" className="outlet-delete-button" onClick={() => openDeleteConfirmation(outlet)}><Trash2 size={16} />Delete outlet</Button></div>
+                <div className="outlet-card-actions">{outlet.locationType !== 'GODOWN' && <Button variant="secondary" onClick={() => openGroupAssignment(outlet)}><Plus size={16} />Assign product groups</Button>}<Button variant="secondary" className="outlet-location-button" onClick={() => openLocation(outlet)}><MapPin size={16} />Attendance location</Button><Button variant="secondary" className="outlet-delete-button" onClick={() => openDeleteConfirmation(outlet)}><Trash2 size={16} />Delete outlet</Button></div>
               </article>)}
             </div>
           )}
         </CardContent>
       </Card>
+      <Modal isOpen={Boolean(groupOutlet)} onClose={() => !groupBusy && setGroupOutlet(null)} title={`Assign product groups — ${groupOutlet?.outletName || groupOutlet?.outletId || ''}`}>
+        <p>Existing assignments are kept. Select additional groups this outlet can view and order.</p>
+        {groupError && <div className="outlets-alert" role="alert">{groupError}</div>}
+        {groupBusy && !groupAccess && <p>Loading product groups…</p>}
+        {groupAccess?.unrestricted && <p>This outlet already has access to all product groups.</p>}
+        <div className="outlets-product-groups">
+          {(groupAccess?.groups || []).map((group) => {
+            const assigned = groupAccess.allowedGroupIds.includes(group.groupId);
+            const checked = assigned || newGroupIds.includes(group.groupId);
+            return <label key={group.groupId} className={`outlets-product-group ${checked ? 'selected' : ''}`}>
+              <input type="checkbox" checked={checked} disabled={assigned || groupBusy} onChange={() => setNewGroupIds((ids) => ids.includes(group.groupId) ? ids.filter((id) => id !== group.groupId) : [...ids, group.groupId])} />
+              <span>{group.groupName}{assigned ? ' (Already assigned)' : ''}</span>
+            </label>;
+          })}
+        </div>
+        <div className="outlet-delete-actions"><Button variant="secondary" onClick={() => setGroupOutlet(null)} disabled={groupBusy}>Close</Button><Button variant="primary" onClick={saveGroupAssignment} disabled={groupBusy || !newGroupIds.length}>{groupBusy && groupAccess ? 'Saving…' : `Assign ${newGroupIds.length || ''} additional groups`}</Button></div>
+      </Modal>
       <Modal isOpen={Boolean(outletToDelete)} onClose={() => !deleting && setOutletToDelete(null)} title="Delete outlet and employees">
         <p className="outlet-delete-warning">This permanently deletes <strong>{outletToDelete?.outletName || outletToDelete?.outletId}</strong>, every employee login assigned to it, and all its HR/attendance records.</p>
         <p className="outlet-delete-preserved">Orders, load plans, dispatch, sales, and stock history are kept for audit.</p>

@@ -7,8 +7,9 @@ import { Button } from '../components/ui/Button';
 import { Input, Select } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
 import { LoadingState, ErrorState } from '../components/ui/StateContainers';
-import { fetchAllOrders, approveOrder, rejectOrder, fetchOutlets } from '../api/manager';
+import { fetchAllOrders, approveOrder, rejectOrder, fetchOutlets, fetchLoadPlans, fetchOutletStockForApproval } from '../api/manager';
 import api from '../api/axios';
+import UndoPlanButton from '../components/UndoPlanButton';
 import { outletLabel } from '../utils/outlets';
 
 const OrderDetails = () => {
@@ -22,6 +23,29 @@ const OrderDetails = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState(null);
   const [outlets, setOutlets] = useState([]);
+  const [approvedPlans, setApprovedPlans] = useState([]);
+  const [plansError, setPlansError] = useState('');
+  const [outletStock, setOutletStock] = useState({});
+  const [stockLoading, setStockLoading] = useState(true);
+  const [stockError, setStockError] = useState('');
+  const [stockRefresh, setStockRefresh] = useState(0);
+  useEffect(() => {
+    if (!order?.outletId) return;
+    let active = true;
+    setStockLoading(true); setStockError(''); setOutletStock({});
+    fetchOutletStockForApproval(order.outletId).then((data) => {
+      if (active) setOutletStock(Object.fromEntries((data.products || []).map((product) => [product.product_id, product])));
+    }).catch(() => { if (active) setStockError('Outlet stock is unavailable.'); })
+      .finally(() => { if (active) setStockLoading(false); });
+    return () => { active = false; };
+  }, [order?.outletId, stockRefresh]);
+  useEffect(() => {
+    let active = true;
+    fetchLoadPlans('APPROVED').then((data) => {
+      if (active) setApprovedPlans((data.loadPlans || []).filter((plan) => plan.orderId === id));
+    }).catch(() => { if (active) setPlansError('Unable to load approvals for undo. Open Load Plans to retry.'); });
+    return () => { active = false; };
+  }, [id]);
 
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
   const [rejectRemarks, setRejectRemarks] = useState('');
@@ -40,7 +64,8 @@ const OrderDetails = () => {
       if (!location.state?.order) {
         try {
           const response = await fetchAllOrders();
-          const list = Array.isArray(response) ? response : (response.orders || []);
+          const returnedOrders = Array.isArray(response) ? response : (response.orders || []);
+          const list = Array.isArray(returnedOrders) ? returnedOrders : Object.values(returnedOrders).flat();
           const found = list.find(o => o.orderId === id || o.id === id);
           if (found) {
              if (isMounted) setOrder(found);
@@ -100,6 +125,8 @@ const OrderDetails = () => {
           pendingQty: pending,
           approvedQty: approved,
           maxProduce: Number(item.maxProduce || 0),
+          customSize: item.customSize,
+          isCustomized: item.isCustomized,
           approveDelta: '', // Let user type explicitly
           freeItems: Array.isArray(item.freeItems) ? item.freeItems.map(f => ({
             product_id: f.product_id || '',
@@ -225,6 +252,7 @@ const OrderDetails = () => {
         </button>
         <h2 style={{ margin: 0 }}>Approval Workspace: Order {order.orderId || order.id}</h2>
         <Badge status={order.status} />
+        {order.isCustomized && <strong style={{ color: 'var(--color-primary)' }}>Customized order</strong>}
       </div>
 
       {error && (
@@ -248,6 +276,10 @@ const OrderDetails = () => {
               <div className="font-semibold">{outletLabel(order.outletId, outlets)}</div>
             </div>
             <div>
+              <span className="text-muted">Created by (Username):</span>
+              <div className="font-semibold">{order.createdBy || 'Not recorded'}</div>
+            </div>
+            <div>
               <span className="text-muted">Date Logged:</span>
               <div className="font-semibold">{order.createdAt || 'N/A'}</div>
             </div>
@@ -262,6 +294,9 @@ const OrderDetails = () => {
         <Card>
           <CardHeader title="Dynamic Iterative Approval" />
           <CardContent style={{ padding: 0 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '0.5rem' }}>
+              <Button variant="secondary" onClick={() => setStockRefresh((value) => value + 1)} disabled={stockLoading}>Refresh outlet stock</Button>
+            </div>
             {/* Custom Table Interface */}
             <div className="approval-table-wrapper">
               <table className="approval-table">
@@ -278,9 +313,17 @@ const OrderDetails = () => {
                     <tr key={idx}>
                       <td>
                         <div className="font-semibold">{item.productName}</div>
+                        {item.isCustomized && <small style={{ color: 'var(--color-primary)' }}>Customized size</small>}
                         <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>ID: {item.product_id}</div>
+                        <div role="status" style={{ display: 'inline-block', marginTop: '0.35rem', padding: '0.25rem 0.5rem', borderRadius: '4px', background: 'var(--color-secondary)', fontSize: '0.8rem' }}>
+                          {stockLoading ? 'Loading outlet stock…' : stockError ? <span>{stockError}</span> : outletStock[item.product_id] ? <>
+                            Outlet stock: <strong>{outletStock[item.product_id].quantity} unit(s)</strong>
+                            {outletStock[item.product_id].quantity === 0 && <span> · Out of stock</span>}
+                            <small style={{ display: 'block', color: 'var(--color-text-muted)' }}>Latest stock date: {outletStock[item.product_id].stockDate}</small>
+                          </> : <span>No outlet stock recorded</span>}
+                        </div>
                         {item.maxProduce !== undefined && (
-                          <div style={{ fontSize: '0.75rem', color: 'var(--color-primary)' }}>Max Production: {item.maxProduce}</div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--color-primary)' }}>{item.isCustomized ? 'Base model capacity' : 'Max Production'}: {item.maxProduce}</div>
                         )}
                       </td>
                       
@@ -389,7 +432,19 @@ const OrderDetails = () => {
         </Card>
       </div>
 
-      <Modal 
+      {(approvedPlans.length > 0 || plansError) && <Card>
+        <CardHeader title="Undo approval" />
+        <CardContent>
+          {plansError && <p role="alert">{plansError}</p>}
+          <p>Undo dispatch and source assignment in Load Plans first, then undo the approval you want to return to Pending.</p>
+          {approvedPlans.map((plan) => <div key={plan.loadPlanId} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+            <span>{plan.displayId || plan.loadPlanId}</span>
+            <UndoPlanButton plan={plan} action="approval" onUndone={() => navigate('/orders')} />
+          </div>)}
+        </CardContent>
+      </Card>}
+
+      <Modal
         isOpen={isRejectModalOpen} 
         onClose={() => setIsRejectModalOpen(false)}
         title="Confirm Order Rejection"

@@ -52,11 +52,21 @@ export async function fetchGodownFulfillments() { return api.get('/godown/fulfil
 export async function dispatchGodownUnit(line, unitId) { return api.post(`/godown/fulfillments/${encodeURIComponent(line.orderId)}/${encodeURIComponent(line.loadPlanId)}/${encodeURIComponent(line.lineId)}/units/scan/dispatch`, { unit_id: unitId }); }
 export async function fetchLoadPlanFulfillment(loadPlanId, orderId) { return api.get(`/load-plans/${encodeURIComponent(loadPlanId)}/fulfillment?orderId=${encodeURIComponent(orderId)}`); }
 export async function saveLoadPlanFulfillment(loadPlanId, payload) { return api.post(`/load-plans/${encodeURIComponent(loadPlanId)}/fulfillment`, payload); }
-export async function fetchDispatchPlans({ sourceType = 'ALL', godownId = '' } = {}) {
+export async function fetchDispatchPlans({ sourceType = 'ALL', godownId = '', pendingOnly = false, includeDispatched = false } = {}) {
   const params = new URLSearchParams({ sourceType });
   if (godownId) params.set('godownId', godownId);
+  if (pendingOnly) params.set('pendingOnly', 'true');
+  if (includeDispatched) params.set('includeDispatched', 'true');
   return api.get(`/dispatch-plans?${params.toString()}`);
 }
-export async function manuallyDispatchFulfillment(line) {
-  return api.post(`/dispatch-plans/${encodeURIComponent(line.orderId)}/${encodeURIComponent(line.loadPlanId)}/${encodeURIComponent(line.lineId)}/dispatch`);
+export async function manuallyDispatchFulfillment(line, quantity) {
+  return api.post(`/dispatch-plans/${encodeURIComponent(line.orderId)}/${encodeURIComponent(line.loadPlanId)}/${encodeURIComponent(line.lineId)}/dispatch`, { quantity });
+}
+
+export async function undoLoadPlan(plan, action) {
+  return api.post(`/load-plans/${encodeURIComponent(plan.loadPlanId)}/undo`, { orderId: plan.orderId, action, ...(plan.lineId ? { lineId: plan.lineId } : {}) });
+}
+
+export async function fetchOutletStockForApproval(outletId) {
+  return api.get(`/manager/outlets/${encodeURIComponent(outletId)}/stock`);
 }

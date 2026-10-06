@@ -119,7 +119,7 @@ const Dashboard = () => {
                     </div>
                     <div className="activity-details">
                       <p className="activity-title">
-                        Order <strong>{o.orderId || o.id}</strong> from <strong>{outletLabel(o.outletId || o.outlet, outlets)}</strong> is pending approval.
+                        Order <strong>{o.orderId || o.id}</strong> from <strong>{outletLabel(o.outletId || o.outlet, outlets)}</strong> is pending approval. {o.isCustomized && <strong style={{ color: 'var(--color-primary)' }}>Customized</strong>}
                       </p>
                       <span className="activity-time">
                         {o.createdAt ? new Date(o.createdAt).toLocaleString() : 'Recent'}

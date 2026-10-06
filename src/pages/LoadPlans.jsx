@@ -11,6 +11,7 @@ import {
 } from '../api/manager';
 import { outletLabel } from '../utils/outlets';
 import './LoadPlans.css';
+import UndoPlanButton from '../components/UndoPlanButton';
 
 const compactId = (value) => {
   if (!value) return '—';
@@ -28,6 +29,7 @@ const formatDateTime = (value) => {
 };
 
 const LoadPlans = () => {
+  const [reloadKey, setReloadKey] = useState(0);
   const [activeTab, setActiveTab] = useState('APPROVED'); // APPROVED or PENDING
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -90,7 +92,7 @@ const LoadPlans = () => {
 
     loadData();
     return () => { isMounted = false; };
-  }, [activeTab]);
+  }, [activeTab, reloadKey]);
 
   const planItems = (plan) => {
     const items = plan?.items?.length ? plan.items : [plan];
@@ -189,6 +191,8 @@ const LoadPlans = () => {
     { key: 'orderDisplayId', label: 'Order Ref', className: 'id-column', render: (row) => <span title={row.orderId}>{row.orderDisplayId || '—'}</span> },
     { key: 'displayId', label: 'Plan Ref', className: 'id-column', render: (row) => <span title={row.loadPlanId}>{row.displayId || compactId(row.loadPlanId)}</span> },
     { key: 'outletId', label: 'Outlet', className: 'outlet-column', render: (row) => outletLabel(row.outletId, outlets) },
+    { key: 'createdBy', label: 'Created by', render: (row) => row.createdBy || 'Not recorded' },
+    { key: 'isCustomized', label: 'Order type', render: (row) => row.isCustomized ? <strong style={{ color: 'var(--color-primary)' }}>Customized</strong> : 'Standard' },
     { key: 'productName', label: 'Product', className: 'product-column', render: (row) => row.productName || (row.items && row.items[0]?.productName) || 'Multiple products' },
     { key: 'quantity', label: 'Qty', className: 'quantity-column', align: 'center', render: (row) => row.quantity ?? (row.items && row.items[0]?.quantity) ?? '—' },
     { key: 'createdAt', label: 'Created', className: 'created-column', render: (row) => <span title={row.createdAt}>{formatDateTime(row.createdAt)}</span> },
@@ -206,6 +210,8 @@ const LoadPlans = () => {
             <Button variant="secondary" className="assign-source-button" onClick={() => openAllocation(row)}>
               Assign source
             </Button>
+            <UndoPlanButton plan={row} action="assignment" onUndone={() => setReloadKey((key) => key + 1)} />
+            <UndoPlanButton plan={row} action="approval" onUndone={() => setReloadKey((key) => key + 1)} />
           </>
         ) : (
           <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>-</span>
