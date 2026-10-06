@@ -76,7 +76,7 @@ export default function DispatchPlans({ pendingOnly = false, outletFilter = '' }
     }
     setDispatching(true); setDispatchError('');
     try {
-      await manuallyDispatchFulfillment(selectedLine, quantity);
+      await manuallyDispatchFulfillment(selectedLine, quantity, pendingOnly);
       setSelectedLine(null);
       await load();
     } catch (requestError) {

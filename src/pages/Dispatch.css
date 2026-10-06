@@ -90,3 +90,12 @@
     grid-template-columns: 1fr;
   }
 }
+
+.dispatch-history-tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+.dispatch-history-tabs button { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-radius: 10px; border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.03); color: #cbd5e1; font: inherit; font-size: 13px; cursor: pointer; }
+.dispatch-history-tabs button.active { color: #fbbf24; background: rgba(251,191,36,.09); border-color: rgba(251,191,36,.4); }
+.dispatch-history-tabs button span { padding: 2px 7px; border-radius: 6px; background: rgba(255,255,255,.08); font-size: 11px; }
+.dispatch-history-note { margin: 0; font-size: 12px; line-height: 1.6; color: #94a3b8; }
+.dispatch-batch-tag { display: inline-flex; border-radius: 6px; padding: 5px 8px; background: rgba(148,163,184,.1); color: #cbd5e1; font-size: 11px; }
+.dispatch-batch-tag--pending { background: rgba(251,191,36,.1); color: #fcd34d; }
+.dispatch-batch-product { min-width: 200px; max-width: 270px; white-space: normal !important; }

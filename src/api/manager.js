@@ -29,6 +29,10 @@ export async function downloadLoadPlansExcel(type) {
   return api.get(`/load-plans/${endpoint}/download`, { responseType: 'blob' });
 }
 
+export async function fetchDispatchHistory() {
+  return api.get('/dispatch-history');
+}
+
 export async function fetchDispatchedLoadPlans() {
   return api.get('/load-plans/dispatched');
 }
@@ -59,8 +63,8 @@ export async function fetchDispatchPlans({ sourceType = 'ALL', godownId = '', pe
   if (includeDispatched) params.set('includeDispatched', 'true');
   return api.get(`/dispatch-plans?${params.toString()}`);
 }
-export async function manuallyDispatchFulfillment(line, quantity) {
-  return api.post(`/dispatch-plans/${encodeURIComponent(line.orderId)}/${encodeURIComponent(line.loadPlanId)}/${encodeURIComponent(line.lineId)}/dispatch`, { quantity });
+export async function manuallyDispatchFulfillment(line, quantity, pendingOnly = false) {
+  return api.post(`/dispatch-plans/${encodeURIComponent(line.orderId)}/${encodeURIComponent(line.loadPlanId)}/${encodeURIComponent(line.lineId)}/dispatch`, { quantity, dispatchOrigin: pendingOnly ? 'PENDING' : 'ORIGINAL' });
 }
 
 export async function undoLoadPlan(plan, action) {

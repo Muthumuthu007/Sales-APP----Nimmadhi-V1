@@ -5,7 +5,7 @@ import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 import { Select } from '../components/ui/Input';
-import { fetchDispatchedLoadPlans, fetchOutlets, downloadDispatchedLoadPlansExcel } from '../api/manager';
+import { fetchDispatchedLoadPlans, fetchDispatchHistory, fetchOutlets, downloadDispatchedLoadPlansExcel } from '../api/manager';
 import { outletLabel } from '../utils/outlets';
 import { LoadingState, ErrorState } from '../components/ui/StateContainers';
 import './Dispatch.css';
@@ -13,6 +13,8 @@ import UndoPlanButton from '../components/UndoPlanButton';
 
 const Dispatch = () => {
   const [orders, setOrders] = useState([]);
+  const [batches, setBatches] = useState([]);
+  const [historyTab, setHistoryTab] = useState('PLANS');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [outlets, setOutlets] = useState([]);
@@ -24,7 +26,8 @@ const Dispatch = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetchDispatchedLoadPlans();
+      const [response, history] = await Promise.all([fetchDispatchedLoadPlans(), fetchDispatchHistory()]);
+      setBatches(history.dispatches || []);
       setOrders(Array.isArray(response) ? response : (response.loadPlans || []));
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Failed to fetch dispatched history.');
@@ -80,6 +83,18 @@ const Dispatch = () => {
     },
   ];
 
+  const batchColumns = [
+    { key: 'orderDisplayId', label: 'Order Ref', render: row => row.orderDisplayId || row.orderId },
+    { key: 'loadPlanId', label: 'Load plan', render: row => <span title={row.loadPlanId}>{row.loadPlanId?.slice(0, 8) || '—'}</span> },
+    { key: 'outletId', label: 'Destination outlet', render: row => outletLabel(row.outletId, outlets) },
+    { key: 'productName', label: 'Product', className: 'dispatch-batch-product', render: row => row.productName || row.productId },
+    { key: 'quantity', label: 'Batch quantity', align: 'center' },
+    { key: 'sourceType', label: 'Dispatch source', render: row => row.sourceType === 'FACTORY' ? 'Factory' : `Godown · ${row.sourceLocationId}` },
+    { key: 'dispatchOrigin', label: 'Dispatch type', render: row => <span className={`dispatch-batch-tag ${row.dispatchOrigin === 'PENDING' ? 'dispatch-batch-tag--pending' : ''}`}>{row.dispatchOrigin === 'PENDING' ? 'From Dispatch Pending' : 'Original dispatch'}</span> },
+    { key: 'dispatchedAt', label: 'Dispatched at', render: row => new Date(row.dispatchedAt).toLocaleString() },
+    { key: 'dispatchedBy', label: 'Dispatched by' },
+  ];
+
   const outletOptions = [
     { value: 'ALL', label: 'All outlets' },
     ...outlets.map((outlet) => ({ value: outlet.outletId, label: `${outlet.outletId}${outlet.outletName || outlet.username ? ` — ${outlet.outletName || outlet.username}` : ''}` })),
@@ -87,6 +102,10 @@ const Dispatch = () => {
   const visibleOrders = selectedOutletId === 'ALL'
     ? orders
     : orders.filter((order) => order.outletId === selectedOutletId);
+
+  const outletBatches = batches.filter(row => selectedOutletId === 'ALL' || row.outletId === selectedOutletId);
+  const pendingBatches = outletBatches.filter(row => row.dispatchOrigin === 'PENDING');
+  const visibleBatches = historyTab === 'PENDING' ? pendingBatches : outletBatches;
 
   const handleOutletChange = (event) => {
     const outletId = event.target.value;
@@ -119,17 +138,24 @@ const Dispatch = () => {
       <div className="dispatch-toolbar">
         <div>
           <h2>Dispatch History & Logistics</h2>
-          <p>Select an outlet to view only its dispatched orders.</p>
+          <p>View completed load plans and each separately recorded dispatch batch.</p>
         </div>
         <div className="dispatch-toolbar-actions">
           <Select label="Outlet" value={selectedOutletId} onChange={handleOutletChange} options={outletOptions} />
-          <Button variant="secondary" onClick={handleDownloadExcel} disabled={isDownloading || loading || orders.length === 0}>
+          <Button variant="secondary" onClick={loadDispatchedHistory} disabled={loading}>Refresh</Button>
+          {historyTab === 'PLANS' && <Button variant="secondary" onClick={handleDownloadExcel} disabled={isDownloading || loading || orders.length === 0}>
             {isDownloading ? 'Downloading...' : 'Export to Excel'}
-          </Button>
+          </Button>}
         </div>
       </div>
+      <div className="dispatch-history-tabs" aria-label="Dispatch history views">
+        {[['PLANS', 'Load plan history', visibleOrders.length], ['BATCHES', 'Dispatch batches', outletBatches.length], ['PENDING', 'From Dispatch Pending', pendingBatches.length]].map(([value, label, count]) =>
+          <button key={value} type="button" className={historyTab === value ? 'active' : ''} aria-pressed={historyTab === value} onClick={() => setHistoryTab(value)}>{label}<span>{count}</span></button>
+        )}
+      </div>
+      {historyTab !== 'PLANS' && <p className="dispatch-history-note">Each row shows only the quantity sent in that dispatch. Earlier shipments remain available in Load plan history; individual batches are recorded from this update onward.</p>}
       <Card>
-        <CardHeader title="Successfully Dispatched Shipments — Grouped by Outlet" />
+        <CardHeader title={historyTab === 'PLANS' ? 'Completed load plans' : historyTab === 'PENDING' ? 'Shipments completed from Dispatch Pending' : 'Individual dispatch batches'} />
         
         {loading ? (
           <LoadingState />
@@ -138,9 +164,9 @@ const Dispatch = () => {
         ) : (
           <CardContent style={{ padding: 0 }}>
             <Table
-              columns={columns}
-              data={visibleOrders}
-              emptyStateMessage={selectedOutletId === 'ALL'
+              columns={historyTab === 'PLANS' ? columns : batchColumns}
+              data={historyTab === 'PLANS' ? visibleOrders : visibleBatches}
+              emptyStateMessage={historyTab !== 'PLANS' ? 'No dispatch batches recorded for this filter.' : selectedOutletId === 'ALL'
                 ? 'No dispatched factory shipments historical records found.'
                 : `No dispatched orders found for ${selectedOutletId}.`}
             />
