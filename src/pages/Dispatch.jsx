@@ -53,7 +53,7 @@ const Dispatch = () => {
       label: 'Order Ref',
       render: (row) => <span title={row.orderId}>{row.orderDisplayId || '—'}</span>,
     },
-    { key: 'createdBy', label: 'Created by', render: (row) => row.createdBy || 'Not recorded' },
+    { key: 'createdBy', label: 'Created by', render: (row) => row.createdByName || (row.createdBy ? 'Name unavailable' : 'Not recorded') },
     { key: 'isCustomized', label: 'Order type', render: (row) => row.isCustomized ? <strong style={{ color: 'var(--color-primary)' }}>Customized</strong> : 'Standard' },
     { key: 'outletId', label: 'Destination Outlet', render: (row) => outletLabel(row.outletId, outlets) },
     {

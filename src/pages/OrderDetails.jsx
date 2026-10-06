@@ -276,8 +276,8 @@ const OrderDetails = () => {
               <div className="font-semibold">{outletLabel(order.outletId, outlets)}</div>
             </div>
             <div>
-              <span className="text-muted">Created by (Username):</span>
-              <div className="font-semibold">{order.createdBy || 'Not recorded'}</div>
+              <span className="text-muted">Created by:</span>
+              <div className="font-semibold">{order.createdByName || (order.createdBy ? 'Name unavailable' : 'Not recorded')}</div>
             </div>
             <div>
               <span className="text-muted">Date Logged:</span>

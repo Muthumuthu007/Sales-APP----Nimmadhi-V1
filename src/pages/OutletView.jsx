@@ -1020,7 +1020,7 @@ const OutletView = () => {
                 <Table 
                   columns={[
                     { key: 'orderId', label: 'Order ID' },
-                    { key: 'createdBy', label: 'Created by', render: (row) => row.createdBy || 'Not recorded' },
+                    { key: 'createdBy', label: 'Created by', render: (row) => row.createdByName || (row.createdBy ? 'Name unavailable' : 'Not recorded') },
                     { key: 'isCustomized', label: 'Order type', render: (row) => row.isCustomized ? 'Customized' : 'Standard' },
                     { key: 'createdAt', label: 'Date', render: (row) => row.createdAt ? new Date(row.createdAt).toLocaleDateString() : '-' },
                     { key: 'items', label: 'Items Count', align: 'center', render: (row) => row.items?.length || 0 },
@@ -1051,7 +1051,7 @@ const OutletView = () => {
                 <Badge status={viewOrderTarget.status} />
               </div>
               <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', fontSize: '0.9rem' }}>
-                <span><strong>Created by:</strong> {viewOrderTarget.createdBy || 'Not recorded'}</span>
+                <span><strong>Created by:</strong> {viewOrderTarget.createdByName || (viewOrderTarget.createdBy ? 'Name unavailable' : 'Not recorded')}</span>
                 <span><strong>Created:</strong> {viewOrderTarget.createdAt ? new Date(viewOrderTarget.createdAt).toLocaleString() : '-'}</span>
                 {viewOrderTarget.remarks && <span><strong>Remarks:</strong> {viewOrderTarget.remarks}</span>}
               </div>
@@ -1084,7 +1084,7 @@ const OutletView = () => {
                 <Table
                   columns={[
                     { key: 'displayId', label: 'Order', render: (row) => row.displayId || row.orderId },
-                    { key: 'createdBy', label: 'Created by', render: (row) => row.createdBy || 'Not recorded' },
+                    { key: 'createdBy', label: 'Created by', render: (row) => row.createdByName || (row.createdBy ? 'Name unavailable' : 'Not recorded') },
                     { key: 'isCustomized', label: 'Order type', render: (row) => row.isCustomized ? 'Customized' : 'Standard' },
                     { key: 'dispatchedAt', label: 'Dispatched', render: (row) => row.dispatchedAt ? new Date(row.dispatchedAt).toLocaleString() : '—' },
                     { key: 'receiptItems', label: 'Pending products', align: 'center', render: (row) => row.receiptItems?.length || 0 },

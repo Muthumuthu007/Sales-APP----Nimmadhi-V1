@@ -67,7 +67,7 @@ const Orders = () => {
   const columns = [
     { key: 'displayId', label: 'Order Ref', render: (row) => <span title={row.orderId}>{row.displayId || row.orderId}</span> },
     { key: 'outletId', label: 'Outlet', render: (row) => outletLabel(row.outletId, outlets) },
-    { key: 'createdBy', label: 'Created by', render: (row) => row.createdBy || 'Not recorded' },
+    { key: 'createdBy', label: 'Created by', render: (row) => row.createdByName || (row.createdBy ? 'Name unavailable' : 'Not recorded') },
     { key: 'isCustomized', label: 'Order type', render: (row) => row.isCustomized ? <strong style={{ color: 'var(--color-primary)' }}>Customized</strong> : 'Standard' },
     { key: 'createdAt', label: 'Created At' },
     { key: 'status', label: 'Status', render: (row) => (

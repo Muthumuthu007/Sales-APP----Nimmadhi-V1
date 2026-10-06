@@ -53,7 +53,7 @@ export default function DispatchPlans({ pendingOnly = false, outletFilter = '' }
   const columns = [
     { key: 'orderId', label: 'Order Ref', render: (line) => line.orderDisplayId || line.orderId },
     { key: 'loadPlanId', label: 'Plan', render: (line) => <span title={line.loadPlanId}>{line.loadPlanId?.slice(0, 8) || '—'}</span> },
-    { key: 'createdBy', label: 'Created by', render: (row) => row.createdBy || 'Not recorded' },
+    { key: 'createdBy', label: 'Created by', render: (row) => row.createdByName || (row.createdBy ? 'Name unavailable' : 'Not recorded') },
     { key: 'isCustomized', label: 'Order type', render: (row) => row.isCustomized ? <strong style={{ color: 'var(--color-primary)' }}>Customized</strong> : 'Standard' },
     { key: 'source', label: 'Dispatch from', render: (line) => <span className={`dispatch-source dispatch-source--${line.sourceType?.toLowerCase()}`}>{line.sourceType === 'FACTORY' ? <Factory size={15} /> : <Warehouse size={15} />}{sourceLabel(line, godowns)}</span> },
     { key: 'destinationOutletId', label: 'Destination outlet', render: (line) => outletLabel(line.destinationOutletId, outlets) },

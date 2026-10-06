@@ -191,7 +191,7 @@ const LoadPlans = () => {
     { key: 'orderDisplayId', label: 'Order Ref', className: 'id-column', render: (row) => <span title={row.orderId}>{row.orderDisplayId || '—'}</span> },
     { key: 'displayId', label: 'Plan Ref', className: 'id-column', render: (row) => <span title={row.loadPlanId}>{row.displayId || compactId(row.loadPlanId)}</span> },
     { key: 'outletId', label: 'Outlet', className: 'outlet-column', render: (row) => outletLabel(row.outletId, outlets) },
-    { key: 'createdBy', label: 'Created by', className: 'creator-column', render: (row) => <span title={row.createdBy || 'Not recorded'}>{row.createdBy || 'Not recorded'}</span> },
+    { key: 'createdBy', label: 'Created by', className: 'creator-column', render: (row) => <span title={row.createdByName || (row.createdBy ? 'Name unavailable' : 'Not recorded')}>{row.createdByName || (row.createdBy ? 'Name unavailable' : 'Not recorded')}</span> },
     { key: 'isCustomized', label: 'Order type', className: 'type-column', render: (row) => row.isCustomized ? <strong style={{ color: 'var(--color-primary)' }}>Customized</strong> : 'Standard' },
     { key: 'productName', label: 'Product', className: 'product-column', render: (row) => row.productName || (row.items && row.items[0]?.productName) || 'Multiple products' },
     { key: 'quantity', label: 'Qty', className: 'quantity-column', align: 'center', render: (row) => row.quantity ?? (row.items && row.items[0]?.quantity) ?? '—' },
