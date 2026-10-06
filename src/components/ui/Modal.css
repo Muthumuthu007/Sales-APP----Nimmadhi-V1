@@ -16,6 +16,9 @@
 }
 
 .modal-content {
+  white-space: normal;
+  text-align: left;
+  overflow-wrap: anywhere;
   background-color: rgba(20, 25, 45, 0.96);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
