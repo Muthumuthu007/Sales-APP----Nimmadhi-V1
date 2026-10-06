@@ -1,12 +1,19 @@
 import React, { useState } from 'react';
+import { RotateCcw, AlertTriangle } from 'lucide-react';
+import './UndoPlanButton.css';
 import { undoLoadPlan } from '../api/manager';
 import { Button } from './ui/Button';
 import { Modal } from './ui/Modal';
 
 const explanations = {
-  dispatch: 'This returns all manually dispatched quantities on this load plan to awaiting dispatch and restores godown stock and reservations. Received quantities cannot be undone.',
-  assignment: 'This removes the Factory/Godown source assignments and releases godown reservations. You can assign sources again. Undo dispatch first if any quantity has left.',
-  approval: 'This returns the quantities approved in this load plan to the order’s pending quantities. Undo dispatch and source assignment first.',
+  dispatch: 'Dispatched quantities will return to Dispatch Pending. Godown stock and reservations will be restored.',
+  assignment: 'Factory and godown assignments will be removed, and reserved godown stock will be released. You can assign a new source afterward.',
+  approval: 'Approved quantities will return to the order’s Pending status, ready for review and approval again.',
+};
+const requirements = {
+  dispatch: 'Quantities already received cannot be undone.',
+  assignment: 'If any quantity has been dispatched, undo dispatch first.',
+  approval: 'Undo dispatch and source assignment before undoing approval.',
 };
 
 export default function UndoPlanButton({ plan, action, onUndone }) {
@@ -25,12 +32,17 @@ export default function UndoPlanButton({ plan, action, onUndone }) {
   };
   return <>
     <Button variant="secondary" onClick={() => { setError(''); setOpen(true); }}>Undo {action}</Button>
-    <Modal isOpen={open} onClose={() => !busy && setOpen(false)} title={`Undo ${action}`}>
-      <p>{action === 'dispatch' && plan.lineId ? 'This returns the dispatched quantity of this product line to awaiting dispatch and restores its godown stock and reservation. Received quantities cannot be undone.' : explanations[action]}</p>
-      {error && <p role="alert">{error}</p>}
-      <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+    <Modal className="undo-dialog" isOpen={open} onClose={() => !busy && setOpen(false)} title={`Undo ${action}`}>
+      <div className="undo-dialog-summary">
+        <span className="undo-dialog-icon"><RotateCcw size={22} aria-hidden="true" /></span>
+        <div><span className="undo-dialog-label">LOAD PLAN</span><strong>{plan.planRef || plan.loadPlanRef || plan.loadPlanId}</strong></div>
+      </div>
+      <p className="undo-dialog-description">{action === 'dispatch' && plan.lineId ? 'This product’s dispatched quantity will return to Dispatch Pending. Its godown stock and reservation will be restored.' : explanations[action]}</p>
+      <div className="undo-dialog-notice"><AlertTriangle size={18} aria-hidden="true" /><p>{requirements[action]}</p></div>
+      {error && <div className="undo-dialog-error" role="alert">{error}</div>}
+      <div className="undo-dialog-footer">
         <Button variant="secondary" disabled={busy} onClick={() => setOpen(false)}>Cancel</Button>
-        <Button variant="primary" disabled={busy} onClick={undo}>{busy ? 'Undoing…' : `Confirm undo ${action}`}</Button>
+        <Button variant="primary" disabled={busy} onClick={undo}>{busy ? 'Undoing…' : `Undo ${action}`}</Button>
       </div>
     </Modal>
   </>;
