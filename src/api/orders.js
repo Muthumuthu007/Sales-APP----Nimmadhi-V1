@@ -1,4 +1,5 @@
 import api from './axios';
+import { showroomReportCsv } from '../utils/salesReportCsv';
 
 export async function createOrder(data) {
   return api.post('/orders', data);
@@ -40,7 +41,10 @@ export async function downloadSalesReport(type, date, outletId) {
   const data = await api.get(`/reports/sales?type=${type}&date=${date}&outletId=${outletId}`);
   let csvContent = "";
   
-  if (Array.isArray(data)) {
+  const reportRows = Array.isArray(data) ? data : (data?.sales || data?.items || []);
+  if (reportRows.some(row => row.pricingMode === 'MRP_DISCOUNT')) {
+    csvContent = showroomReportCsv(reportRows);
+  } else if (Array.isArray(data)) {
     if (data.length > 0) {
       const keys = Object.keys(data[0]);
       csvContent += keys.join(",") + "\n";
@@ -81,4 +85,5 @@ export async function downloadSalesReport(type, date, outletId) {
   document.body.appendChild(link);
   link.click();
   link.remove();
+  window.URL.revokeObjectURL(downloadUrl);
 }

@@ -85,3 +85,9 @@
   .order-builder-add-row, .sales-builder-add-row { grid-template-columns: 1fr; }
   .outlet-tab-btn { padding: 0.75rem 0.85rem; font-size: 0.82rem; }
 }
+
+.sales-invoice-dialog { max-width: 900px; }
+.showroom-receipt-meta { padding: 0 1.5rem; font-size: .85rem; line-height: 1.7; color: #5c6573; }
+.sales-invoice-dialog .sales-receipt-items td:first-child { min-width: 180px; line-height: 1.65; }
+.sales-invoice-dialog .sales-receipt-items th { font-size: .75rem; }
+.sales-invoice-dialog .sales-receipt-items td { color: #172033; background: #fff; }

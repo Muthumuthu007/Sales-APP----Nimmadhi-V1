@@ -16,10 +16,12 @@ import { fetchActiveOutletOffers } from '../api/offers';
 
 import { AuthContext } from '../context/AuthContext';
 import EmployeeAttendance from './EmployeeAttendance';
+import ShowroomSaleFields from '../components/ShowroomSaleFields';
+import { showroomPrice, emptyShowroomItem } from '../utils/showroomPricing';
 import './OutletView.css';
 
 const OutletView = () => {
-  const { outletId, role } = React.useContext(AuthContext);
+  const { outletId, role, empName: loggedInEmployeeName } = React.useContext(AuthContext);
   const [activeTab, setActiveTab] = useState(() => (
     ['OUTLET', 'EMPLOYEE', 'CASHIER', 'SUPERVISOR'].includes(role) ? 'ATTENDANCE' : 'CREATE_ORDER'
   ));
@@ -159,8 +161,10 @@ const OutletView = () => {
 
   // --- Sales Entry State ---
   const [salesProductOptions, setSalesProductOptions] = useState([{ label: 'Loading products...', value: '' }]);
-  const [ownedShowroomSales, setOwnedShowroomSales] = useState(false);
+  const [ownedShowroomSales, setOwnedShowroomSales] = useState(() => String(outletId || '').toUpperCase().startsWith('NIM'));
   const [salesItems, setSalesItems] = useState([]);
+  const [showroomItem, setShowroomItem] = useState({ ...emptyShowroomItem });
+  const [saleDetails, setSaleDetails] = useState({ billNo: '', dispatchDate: '' });
   const [salesProduct, setSalesProduct] = useState('');
   const [salesQuantity, setSalesQuantity] = useState(1);
   const [salesDate, setSalesDate] = useState(new Date().toISOString().split('T')[0]);
@@ -187,8 +191,8 @@ const OutletView = () => {
   const [settlementError, setSettlementError] = useState('');
   const [settlingPayment, setSettlingPayment] = useState(false);
 
-  const grossAmount = Number(billAmount || 0);
-  const enteredDiscount = Number(extraDiscountValue || 0);
+  const grossAmount = ownedShowroomSales ? salesItems.reduce((total, item) => total + Math.round((showroomPrice(item)?.totalSalesValue || 0) * 100), 0) / 100 : Number(billAmount || 0);
+  const enteredDiscount = ownedShowroomSales ? 0 : Number(extraDiscountValue || 0);
   const calculatedExtraDiscount = extraDiscountType === 'PERCENT'
     ? grossAmount * enteredDiscount / 100
     : enteredDiscount;
@@ -199,19 +203,24 @@ const OutletView = () => {
       setSalesError('Please select a product.');
       return;
     }
-    if (salesQuantity <= 0) {
+    if (!Number.isSafeInteger(Number(salesQuantity)) || Number(salesQuantity) <= 0) {
       setSalesError('Quantity must be greater than 0.');
       return;
     }
-    const existingIndex = salesItems.findIndex(i => i.product_id === salesProduct);
+    if (ownedShowroomSales && (!['brand', 'model', 'colour', 'size'].every(key => showroomItem[key].trim()) || !showroomPrice({ ...showroomItem, quantity: Number(salesQuantity) })?.value)) {
+      setSalesError('Enter brand, model, colour, size, sticker MRP, and a valid discount and tax percentage.');
+      return;
+    }
+    const existingIndex = salesItems.findIndex(i => i.product_id === salesProduct && (!ownedShowroomSales || Object.keys(emptyShowroomItem).every(key => i[key] === showroomItem[key])));
     if (existingIndex >= 0) {
       const newItems = [...salesItems];
       newItems[existingIndex].quantity += Number(salesQuantity);
       setSalesItems(newItems);
     } else {
-      setSalesItems([...salesItems, { product_id: salesProduct, quantity: Number(salesQuantity) }]);
+      setSalesItems([...salesItems, { product_id: salesProduct, quantity: Number(salesQuantity), ...(ownedShowroomSales ? showroomItem : {}) }]);
     }
     setSalesProduct('');
+    setShowroomItem({ ...emptyShowroomItem });
     setSalesQuantity(1);
     setSalesError(null);
     setSalesSuccess(null);
@@ -236,7 +245,7 @@ const OutletView = () => {
       setSalesError('Customer name, phone number, and address are required.');
       return;
     }
-    const parsedBillAmount = Number(billAmount);
+    const parsedBillAmount = grossAmount;
     const parsedAdvanceAmount = Number(advanceAmount || 0);
     if (!Number.isFinite(parsedBillAmount) || parsedBillAmount <= 0 || !Number.isFinite(enteredDiscount) || enteredDiscount < 0 || (extraDiscountType === 'PERCENT' && enteredDiscount > 100) || calculatedExtraDiscount >= parsedBillAmount || !Number.isFinite(parsedAdvanceAmount) || parsedAdvanceAmount < 0 || parsedAdvanceAmount > netBillAmount) {
       setSalesError('Enter a valid bill amount and an advance amount that does not exceed it.');
@@ -256,15 +265,18 @@ const OutletView = () => {
         customerAddress: customerAddress.trim(),
         paymentMethod,
         billAmount: parsedBillAmount,
+        ...(ownedShowroomSales ? { pricingMode: 'MRP_DISCOUNT', ...saleDetails, dispatchDate: saleDetails.dispatchDate || null } : {}),
         advanceAmount: parsedAdvanceAmount,
         extraDiscountType,
         extraDiscountValue: enteredDiscount,
         extraDiscountReason: extraDiscountReason.trim(),
-        soldItems: salesItems.map(i => ({ product_id: i.product_id, qty: i.quantity }))
+        soldItems: salesItems.map(({ quantity, ...item }) => ({ ...item, qty: quantity }))
       });
-      setReceipt({ ...result, items: submittedItems });
+      setReceipt({ ...result, items: submittedItems.map((item, index) => ({ ...item, ...(result.soldItems?.[index] || {}) })) });
       setSalesSuccess('Sales invoice created successfully.');
       setSalesItems([]);
+      setSaleDetails({ billNo: '', dispatchDate: '' });
+      setShowroomItem({ ...emptyShowroomItem });
       setCustomerName('');
       setCustomerPhone('');
       setCustomerAddress('');
@@ -275,7 +287,7 @@ const OutletView = () => {
       setExtraDiscountValue('');
       setExtraDiscountReason('');
     } catch (err) {
-      setSalesError(err.response?.data?.message || err.message || 'Failed to record sales.');
+      setSalesError(err.response?.data?.error || err.response?.data?.message || (err.response?.data ? JSON.stringify(err.response.data) : err.message) || 'Failed to record sales.');
     } finally {
       setIsSubmittingSales(false);
     }
@@ -1188,6 +1200,7 @@ const OutletView = () => {
                 <section className="sales-builder-date-card">
                   <div className="order-builder-section-label"><span>1</span><div><strong>Sales date</strong><small>Choose the date for this entry</small></div></div>
                   <Input type="date" label="Date of sale" value={salesDate} onChange={(e) => setSalesDate(e.target.value)} />
+                  {ownedShowroomSales && <><Input label="Bill number (optional)" value={saleDetails.billNo} onChange={event => setSaleDetails({ ...saleDetails, billNo: event.target.value })} maxLength={80} /><Input label="Planned dispatch date (optional)" type="date" value={saleDetails.dispatchDate} onChange={event => setSaleDetails({ ...saleDetails, dispatchDate: event.target.value })} /><p className="showroom-sale-hint">Work-order number is generated with the factory order.<br />Sales person: <strong>{loggedInEmployeeName || 'Recorded from your login'}</strong></p></>}
                 </section>
                 <section className="sales-builder-date-card sales-builder-customer-card">
                   <div className="order-builder-section-label"><span>2</span><div><strong>Customer details</strong><small>Required for every sales receipt</small></div></div>
@@ -1199,17 +1212,21 @@ const OutletView = () => {
                     { value: 'CARD', label: 'Card' },
                     { value: 'UPI', label: 'UPI' },
                   ]} />
+                  {!ownedShowroomSales && <>
                   <Input label="Bill amount before extra discount" type="number" min="0.01" step="0.01" placeholder="0.00" value={billAmount} onChange={(e) => setBillAmount(e.target.value)} />
                   <Select label="Extra discount type" value={extraDiscountType} onChange={(e) => setExtraDiscountType(e.target.value)} options={[{ value: 'PERCENT', label: 'Percentage (%)' }, { value: 'AMOUNT', label: 'Amount (₹)' }]} />
                   <Input label={extraDiscountType === 'PERCENT' ? 'Extra discount (%)' : 'Extra discount amount (₹)'} type="number" min="0" step="0.01" placeholder="0.00" value={extraDiscountValue} onChange={(e) => setExtraDiscountValue(e.target.value)} />
                   <Input label="Extra discount reason (optional)" placeholder="Customer negotiation, damaged display, etc." value={extraDiscountReason} onChange={(e) => setExtraDiscountReason(e.target.value)} />
                   {billAmount && <div className="sales-builder-payment-summary">Extra discount: <strong>{formatCurrency(calculatedExtraDiscount)}</strong><br />Net bill amount: <strong>{formatCurrency(netBillAmount)}</strong></div>}
+                  </>}
+                  {ownedShowroomSales && <div className="sales-builder-payment-summary">Grand total (tax included): <strong>{formatCurrency(netBillAmount)}</strong></div>}
                   <Input label="Amount paid now (advance)" type="number" min="0" step="0.01" placeholder="0.00" value={advanceAmount} onChange={(e) => setAdvanceAmount(e.target.value)} />
-                  {billAmount && <div className="sales-builder-payment-summary">Balance due: <strong>{formatCurrency(Math.max(0, netBillAmount - Number(advanceAmount || 0)))}</strong></div>}
+                  {grossAmount > 0 && <div className="sales-builder-payment-summary">Balance due: <strong>{formatCurrency(Math.max(0, netBillAmount - Number(advanceAmount || 0)))}</strong></div>}
                 </section>
                 <section className="sales-builder-entry-card">
                   <div className="order-builder-section-label"><span>3</span><div><strong>Sold product</strong><small>{ownedShowroomSales ? 'Factory-delivery products are limited by max producible quantity' : 'Only products available at this outlet are listed'}</small></div></div>
-                  <SearchableSelect label="Select product" options={salesProductOptions} value={salesProduct} onChange={(val) => setSalesProduct(val)} placeholder={ownedShowroomSales ? 'Search factory products...' : 'Search available products...'} />
+                  <SearchableSelect label="Select product" options={salesProductOptions} value={salesProduct} onChange={val => { setSalesProduct(val); const name = salesProductOptions.find(option => option.value === val)?.label?.split(' — max produce:')[0] || ''; const size = name.match(/\d+(?:\.\d+)?[xX×]\d+(?:\.\d+)?[xX×]\d+(?:\.\d+)?/); setShowroomItem({ ...showroomItem, model: name, size: size ? size[0].replace(/[xX]/g, ' × ') : '' }); }} placeholder={ownedShowroomSales ? 'Search factory products...' : 'Search available products...'} />
+                  {ownedShowroomSales && <ShowroomSaleFields item={showroomItem} onChange={setShowroomItem} quantity={Number(salesQuantity)} />}
                   <div className="sales-builder-add-row">
                     <Input label="Quantity sold" type="number" min="1" value={salesQuantity} onChange={(e) => setSalesQuantity(e.target.value)} />
                     <Button className="order-builder-add-button" onClick={handleAddSalesItem} disabled={isSubmittingSales}><Plus size={18} /> Add sale</Button>
@@ -1228,7 +1245,7 @@ const OutletView = () => {
                     {salesItems.map((item, idx) => (
                       <div key={idx} className="order-builder-item">
                         <span className="order-builder-item-quantity">{item.quantity}</span>
-                        <span className="order-builder-item-name">{salesProductOptions.find(o => o.value === item.product_id)?.label || item.product_id}</span>
+                        <span className="order-builder-item-name">{salesProductOptions.find(o => o.value === item.product_id)?.label || item.product_id}{ownedShowroomSales && <span className="showroom-item-details">{item.brand} · {item.colour} · {item.size}<br />MRP {formatCurrency(Number(item.mrpSticker))} − {item.discountPercent}% · Unit {formatCurrency(showroomPrice(item)?.value || 0)}<br /><strong>Total {formatCurrency(showroomPrice(item)?.totalSalesValue || 0)}</strong> · Tax included ({item.taxPercent}%){item.scheme && <><br />Scheme: {item.scheme}</>}</span>}</span>
                         <Button variant="secondary" className="order-builder-remove" onClick={() => removeSalesItem(idx)} disabled={isSubmittingSales} aria-label="Remove sales item">
                           <Trash2 size={16} />
                         </Button>
@@ -1282,14 +1299,14 @@ const OutletView = () => {
           </Card>
         )}
 
-        <Modal isOpen={Boolean(receipt)} onClose={() => setReceipt(null)} title="Sales invoice">
+        <Modal className="sales-invoice-dialog" isOpen={Boolean(receipt)} onClose={() => setReceipt(null)} title="Sales invoice">
           {receipt && (
             <article className="sales-receipt">
               <header className="sales-receipt-header"><div><p className="sales-receipt-kicker">NIMMADHI</p><h2>MATTRESS</h2><span>Get your sleep</span></div><div className="sales-receipt-invoice"><span>INVOICE</span><strong>{receipt.saleReferenceId || '-'}</strong><small>{receipt.saleDate}</small></div></header>
               <section className="sales-receipt-customer"><div><span>BILLED TO</span><strong>{receipt.customerName}</strong><p>{receipt.customerPhone}<br />{receipt.customerAddress}</p></div><div><span>PAYMENT</span><strong>{receipt.paymentMethod}</strong><p>{receipt.paymentStatus === 'PAID' ? 'Paid in full' : 'Advance payment received'}</p></div></section>
-              <table className="sales-receipt-items"><thead><tr><th>Product</th><th>Quantity</th></tr></thead><tbody>{(receipt.items || []).map((item, index) => <tr key={`${item.product_id}-${index}`}><td>{item.productName || item.product_id}</td><td>{item.quantity}</td></tr>)}</tbody></table>
+              {receipt.pricingMode === 'MRP_DISCOUNT' ? <><p className="showroom-receipt-meta">Work order: {receipt.workOrderNo || receipt.factoryOrderDisplayId} · Bill: {receipt.billNo || '—'}<br />Sales person: {receipt.createdByName || 'Name unavailable'} · Planned dispatch: {receipt.dispatchDate || '—'}</p><div style={{overflowX:'auto'}}><table className="sales-receipt-items"><thead><tr><th>Brand / Model / Colour / Size</th><th>Qty</th><th>Sticker MRP</th><th>Discount</th><th>Value</th><th>Total</th></tr></thead><tbody>{(receipt.items || []).map((item,index) => <tr key={index}><td>{item.brand} · {item.model}<br />{item.colour} · {item.size}{item.scheme && <><br />Scheme: {item.scheme}</>}<br />Tax included: {item.taxPercent}%</td><td>{item.quantity}</td><td>{formatCurrency(Number(item.mrpSticker))}</td><td>{item.discountPercent}%</td><td>{formatCurrency(Number(item.value))}</td><td>{formatCurrency(Number(item.totalSalesValue))}</td></tr>)}</tbody></table></div></> : <table className="sales-receipt-items"><thead><tr><th>Product</th><th>Quantity</th></tr></thead><tbody>{(receipt.items || []).map((item, index) => <tr key={`${item.product_id}-${index}`}><td>{item.productName || item.product_id}</td><td>{item.quantity}</td></tr>)}</tbody></table>}
               {(receipt.eligibleOffers || []).some((offer) => Number(offer.freeQuantity || 0) > 0) && <section className="sales-receipt-offers"><strong>Complimentary items</strong>{(receipt.eligibleOffers || []).filter((offer) => Number(offer.freeQuantity || 0) > 0).map((offer) => <p key={offer.offerId}>{offerSummary(offer)}</p>)}</section>}
-              <section className="sales-receipt-totals">{Number(receipt.extraDiscountAmount || 0) > 0 && <><div><span>Bill before discount</span><strong>{formatCurrency(receipt.grossBillAmount)}</strong></div><div><span>Extra discount</span><strong>− {formatCurrency(receipt.extraDiscountAmount)}</strong></div></>}<div><span>Total bill</span><strong>{formatCurrency(receipt.billAmount)}</strong></div><div><span>Total paid</span><strong>{formatCurrency(receipt.advanceAmount)}</strong></div><div className="sales-receipt-balance"><span>Balance due</span><strong>{formatCurrency(receipt.balanceDue)}</strong></div></section>
+              <section className="sales-receipt-totals">{Number(receipt.extraDiscountAmount || 0) > 0 && <><div><span>Bill before discount</span><strong>{formatCurrency(receipt.grossBillAmount)}</strong></div><div><span>Extra discount</span><strong>− {formatCurrency(receipt.extraDiscountAmount)}</strong></div></>}<div><span>Total bill</span><strong>{formatCurrency(receipt.billAmount)}</strong></div>{receipt.pricingMode === 'MRP_DISCOUNT' && <div><span>Tax included in total</span><strong>{formatCurrency((receipt.items || []).reduce((total,item) => total + Number(item.taxAmount || 0),0))}</strong></div>}<div><span>Total paid</span><strong>{formatCurrency(receipt.advanceAmount)}</strong></div><div className="sales-receipt-balance"><span>Balance due</span><strong>{formatCurrency(receipt.balanceDue)}</strong></div></section>
               <footer>Thank you for choosing Nimmadhi Mattress. Please retain this invoice for your records.</footer>
               <div className="sales-receipt-actions"><Button variant="secondary" onClick={() => window.print()}>Print receipt</Button><Button onClick={sendReceiptToCustomer}>Send receipt</Button></div>
             </article>
@@ -1457,6 +1474,20 @@ const OutletView = () => {
                               columns={[
                                 { key: 'id', label: 'S.No', render: (row, i) => (i !== undefined ? i + 1 : '-') },
                                 { key: 'product', label: 'Product Name', render: (row) => row.productName || row.product_name || getProductName(row.productId || row.product_id || row.name) },
+                                ...(ownedShowroomSales ? [
+                                  { key: 'workOrderNo', label: 'Work order', render: row => row.workOrderNo || '—' },
+                                  { key: 'billNo', label: 'Bill no.', render: row => row.billNo || '—' },
+                                  { key: 'dispatchDate', label: 'Planned dispatch', render: row => row.dispatchDate || '—' },
+                                  { key: 'customerName', label: 'Customer' }, { key: 'customerAddress', label: 'Address' }, { key: 'customerPhone', label: 'Phone' },
+                                  { key: 'brand', label: 'Brand' }, { key: 'model', label: 'Model' }, { key: 'colour', label: 'Colour' }, { key: 'size', label: 'Size' },
+                                  { key: 'mrpSticker', label: 'Sticker MRP', render: row => row.mrpSticker != null ? formatCurrency(Number(row.mrpSticker)) : '—' },
+                                  { key: 'discountPercent', label: 'Discount', render: row => row.discountPercent != null ? `${row.discountPercent}%` : '—' },
+                                  { key: 'value', label: 'Value', render: row => row.value != null ? formatCurrency(Number(row.value)) : '—' },
+                                  { key: 'billAmount', label: 'Grand total', render: row => formatCurrency(Number(row.billAmount || 0)) },
+                                  { key: 'scheme', label: 'Scheme', render: row => row.scheme || '—' },
+                                  { key: 'taxPercent', label: 'Included tax', render: row => row.taxPercent != null ? `${row.taxPercent}%` : '—' },
+                                  { key: 'createdByName', label: 'Sales person', render: row => row.createdByName || 'Not recorded' },
+                                ] : []),
                                 { key: 'total_qty', label: 'Total Qty', align: 'center', render: (row) => row.totalQty ?? row.total_qty ?? row.quantity ?? 0 },
                                 { key: 'complimentary', label: 'Complimentary', render: (row) => complimentarySummary(row.eligibleOffers) },
                                 { key: 'amount', label: 'Amount', align: 'right', render: (row) => row.amount || row.totalAmount || row.revenue ? `₹${Number(row.amount || row.totalAmount || row.revenue).toLocaleString()}` : '-' },
