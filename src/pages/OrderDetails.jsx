@@ -126,6 +126,7 @@ const OrderDetails = () => {
           pendingQty: pending,
           approvedQty: approved,
           maxProduce: Number(item.maxProduce || 0),
+          complimentaryOffers: item.complimentaryOffers,
           customSize: item.customSize,
           isCustomized: item.isCustomized,
           approveDelta: '', // Let user type explicitly
