@@ -1,3 +1,4 @@
+import OrderProduct from '../components/OrderProduct';
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '../components/ui/Card';
 import { Table } from '../components/ui/Table';
@@ -88,14 +89,14 @@ const Dispatch = () => {
   const batchReference = row => `DSP-${row.dispatchId?.slice(0, 8).toUpperCase() || '—'}`;
   const showBatchDetails = row => setDetailsPlan({ ...row, isBatch: true,
     displayId: row.planDisplayId || row.loadPlanId,
-    items: [{ productName: row.productName, product_id: row.productId, quantity: row.quantity }],
+    items: [{ ...row, productName: row.productName, product_id: row.productId, quantity: row.quantity }],
   });
   const batchColumns = [
     { key: 'dispatchId', label: 'Dispatch ID', render: row => <span title={row.dispatchId}>{batchReference(row)}</span> },
     { key: 'orderDisplayId', label: 'Order Ref', render: row => row.orderDisplayId || row.orderId },
     { key: 'loadPlanId', label: 'Load plan', render: row => <span title={row.loadPlanId}>{row.planDisplayId || row.loadPlanId?.slice(0, 8) || '—'}</span> },
     { key: 'outletId', label: 'Destination outlet', render: row => outletLabel(row.outletId, outlets) },
-    { key: 'productName', label: 'Product', className: 'dispatch-batch-product', render: row => row.productName || row.productId },
+    { key: 'productName', label: 'Product', className: 'dispatch-batch-product', render: row => <OrderProduct item={row} /> },
     { key: 'quantity', label: 'Batch quantity', align: 'center' },
     { key: 'sourceType', label: 'Dispatch source', render: row => row.sourceType === 'FACTORY' ? 'Factory' : `Godown · ${row.sourceLocationId}` },
     { key: 'dispatchOrigin', label: 'Dispatch type', render: row => <span className={`dispatch-batch-tag ${row.dispatchOrigin === 'PENDING' ? 'dispatch-batch-tag--pending' : ''}`}>{row.dispatchOrigin === 'PENDING' ? 'From Dispatch Pending' : 'Original dispatch'}</span> },
@@ -199,7 +200,7 @@ const Dispatch = () => {
           <h4>Products dispatched</h4>
           <Table
             columns={[
-              { key: 'productName', label: 'Product', render: (item) => item.productName || item.product_id || '—' },
+              { key: 'productName', label: 'Product', render: (item) => <OrderProduct item={item} /> },
               { key: 'quantity', label: 'Quantity', align: 'center', render: (item) => item.quantity ?? '—' },
               ...(!detailsPlan?.isBatch ? [{ key: 'maxProduce', label: 'Capacity', align: 'center', render: (item) => item.maxProduce ?? '—' }] : []),
               { key: 'isFree', label: 'Type', render: (item) => item.isFree ? 'Free item' : 'Ordered item' },

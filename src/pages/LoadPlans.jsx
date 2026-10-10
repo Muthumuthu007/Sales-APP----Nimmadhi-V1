@@ -1,3 +1,4 @@
+import OrderProduct from '../components/OrderProduct';
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '../components/ui/Card';
 import { Table } from '../components/ui/Table';
@@ -97,6 +98,7 @@ const LoadPlans = () => {
   const planItems = (plan) => {
     const items = plan?.items?.length ? plan.items : [plan];
     return items.map((item, index) => ({
+      ...item,
       id: `${item.productId || item.product_id || index}-${index}`,
       productId: item.productId || item.product_id,
       productName: item.productName || item.product_name || item.productId || item.product_id,
@@ -193,7 +195,7 @@ const LoadPlans = () => {
     { key: 'outletId', label: 'Outlet', className: 'outlet-column', render: (row) => outletLabel(row.outletId, outlets) },
     { key: 'createdBy', label: 'Created by', className: 'creator-column', render: (row) => <span title={row.createdByName || (row.createdBy ? 'Name unavailable' : 'Not recorded')}>{row.createdByName || (row.createdBy ? 'Name unavailable' : 'Not recorded')}</span> },
     { key: 'isCustomized', label: 'Order type', className: 'type-column', render: (row) => row.isCustomized ? <strong style={{ color: 'var(--color-primary)' }}>Customized</strong> : 'Standard' },
-    { key: 'productName', label: 'Product', className: 'product-column', render: (row) => row.productName || (row.items && row.items[0]?.productName) || 'Multiple products' },
+    { key: 'productName', label: 'Product', className: 'product-column', render: (row) => <div>{(row.items?.length ? row.items : [row]).map((item, index) => <OrderProduct key={index} item={item} />)}</div> },
     { key: 'quantity', label: 'Qty', className: 'quantity-column', align: 'center', render: (row) => row.quantity ?? (row.items && row.items[0]?.quantity) ?? '—' },
     { key: 'createdAt', label: 'Created', className: 'created-column', render: (row) => <span title={row.createdAt}>{formatDateTime(row.createdAt)}</span> },
     { key: 'actions', label: 'Action', className: 'action-column', align: 'right', render: (row) => (
@@ -312,7 +314,7 @@ const LoadPlans = () => {
         <div className="allocation-list">
           {allocationRows.map((row, index) => (
             <div className="allocation-row" key={row.id}>
-              <div className="allocation-product"><strong>{row.productName}</strong><span>{row.quantity} unit{row.quantity === 1 ? '' : 's'}</span></div>
+              <div className="allocation-product"><OrderProduct item={row} /><span>{row.quantity} unit{row.quantity === 1 ? '' : 's'}</span></div>
               <Select
                 label="Dispatch from"
                 value={row.sourceType}
@@ -354,7 +356,7 @@ const LoadPlans = () => {
           <h4>Items in this load plan</h4>
           <Table
             columns={[
-              { key: 'productName', label: 'Product', render: (item) => item.productName || item.product_id || '—' },
+              { key: 'productName', label: 'Product', render: (item) => <OrderProduct item={item} /> },
               { key: 'quantity', label: 'Quantity', align: 'center', render: (item) => item.quantity ?? '—' },
               { key: 'isFree', label: 'Type', render: (item) => item.isFree ? 'Free item' : 'Ordered item' },
             ]}

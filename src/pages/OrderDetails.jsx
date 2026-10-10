@@ -1,3 +1,4 @@
+import OrderProduct from '../components/OrderProduct';
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Plus, X } from 'lucide-react';
@@ -129,6 +130,7 @@ const OrderDetails = () => {
           isCustomized: item.isCustomized,
           approveDelta: '', // Let user type explicitly
           freeItems: Array.isArray(item.freeItems) ? item.freeItems.map(f => ({
+            productName: f.productName,
             product_id: f.product_id || '',
             quantity: Number(f.quantity || 1)
           })) : []
@@ -312,7 +314,7 @@ const OrderDetails = () => {
                   {approvalItems.map((item, idx) => (
                     <tr key={idx}>
                       <td>
-                        <div className="font-semibold">{item.productName}</div>
+                        <OrderProduct item={item} />
                         {item.isCustomized && <small style={{ color: 'var(--color-primary)' }}>Customized size</small>}
                         <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>ID: {item.product_id}</div>
                         <div role="status" style={{ display: 'inline-block', marginTop: '0.35rem', padding: '0.25rem 0.5rem', borderRadius: '4px', background: 'var(--color-secondary)', fontSize: '0.8rem' }}>

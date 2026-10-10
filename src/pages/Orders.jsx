@@ -1,3 +1,4 @@
+import OrderProduct from '../components/OrderProduct';
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader } from '../components/ui/Card';
@@ -69,6 +70,7 @@ const Orders = () => {
     { key: 'outletId', label: 'Outlet', render: (row) => outletLabel(row.outletId, outlets) },
     { key: 'createdBy', label: 'Created by', render: (row) => row.createdByName || (row.createdBy ? 'Name unavailable' : 'Not recorded') },
     { key: 'isCustomized', label: 'Order type', render: (row) => row.isCustomized ? <strong style={{ color: 'var(--color-primary)' }}>Customized</strong> : 'Standard' },
+    { key: 'products', label: 'Products / Complimentary', render: row => <div style={{ display: 'grid', gap: '0.75rem' }}>{(row.items || []).map((item, index) => <OrderProduct key={index} item={item} />)}</div> },
     { key: 'createdAt', label: 'Created At' },
     { key: 'status', label: 'Status', render: (row) => (
       <Badge status={(row.status === 'PENDING' && activeTab === 'PARTIALLY_APPROVED') ? 'PARTIALLY_APPROVED' : row.status} />

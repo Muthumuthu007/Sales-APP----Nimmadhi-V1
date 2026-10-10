@@ -1,3 +1,4 @@
+import OrderProduct from '../components/OrderProduct';
 import React, { useState, useEffect, useMemo } from 'react';
 import api from '../api/axios';
 import { Calendar, FileText, Gift, MapPin, PackageSearch, Plus, ShoppingBag, Trash2 } from 'lucide-react';
@@ -1069,7 +1070,7 @@ const OutletView = () => {
               </div>
               <Table
                 columns={[
-                  { key: 'productName', label: 'Product', render: (item) => item.productName || getProductName(item.product_id) || item.product_id },
+                  { key: 'productName', label: 'Product', render: (item) => <OrderProduct item={item} name={item.productName || getProductName(item.product_id) || item.product_id} /> },
                   { key: 'orderedQty', label: 'Ordered', align: 'center', render: (item) => item.orderedQty ?? item.quantity ?? 0 },
                   { key: 'approvedQty', label: 'Approved', align: 'center', render: (item) => item.approvedQty ?? 0 },
                   { key: 'pendingQty', label: 'Pending', align: 'center', render: (item) => item.pendingQty ?? 0 },

@@ -1,3 +1,4 @@
+import OrderProduct from '../components/OrderProduct';
 import React, { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, Factory, MapPin, RefreshCw, Truck, Warehouse } from 'lucide-react';
 import { fetchDispatchPlans, fetchGodowns, fetchOutlets, manuallyDispatchFulfillment } from '../api/manager';
@@ -57,7 +58,7 @@ export default function DispatchPlans({ pendingOnly = false, outletFilter = '' }
     { key: 'isCustomized', label: 'Order type', render: (row) => row.isCustomized ? <strong style={{ color: 'var(--color-primary)' }}>Customized</strong> : 'Standard' },
     { key: 'source', label: 'Dispatch from', render: (line) => <span className={`dispatch-source dispatch-source--${line.sourceType?.toLowerCase()}`}>{line.sourceType === 'FACTORY' ? <Factory size={15} /> : <Warehouse size={15} />}{sourceLabel(line, godowns)}</span> },
     { key: 'destinationOutletId', label: 'Destination outlet', render: (line) => outletLabel(line.destinationOutletId, outlets) },
-    { key: 'productName', label: 'Product', render: (line) => line.productName || line.productId },
+    { key: 'productName', label: 'Product', render: (line) => <OrderProduct item={line} /> },
     { key: 'quantity', label: 'Progress', align: 'center', render: (line) => `${line.dispatchedQty || 0} / ${line.quantity || 0}` },
     { key: 'dispatchPendingQty', label: 'Dispatch Pending', align: 'center', render: (line) => Number(line.quantity || 0) - Number(line.dispatchedQty || 0) },
     { key: 'action', label: 'Action', align: 'right', render: (line) => <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
