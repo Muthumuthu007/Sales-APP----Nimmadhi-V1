@@ -1,3 +1,4 @@
+import { complimentaryForProduct } from '../utils/orderComplimentary';
 import OrderProduct from '../components/OrderProduct';
 import React, { useState, useEffect, useMemo } from 'react';
 import api from '../api/axios';
@@ -67,6 +68,7 @@ const OutletView = () => {
               return {
                 label: name || id || 'Unknown Product',
                 value: id || name,
+                groupId: p.group_id || p.groupId,
                 group: p.group_name || p.groupName || 'Ungrouped'
               };
             }
@@ -999,7 +1001,9 @@ const OutletView = () => {
                     {items.map((item, idx) => (
                       <div key={idx} className="order-builder-item">
                         <span className="order-builder-item-quantity">{item.quantity}</span>
-                        <span className="order-builder-item-name">{getProductName(item.product_id)}{item.customSize && <small style={{ display: 'block' }}>Customized: {customSizeText(item.customSize)}</small>}</span>
+                        <span className="order-builder-item-name">{getProductName(item.product_id)}{item.customSize && <small style={{ display: 'block' }}>Customized: {customSizeText(item.customSize)}</small>}
+                          {complimentaryForProduct(activeOffers, item.product_id, productOptions.find(product => product.value === item.product_id)?.groupId).map(offer => <small key={offer.offerId} style={{ display: 'block', marginTop: '0.35rem', color: 'var(--color-primary)' }}>Complimentary: {offer.freeProductName || offer.freeProductId} × {offer.freeQuantity}</small>)}
+                        </span>
                         <Button variant="secondary" className="order-builder-remove" onClick={() => removeItem(idx)} disabled={isSubmitting} aria-label={`Remove ${getProductName(item.product_id)}`}>
                           <Trash2 size={16} />
                         </Button>
