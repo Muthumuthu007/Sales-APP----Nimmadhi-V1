@@ -76,3 +76,10 @@ export async function fetchOutletProductGroups(outletId) {
 export async function assignOutletProductGroups(outletId, groupIds) {
   return api.post(`/manager/outlets/${encodeURIComponent(outletId)}/product-groups`, { groupIds });
 }
+
+export async function fetchEmployeeAdvances(empId, outletId, month) {
+  return api.get(`/manager/employees/${encodeURIComponent(empId)}/advances`, { params: { outletId, month } });
+}
+export async function recordEmployeeAdvance(empId, data) {
+  return api.post(`/manager/employees/${encodeURIComponent(empId)}/advances`, data);
+}

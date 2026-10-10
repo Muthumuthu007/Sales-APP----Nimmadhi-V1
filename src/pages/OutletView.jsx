@@ -362,6 +362,10 @@ const OutletView = () => {
   const [empPassword, setEmpPassword] = useState('');
   const [empDesignation, setEmpDesignation] = useState('SALES');
   const [empSalaryModel, setEmpSalaryModel] = useState('MONTHLY');
+  const [empMonthlyEsiPfAmount, setEmpMonthlyEsiPfAmount] = useState('0');
+  const [configMonthlyEsiPfAmount, setConfigMonthlyEsiPfAmount] = useState('0');
+  const [empMonthlyTravelAllowance, setEmpMonthlyTravelAllowance] = useState('0');
+  const [configMonthlyTravelAllowance, setConfigMonthlyTravelAllowance] = useState('0');
   const [empBasicSalary, setEmpBasicSalary] = useState('');
   const [empOvertimeRate, setEmpOvertimeRate] = useState('');
 
@@ -508,6 +512,8 @@ const OutletView = () => {
       role: 'EMPLOYEE',
       designation: empDesignation,
       salaryModel: empSalaryModel,
+      monthlyEsiPfAmount: empMonthlyEsiPfAmount || '0',
+      monthlyTravelAllowance: empMonthlyTravelAllowance || '0',
       basicSalary: Number(empBasicSalary),
       overtimeRate: Number(empOvertimeRate)
     };
@@ -523,6 +529,8 @@ const OutletView = () => {
       setEmpDesignation('SALES');
       setEmpSalaryModel('MONTHLY');
       setEmpBasicSalary('');
+      setEmpMonthlyTravelAllowance('0');
+      setEmpMonthlyEsiPfAmount('0');
       setEmpOvertimeRate('');
       
       // Reload list
@@ -549,6 +557,8 @@ const OutletView = () => {
     setSelectedEmployeeForSalary(employee);
     const sal = employee.salary || {};
     setConfigSalaryModel(sal.salaryModel || 'MONTHLY');
+    setConfigMonthlyEsiPfAmount(String(sal.monthlyEsiPfAmount || 0));
+    setConfigMonthlyTravelAllowance(String(sal.monthlyTravelAllowance || 0));
     setConfigBasicSalary(sal.basicSalary !== undefined && sal.basicSalary !== null ? String(sal.basicSalary) : '');
     setConfigPerDayRate(sal.perDayRate !== undefined && sal.perDayRate !== null ? String(sal.perDayRate) : '');
     setConfigOvertimeRate(sal.overtimeRate !== undefined && sal.overtimeRate !== null ? String(sal.overtimeRate) : '');
@@ -620,6 +630,8 @@ const OutletView = () => {
       basicSalary: configSalaryModel === 'MONTHLY' ? Number(configBasicSalary) : 0,
       perDayRate: configSalaryModel === 'PER_DAY' ? Number(configPerDayRate) : 0,
       overtimeRate: configOvertimeRate !== '' ? Number(configOvertimeRate) : 0,
+      monthlyEsiPfAmount: configMonthlyEsiPfAmount || '0',
+      monthlyTravelAllowance: configMonthlyTravelAllowance || '0',
       allowancesDefault: configAllowancesDefault !== '' ? Number(configAllowancesDefault) : 0,
       deductionsDefault: configDeductionsDefault !== '' ? Number(configDeductionsDefault) : 0
     };
@@ -1739,6 +1751,8 @@ const OutletView = () => {
             onChange={(e) => setEmpBasicSalary(e.target.value)}
             disabled={isSubmittingEmployee}
           />
+          <Input label="Monthly ESI & PF amount (₹)" type="number" min="0" step="0.01" value={empMonthlyEsiPfAmount} onChange={e => setEmpMonthlyEsiPfAmount(e.target.value)} disabled={isSubmittingEmployee} />
+          <Input label="Monthly travel allowance (₹)" type="number" min="0" step="0.01" value={empMonthlyTravelAllowance} onChange={e => setEmpMonthlyTravelAllowance(e.target.value)} disabled={isSubmittingEmployee} />
           <Input 
             label="Overtime Rate (₹ / hr)" 
             type="number"
@@ -1824,6 +1838,8 @@ const OutletView = () => {
             disabled={isSavingSalaryConfig}
           />
 
+          <Input label="Monthly ESI & PF amount (₹)" type="number" min="0" step="0.01" value={configMonthlyEsiPfAmount} onChange={e => setConfigMonthlyEsiPfAmount(e.target.value)} disabled={isSavingSalaryConfig} />
+          <Input label="Monthly travel allowance (₹)" type="number" min="0" step="0.01" value={configMonthlyTravelAllowance} onChange={e => setConfigMonthlyTravelAllowance(e.target.value)} disabled={isSavingSalaryConfig} />
           <Input 
             label="Default Allowances (₹)" 
             type="number"

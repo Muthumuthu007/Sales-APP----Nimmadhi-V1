@@ -6,7 +6,7 @@ import { Building2, LockKeyhole, UserPlus, UsersRound } from 'lucide-react';
 import { createManagerEmployee, fetchOutlets } from '../../api/employees';
 import './CreateUser.css';
 
-const emptyForm = { name: '', phone: '', password: '', outletId: '', role: 'EMPLOYEE', workType: 'OFFICE', salaryModel: 'MONTHLY', basicSalary: '', perDayRate: '', overtimeRate: '0' };
+const emptyForm = { name: '', phone: '', password: '', outletId: '', role: 'EMPLOYEE', workType: 'OFFICE', salaryModel: 'MONTHLY', basicSalary: '', perDayRate: '', overtimeRate: '0', monthlyTravelAllowance: '0', monthlyEsiPfAmount: '0' };
 
 const CreateUser = () => {
   const [form, setForm] = useState(emptyForm);
@@ -31,7 +31,7 @@ const CreateUser = () => {
     }
     setError(''); setSuccessMsg(''); setIsLoading(true);
     try {
-      const payload = { name: form.name.trim(), phone: form.phone.trim(), password: form.password, outletId: form.outletId, role: form.role, workType: form.workType, salaryModel: form.salaryModel, overtimeRate: Number(form.overtimeRate || 0), ...(monthly ? { basicSalary: Number(form.basicSalary) } : { perDayRate: Number(form.perDayRate) }) };
+      const payload = { name: form.name.trim(), phone: form.phone.trim(), password: form.password, outletId: form.outletId, role: form.role, workType: form.workType, salaryModel: form.salaryModel, overtimeRate: Number(form.overtimeRate || 0), monthlyTravelAllowance: form.monthlyTravelAllowance || '0', monthlyEsiPfAmount: form.monthlyEsiPfAmount || '0', ...(monthly ? { basicSalary: Number(form.basicSalary) } : { perDayRate: Number(form.perDayRate) }) };
       const result = await createManagerEmployee(payload);
       setSuccessMsg(`${result?.message || 'Employee created successfully.'} Login username: ${result?.loginUsername || form.phone.trim()}`);
       setForm(emptyForm);
@@ -53,6 +53,9 @@ const CreateUser = () => {
         <fieldset className="create-user-role-picker" disabled={isLoading}><legend><span>2</span><div><strong>Employee role</strong><small>Godown staff can receive and dispatch stock assigned to their godown.</small></div></legend><div className="create-user-role-options">{['EMPLOYEE', 'CASHIER', 'SUPERVISOR', 'GODOWN'].map((role) => <button key={role} type="button" className={`create-user-role-option ${form.role === role ? 'selected' : ''}`} onClick={() => setForm((current) => ({ ...current, role }))}><UsersRound size={19} /><span><strong>{role === 'GODOWN' ? 'Godown operator' : role.charAt(0) + role.slice(1).toLowerCase()}</strong><small>Assigned to the selected location</small></span></button>)}</div></fieldset>
         <fieldset className="create-user-role-picker" disabled={isLoading}><legend><span>3</span><div><strong>Work type</strong><small>Demonstrative employees must be within the outlet's 100-metre attendance boundary. Field staff can mark attendance from the field with a required selfie.</small></div></legend><div className="create-user-role-options">{[{ value: 'OFFICE', title: 'Demonstrative employee', note: '100-metre outlet boundary applies' }, { value: 'FIELD', title: 'Field work employee', note: 'Selfie required; no outlet distance restriction' }].map((type) => <button key={type.value} type="button" className={`create-user-role-option ${form.workType === type.value ? 'selected' : ''}`} onClick={() => setForm((current) => ({ ...current, workType: type.value }))}><UsersRound size={19} /><span><strong>{type.title}</strong><small>{type.note}</small></span></button>)}</div></fieldset>
         <Select label="Salary model" value={form.salaryModel} onChange={update('salaryModel')} options={[{ value: 'MONTHLY', label: 'Monthly salary' }, { value: 'PER_DAY', label: 'Per-day salary' }]} disabled={isLoading} />
+        <Input label="Monthly ESI & PF amount (₹)" type="number" min="0" step="0.01" value={form.monthlyEsiPfAmount} onChange={update('monthlyEsiPfAmount')} disabled={isLoading} />
+        <Input label="Monthly travel allowance (₹)" type="number" min="0" step="0.01" value={form.monthlyTravelAllowance} onChange={update('monthlyTravelAllowance')} disabled={isLoading} />
+        <small>Travel pay = monthly allowance ÷ 26 × attendance days.</small>
         {monthly ? <Input label="Basic monthly salary" type="number" min="0" value={form.basicSalary} onChange={update('basicSalary')} disabled={isLoading} /> : <Input label="Per-day rate" type="number" min="0" value={form.perDayRate} onChange={update('perDayRate')} disabled={isLoading} />}
         <Input label="Overtime hourly rate" type="number" min="0" value={form.overtimeRate} onChange={update('overtimeRate')} disabled={isLoading} />
         <Button type="submit" variant="primary" className="create-user-submit" disabled={isLoading}><UserPlus size={18} />{isLoading ? 'Creating employee…' : 'Create employee login'}</Button>
