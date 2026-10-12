@@ -1,0 +1,19 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {adminModules,canAccessAdminPath,canAccessModule,firstAdminPath} from './adminAccess.js';import {persistSession} from './session.js';
+const restricted={restricted:true,modules:['ORDERS'],locations:['Chennai']};
+test('orders-only admin sees only orders and starts there, including order details',()=>{
+ assert.equal(firstAdminPath(restricted),'/orders');assert.equal(canAccessAdminPath(restricted,'/orders/ORDER1'),true);
+ for(const [, ,path] of adminModules)assert.equal(canAccessAdminPath(restricted,path),path==='/orders');
+ assert.equal(canAccessAdminPath(restricted,'/unknown'),false);
+});
+test('main admin retains all existing modules',()=>{
+ for(const [module,,path] of adminModules){assert.equal(canAccessModule(null,module),true);assert.equal(canAccessAdminPath(null,path),true);}
+ assert.equal(firstAdminPath(null),'/dashboard');
+});
+test('permissions are stored before navigation and cleared when another user signs in',()=>{
+ const values=new Map();const storage={setItem:(key,value)=>values.set(key,String(value)),getItem:key=>values.get(key) || null,removeItem:key=>values.delete(key)};
+ storage.setItem('managerLocationFilter','Madurai');
+ persistSession(storage,{token:'scoped-token',role:'MANAGER',username:'orders-admin',adminAccess:restricted});
+ assert.deepEqual(JSON.parse(storage.getItem('adminAccess')),restricted);assert.equal(storage.getItem('managerLocationFilter'),null);
+ persistSession(storage,{token:'main-token',role:'MANAGER',username:'main'});assert.equal(storage.getItem('adminAccess'),null);
+});

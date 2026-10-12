@@ -1,3 +1,4 @@
+import {firstAdminPath} from './auth/adminAccess';
 import React, { useContext } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import DashboardLayout from './layouts/DashboardLayout';
@@ -26,14 +27,14 @@ import ManagerAttendance from './pages/ManagerAttendance';
 
 // Root Redirect component
 const RootRedirect = () => {
-  const { token, role } = useContext(AuthContext);
+  const { token, role, adminAccess } = useContext(AuthContext);
   
   if (!token) {
     return <Navigate to="/login" replace />;
   }
   
   if (role === 'MANAGER') {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to={firstAdminPath(adminAccess)} replace />;
   } else if (role === 'GODOWN') {
     return <Navigate to="/godown" replace />;
   } else if (['OUTLET', 'EMPLOYEE', 'CASHIER', 'SUPERVISOR'].includes(role)) {

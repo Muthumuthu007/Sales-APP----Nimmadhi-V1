@@ -35,6 +35,7 @@ api.interceptors.response.use(
       console.warn('Unauthorized - clearing this tab session and redirecting to login');
       sessionStorage.removeItem('token');
       sessionStorage.removeItem('role');
+      sessionStorage.removeItem('adminAccess');
       sessionStorage.removeItem('username');
       sessionStorage.removeItem('outletId');
       sessionStorage.removeItem('outletName');

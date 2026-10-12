@@ -14,6 +14,10 @@ export function persistSession(storage, session) {
   storage.setItem('token', session.token);
   storage.setItem('role', session.role);
   storage.setItem('username', session.username || '');
+  if (session.adminAccess) storage.setItem('adminAccess', JSON.stringify(session.adminAccess));
+  else storage.removeItem('adminAccess');
+  storage.removeItem('managerLocationFilter');
+  storage.removeItem('managerLogisticsOutletId');
 
   optionalSessionFields.forEach(([sessionKey, storageKey]) => {
     if (session[sessionKey]) storage.setItem(storageKey, session[sessionKey]);

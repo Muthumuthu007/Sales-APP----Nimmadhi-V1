@@ -1,3 +1,4 @@
+import {firstAdminPath} from '../../auth/adminAccess';
 import React, { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { login as loginApi } from '../../api/auth';
@@ -35,6 +36,7 @@ const Login = () => {
       
       login({
         token: response.token,
+        adminAccess: response.adminAccess || null,
         role: role,
         outletId: response.outletId,
         outletName: response.outletName || null,
@@ -45,7 +47,7 @@ const Login = () => {
 
       // Role-based dynamic routing
       if (role === 'MANAGER') {
-        navigate('/dashboard', { replace: true });
+        navigate(firstAdminPath(response.adminAccess), { replace: true });
       } else if (role === 'GODOWN') {
         navigate('/godown', { replace: true });
       } else if (role === 'OUTLET') {

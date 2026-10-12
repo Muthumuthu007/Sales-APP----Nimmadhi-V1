@@ -1,4 +1,5 @@
 import React, { createContext, useState, useEffect } from 'react';
+import {savedAdminAccess} from '../auth/adminAccess';
 import { persistSession } from '../auth/session';
 
 // The context and provider intentionally share this module for the small app shell.
@@ -8,6 +9,7 @@ export const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
   // sessionStorage belongs to one browser tab. A manager and employee can
   // therefore work in separate tabs without replacing one another's login.
+  const [adminAccess,setAdminAccess]=useState(()=>savedAdminAccess(sessionStorage));
   const [token, setToken] = useState(sessionStorage.getItem('token') || null);
   const [role, setRole] = useState(sessionStorage.getItem('role') || null);
   const [outletId, setOutletId] = useState(sessionStorage.getItem('outletId') || null);
@@ -47,6 +49,7 @@ export const AuthProvider = ({ children }) => {
     // after login and must be able to attach this tab's token on their first request.
     persistSession(sessionStorage, data);
 
+    setAdminAccess(data.adminAccess || null);
     setToken(data.token);
     setRole(data.role);
     setUsername(data.username);
@@ -57,6 +60,8 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logoutContext = () => {
+    setAdminAccess(null);
+    sessionStorage.removeItem('adminAccess');
     setToken(null);
     setRole(null);
     setUsername(null);
@@ -67,7 +72,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ token, role, outletId, outletName, username, empId, empName, login: loginContext, logout: logoutContext }}>
+    <AuthContext.Provider value={{ adminAccess, token, role, outletId, outletName, username, empId, empName, login: loginContext, logout: logoutContext }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,19 +1,22 @@
+import {canAccessAdminPath, firstAdminPath} from '../auth/adminAccess';
 import React, { useContext } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
-  const { token, role } = useContext(AuthContext);
+  const { token, role, adminAccess } = useContext(AuthContext);
   const location = useLocation();
 
   if (!token) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
+  if (role==='MANAGER' && !canAccessAdminPath(adminAccess,location.pathname)) return <Navigate to={firstAdminPath(adminAccess)} replace />;
+
   if (allowedRoles && !allowedRoles.includes(role)) {
     // Role not allowed. Fallback based on their role
     if (role === 'MANAGER') {
-      return <Navigate to="/dashboard" replace />;
+      return <Navigate to={firstAdminPath(adminAccess)} replace />;
     } else if (role === 'GODOWN') {
       return <Navigate to="/godown" replace />;
     } else if (role === 'EMPLOYEE') {

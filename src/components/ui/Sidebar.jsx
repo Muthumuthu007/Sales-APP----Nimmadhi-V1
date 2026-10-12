@@ -1,3 +1,4 @@
+import {canAccessAdminPath} from '../../auth/adminAccess';
 import React, { useContext } from 'react';
 import { NavLink } from 'react-router-dom';
 import { LayoutDashboard, ShoppingCart, CalendarDays, Truck, CreditCard, Store, UserPlus, UsersRound, Gift, BadgeIndianRupee, ClipboardCheck, QrCode, Factory } from 'lucide-react';
@@ -5,7 +6,7 @@ import { AuthContext } from '../../context/AuthContext';
 import './Sidebar.css';
 
 const Sidebar = ({ isOpen, onClose }) => {
-  const { role } = useContext(AuthContext);
+  const { role, adminAccess } = useContext(AuthContext);
 
   const managerLinks = [
     { to: '/dashboard', icon: <LayoutDashboard size={20} />, label: 'Dashboard' },
@@ -27,7 +28,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     { to: '/employee', icon: <Store size={20} />, label: 'Outlet Operations' },
   ];
 
-  const links = role === 'MANAGER' ? managerLinks : employeeLinks;
+  const links = role === 'MANAGER' ? managerLinks.filter(link=>canAccessAdminPath(adminAccess,link.to)) : employeeLinks;
 
   return (
     <aside className={`sidebar${isOpen ? ' sidebar--open' : ''}`}>

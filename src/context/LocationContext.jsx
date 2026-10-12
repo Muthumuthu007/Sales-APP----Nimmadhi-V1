@@ -9,7 +9,7 @@ export const LocationContext=createContext({refreshLocations:async()=>{}});
 // eslint-disable-next-line react-refresh/only-export-components
 export const useManagerLocation=()=>useContext(LocationContext);
 export function LocationProvider({children}) {
-  const {role}=useContext(AuthContext);
+  const {role,adminAccess}=useContext(AuthContext);
   const [location,setLocation]=useState(()=>sessionStorage.getItem('managerLocationFilter') || '');
   const [outlets,setOutlets]=useState([]), [ready,setReady]=useState(false), [error,setError]=useState('');
   const refreshLocations=useCallback(async()=>{
@@ -31,7 +31,7 @@ export function LocationProvider({children}) {
   if(role!=='MANAGER') return children;
   return <LocationContext.Provider value={{location,refreshLocations}}>
     <div style={{display:'flex',alignItems:'end',gap:'1rem',flexWrap:'wrap',marginBottom:'1.25rem'}}>
-      <div style={{minWidth:'240px'}}><Select label="Location" value={location} onChange={changeLocation} options={locationOptions(outlets)} disabled={!ready} /></div>
+      <div style={{minWidth:'240px'}}><Select label="Location" value={location} onChange={changeLocation} options={locationOptions(outlets).map(option=>option.value==='' && adminAccess?.restricted ? {...option,label:'All assigned locations'} : option)} disabled={!ready} /></div>
       <p style={{margin:0,paddingBottom:'0.75rem'}}>Outlets and results are limited to the selected location.</p>
     </div>
     {error ? <p role="alert">{error}<button onClick={refreshLocations}>Retry</button></p> : ready ? <React.Fragment key={location}>{children}</React.Fragment> : <p>Loading locations…</p>}
