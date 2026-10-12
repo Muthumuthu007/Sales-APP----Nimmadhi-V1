@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Outlet } from 'react-router-dom';
+import {LocationProvider} from '../context/LocationContext';
 import Sidebar from '../components/ui/Sidebar';
 import TopBar from '../components/ui/TopBar';
 import './DashboardLayout.css';
@@ -20,7 +21,7 @@ const DashboardLayout = () => {
       <div className="layout-main">
         <TopBar onMenuClick={() => setSidebarOpen(prev => !prev)} />
         <main className="layout-content">
-          <Outlet />
+          <LocationProvider><Outlet /></LocationProvider>
         </main>
       </div>
     </div>

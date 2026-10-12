@@ -83,3 +83,7 @@ export async function fetchEmployeeAdvances(empId, outletId, month) {
 export async function recordEmployeeAdvance(empId, data) {
   return api.post(`/manager/employees/${encodeURIComponent(empId)}/advances`, data);
 }
+
+export async function updateOutletRegion(outletId, locationName) {
+  return api.patch(`/manager/outlets/${encodeURIComponent(outletId)}/region`, {locationName});
+}

@@ -1,3 +1,4 @@
+import {useManagerLocation} from '../context/LocationContext';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { isNimmadhiOutlet } from '../utils/outlets';
@@ -10,11 +11,11 @@ import { Button } from '../components/ui/Button';
 import { Input, Select } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
 import { LoadingState, ErrorState, EmptyState } from '../components/ui/StateContainers';
-import { createOutlet, deleteOutlet, fetchOutlets, fetchProductGroups, fetchOutletProductGroups, assignOutletProductGroups } from '../api/employees';
+import { createOutlet, deleteOutlet, fetchOutlets, fetchProductGroups, fetchOutletProductGroups, assignOutletProductGroups, updateOutletRegion } from '../api/employees';
 import { getOutletLocation, updateOutletLocation } from '../api/location';
 import './Outlets.css';
 
-const emptyForm = { outletId: '', outletName: '', locationType: 'OUTLET', address: '', phone: '', latitude: '', longitude: '' };
+const emptyForm = { outletId: '', outletName: '', locationType: 'OUTLET', locationName: '', address: '', phone: '', latitude: '', longitude: '' };
 const DEFAULT_MAP_CENTER = [13.0827, 80.2707];
 
 const outletMarkerIcon = L.divIcon({
@@ -79,6 +80,14 @@ const Outlets = () => {
       setGroupOutlet(null); await loadOutlets();
     } catch (err) { setGroupError(err.response?.data?.error || 'Unable to assign product groups.'); }
     finally { setGroupBusy(false); }
+  };
+  const {refreshLocations}=useManagerLocation();
+  const [regionOutlet,setRegionOutlet]=useState(null), [regionName,setRegionName]=useState(''), [regionSaving,setRegionSaving]=useState(false), [regionError,setRegionError]=useState('');
+  const saveRegion=async()=>{
+    setRegionSaving(true);setRegionError('');
+    try {await updateOutletRegion(regionOutlet.outletId,regionName.trim());setRegionOutlet(null);await refreshLocations();await loadOutlets();}
+    catch(err){setRegionError(err.response?.data?.error || 'Unable to save outlet location.');}
+    finally{setRegionSaving(false);}
   };
   const [locationOutlet, setLocationOutlet] = useState(null);
   const [locationLat, setLocationLat] = useState('');
@@ -170,12 +179,14 @@ const Outlets = () => {
         outletId: form.outletId.trim().toUpperCase(),
         outletName: form.outletName.trim(),
         locationType: form.locationType,
+        locationName: form.locationName.trim(),
         address: form.address.trim(),
         phone: form.phone.trim(),
         allowedGroupIds: selectedGroupIds,
         latitude: Number(form.latitude),
         longitude: Number(form.longitude),
       });
+      await refreshLocations();
       setSuccess(`${result?.outlet?.outletName || form.outletName} created. You can now create ${form.locationType === 'GODOWN' ? 'a godown' : 'employee'} login(s) for this location.`);
       setForm(emptyForm);
       setSelectedGroupIds([]);
@@ -251,6 +262,7 @@ const Outlets = () => {
             <form className="outlets-form" onSubmit={handleSubmit}>
               <Input label="Outlet ID" placeholder="e.g. OUT010" value={form.outletId} onChange={update('outletId')} disabled={saving} />
               <Input label="Outlet name" placeholder="e.g. Chennai Silks – Thiruvallur" value={form.outletName} onChange={update('outletName')} disabled={saving} />
+              <Input label="Location (city / region)" placeholder="e.g. Chennai or Madurai" value={form.locationName} onChange={update('locationName')} disabled={saving} maxLength={80} />
               <Select label="Location type" value={form.locationType} onChange={update('locationType')} disabled={saving} options={[{ value: 'OUTLET', label: 'Outlet' }, { value: 'GODOWN', label: 'Godown' }]} />
               {form.locationType === 'OUTLET' && <section className="outlets-product-access" aria-labelledby="product-access-title">
                 <div className="outlets-product-access-heading"><div><span id="product-access-title">Product access</span><small>Select the production groups this outlet can view and order.</small></div><strong>{selectedGroupIds.length} selected</strong></div>
@@ -292,8 +304,9 @@ const Outlets = () => {
                 <div className="outlet-directory-header"><span>{outlet.outletId}</span><Building2 size={19} /></div>
                 <h3>{isNimmadhiOutlet(outlet) ? `NIMMADHI Outlet — ${outlet.outletName || outlet.outletId}` : (outlet.outletName || outlet.outletId)}</h3>
                 <p><MapPin size={15} />{outlet.address || 'Address not added'}</p>
+                <p>Location: {outlet.locationName || 'Unassigned'}</p>
                 <p><Phone size={15} />{outlet.phone || 'Phone not added'}</p>
-                <div className="outlet-card-actions">{outlet.locationType !== 'GODOWN' && <Button variant="secondary" onClick={() => openGroupAssignment(outlet)}><Plus size={16} />Assign product groups</Button>}<Button variant="secondary" className="outlet-location-button" onClick={() => openLocation(outlet)}><MapPin size={16} />Attendance location</Button><Button variant="secondary" className="outlet-delete-button" onClick={() => openDeleteConfirmation(outlet)}><Trash2 size={16} />Delete outlet</Button></div>
+                <div className="outlet-card-actions"><Button variant="secondary" onClick={()=>{setRegionOutlet(outlet);setRegionName(outlet.locationName || '');setRegionError('');}}>Assign location</Button>{outlet.locationType !== 'GODOWN' && <Button variant="secondary" onClick={() => openGroupAssignment(outlet)}><Plus size={16} />Assign product groups</Button>}<Button variant="secondary" className="outlet-location-button" onClick={() => openLocation(outlet)}><MapPin size={16} />Attendance location</Button><Button variant="secondary" className="outlet-delete-button" onClick={() => openDeleteConfirmation(outlet)}><Trash2 size={16} />Delete outlet</Button></div>
               </article>)}
             </div>
           )}
@@ -321,6 +334,12 @@ const Outlets = () => {
         <p className="outlet-delete-preserved">Orders, load plans, dispatch, sales, and stock history are kept for audit.</p>
         <Input label={`Type ${outletToDelete?.outletId || 'the Outlet ID'} to confirm`} value={deleteConfirmation} onChange={(event) => setDeleteConfirmation(event.target.value)} disabled={deleting} />
         <div className="outlet-delete-actions"><Button variant="secondary" onClick={() => setOutletToDelete(null)} disabled={deleting}>Cancel</Button><Button variant="danger" onClick={handleDelete} disabled={deleting || deleteConfirmation.trim().toUpperCase() !== outletToDelete?.outletId?.toUpperCase()}>{deleting ? 'Deleting…' : 'Delete outlet and employees'}</Button></div>
+      </Modal>
+      <Modal isOpen={Boolean(regionOutlet)} onClose={()=>!regionSaving && setRegionOutlet(null)} title={`Location · ${regionOutlet?.outletName || ''}`}>
+        <Input label="City / region" value={regionName} onChange={event=>setRegionName(event.target.value)} placeholder="Chennai, Madurai, or another location" maxLength={80} disabled={regionSaving} />
+        <p>This groups the outlet in location filters. Leaving it blank places the outlet under Unassigned.</p>
+        {regionError && <p role="alert">{regionError}</p>}
+        <Button onClick={saveRegion} disabled={regionSaving}>{regionSaving?'Saving…':'Save location'}</Button>
       </Modal>
       <Modal isOpen={Boolean(locationOutlet)} onClose={() => !locationSaving && setLocationOutlet(null)} title={`Attendance location — ${locationOutlet?.outletName || locationOutlet?.outletId || ''}`}>
         <p className="outlet-location-note">Save the storefront GPS point while you are at the outlet. Employees can mark attendance only within <strong>100 metres</strong> of this saved point.</p>

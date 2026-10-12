@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardContent } from '../components/ui/Card';
 import { LoadingState } from '../components/ui/StateContainers';
-import { mockSalesData } from '../api/mockData';
 import { fetchDashboardSummary, fetchOrders, fetchOutlets } from '../api/manager';
 import { outletLabel } from '../utils/outlets';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -34,7 +33,8 @@ const Dashboard = () => {
             approved: summaryResponse.approvedOrders || 0,
             approvedNotDispatched: summaryResponse.approvedNotDispatched || 0,
             deadStock: summaryResponse.deadStockItems || 0,
-            todaySales: `₹${summaryResponse.todaySales || 0}`
+            todaySales: `${summaryResponse.todaySales || 0} units`,
+            salesTrend: summaryResponse.salesTrend || []
           });
           
           const list = Array.isArray(pendingResponse) ? pendingResponse : (pendingResponse?.orders || []);
@@ -45,7 +45,7 @@ const Dashboard = () => {
       } catch (err) {
         console.error("Dashboard pull failed", err);
         if (isMounted) {
-          setStats({ pending: 0, partial: 0, approved: 0, approvedNotDispatched: 0, deadStock: 0, todaySales: '₹0' });
+          setStats({ pending: 0, partial: 0, approved: 0, approvedNotDispatched: 0, deadStock: 0, todaySales: '0 units', salesTrend: [] });
           setPendingOrders([]);
           setLoading(false);
         }
@@ -87,10 +87,10 @@ const Dashboard = () => {
 
       <div className="charts-grid">
         <Card className="chart-card">
-          <CardHeader title="Sales Trend (Weekly)" />
+          <CardHeader title="Sales activity (units, last 7 days)" />
           <CardContent className="chart-container">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={mockSalesData}>
+              <LineChart data={stats.salesTrend || []}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'var(--color-text-muted)' }} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fill: 'var(--color-text-muted)' }} />

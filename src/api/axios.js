@@ -13,6 +13,10 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     const token = sessionStorage.getItem('token');
+    const location = sessionStorage.getItem('managerLocationFilter');
+    if (!config.ignoreLocationScope && sessionStorage.getItem('role') === 'MANAGER' && location && (config.method === 'get' || config.url?.endsWith('/list'))) {
+      config.params = {...config.params, locationName: location};
+    }
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
