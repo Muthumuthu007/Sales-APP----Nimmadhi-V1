@@ -19,7 +19,7 @@ import { fetchActiveOutletOffers } from '../api/offers';
 import { AuthContext } from '../context/AuthContext';
 import EmployeeAttendance from './EmployeeAttendance';
 import ShowroomSaleFields from '../components/ShowroomSaleFields';
-import { showroomPrice, emptyShowroomItem } from '../utils/showroomPricing';
+import { showroomPrice, showroomBillPrice, emptyShowroomItem } from '../utils/showroomPricing';
 import './OutletView.css';
 
 const OutletView = () => {
@@ -177,6 +177,7 @@ const OutletView = () => {
   const [paymentMethod, setPaymentMethod] = useState('CASH');
   const [billAmount, setBillAmount] = useState('');
   const [advanceAmount, setAdvanceAmount] = useState('');
+  const [cashDiscount, setCashDiscount] = useState('');
   const [extraDiscountType, setExtraDiscountType] = useState('PERCENT');
   const [extraDiscountValue, setExtraDiscountValue] = useState('');
   const [extraDiscountReason, setExtraDiscountReason] = useState('');
@@ -195,11 +196,11 @@ const OutletView = () => {
   const [settlingPayment, setSettlingPayment] = useState(false);
 
   const grossAmount = ownedShowroomSales ? salesItems.reduce((total, item) => total + Math.round((showroomPrice(item)?.totalSalesValue || 0) * 100), 0) / 100 : Number(billAmount || 0);
-  const enteredDiscount = ownedShowroomSales ? 0 : Number(extraDiscountValue || 0);
-  const calculatedExtraDiscount = extraDiscountType === 'PERCENT'
+  const enteredDiscount = ownedShowroomSales ? Number(cashDiscount || 0) : Number(extraDiscountValue || 0);
+  const calculatedExtraDiscount = !ownedShowroomSales && extraDiscountType === 'PERCENT'
     ? grossAmount * enteredDiscount / 100
     : enteredDiscount;
-  const netBillAmount = Math.max(0, grossAmount - calculatedExtraDiscount);
+  const netBillAmount = ownedShowroomSales ? (showroomBillPrice(grossAmount.toFixed(2), cashDiscount)?.netBillAmount ?? 0) : Math.max(0, grossAmount - calculatedExtraDiscount);
 
   const handleAddSalesItem = () => {
     if (!salesProduct) {
@@ -250,7 +251,7 @@ const OutletView = () => {
     }
     const parsedBillAmount = grossAmount;
     const parsedAdvanceAmount = Number(advanceAmount || 0);
-    if (!Number.isFinite(parsedBillAmount) || parsedBillAmount <= 0 || !Number.isFinite(enteredDiscount) || enteredDiscount < 0 || (extraDiscountType === 'PERCENT' && enteredDiscount > 100) || calculatedExtraDiscount >= parsedBillAmount || !Number.isFinite(parsedAdvanceAmount) || parsedAdvanceAmount < 0 || parsedAdvanceAmount > netBillAmount) {
+    if (!Number.isFinite(parsedBillAmount) || parsedBillAmount <= 0 || !Number.isFinite(enteredDiscount) || enteredDiscount < 0 || (!ownedShowroomSales && extraDiscountType === 'PERCENT' && enteredDiscount > 100) || calculatedExtraDiscount >= parsedBillAmount || !Number.isFinite(parsedAdvanceAmount) || parsedAdvanceAmount < 0 || parsedAdvanceAmount > netBillAmount) {
       setSalesError('Enter a valid bill amount and an advance amount that does not exceed it.');
       return;
     }
@@ -271,7 +272,8 @@ const OutletView = () => {
         ...(ownedShowroomSales ? { pricingMode: 'MRP_DISCOUNT', ...saleDetails, dispatchDate: saleDetails.dispatchDate || null } : {}),
         advanceAmount: parsedAdvanceAmount,
         extraDiscountType,
-        extraDiscountValue: enteredDiscount,
+        cashDiscount: ownedShowroomSales ? cashDiscount || '0' : '0',
+        extraDiscountValue: ownedShowroomSales ? 0 : enteredDiscount,
         extraDiscountReason: extraDiscountReason.trim(),
         soldItems: salesItems.map(({ quantity, ...item }) => ({ ...item, qty: quantity }))
       });
@@ -288,6 +290,7 @@ const OutletView = () => {
       setAdvanceAmount('');
       setExtraDiscountType('PERCENT');
       setExtraDiscountValue('');
+      setCashDiscount('');
       setExtraDiscountReason('');
     } catch (err) {
       setSalesError(err.response?.data?.error || err.response?.data?.message || (err.response?.data ? JSON.stringify(err.response.data) : err.message) || 'Failed to record sales.');
@@ -362,6 +365,9 @@ const OutletView = () => {
   const [empPassword, setEmpPassword] = useState('');
   const [empDesignation, setEmpDesignation] = useState('SALES');
   const [empSalaryModel, setEmpSalaryModel] = useState('MONTHLY');
+  const emptyBank = {bankAccountNumber:'', ifscCode:'', bankName:'', bankBranch:''};
+  const [empBank, setEmpBank] = useState(emptyBank);
+  const [configBank, setConfigBank] = useState(emptyBank);
   const [empMonthlyEsiPfAmount, setEmpMonthlyEsiPfAmount] = useState('0');
   const [configMonthlyEsiPfAmount, setConfigMonthlyEsiPfAmount] = useState('0');
   const [empMonthlyTravelAllowance, setEmpMonthlyTravelAllowance] = useState('0');
@@ -512,6 +518,7 @@ const OutletView = () => {
       role: 'EMPLOYEE',
       designation: empDesignation,
       salaryModel: empSalaryModel,
+      ...empBank,
       monthlyEsiPfAmount: empMonthlyEsiPfAmount || '0',
       monthlyTravelAllowance: empMonthlyTravelAllowance || '0',
       basicSalary: Number(empBasicSalary),
@@ -531,6 +538,7 @@ const OutletView = () => {
       setEmpBasicSalary('');
       setEmpMonthlyTravelAllowance('0');
       setEmpMonthlyEsiPfAmount('0');
+      setEmpBank({bankAccountNumber:'', ifscCode:'', bankName:'', bankBranch:''});
       setEmpOvertimeRate('');
       
       // Reload list
@@ -556,6 +564,7 @@ const OutletView = () => {
   const handleOpenSalaryConfig = (employee) => {
     setSelectedEmployeeForSalary(employee);
     const sal = employee.salary || {};
+    setConfigBank(Object.fromEntries(['bankAccountNumber','ifscCode','bankName','bankBranch'].map(field => [field, sal[field] || ''])));
     setConfigSalaryModel(sal.salaryModel || 'MONTHLY');
     setConfigMonthlyEsiPfAmount(String(sal.monthlyEsiPfAmount || 0));
     setConfigMonthlyTravelAllowance(String(sal.monthlyTravelAllowance || 0));
@@ -630,6 +639,7 @@ const OutletView = () => {
       basicSalary: configSalaryModel === 'MONTHLY' ? Number(configBasicSalary) : 0,
       perDayRate: configSalaryModel === 'PER_DAY' ? Number(configPerDayRate) : 0,
       overtimeRate: configOvertimeRate !== '' ? Number(configOvertimeRate) : 0,
+      ...configBank,
       monthlyEsiPfAmount: configMonthlyEsiPfAmount || '0',
       monthlyTravelAllowance: configMonthlyTravelAllowance || '0',
       allowancesDefault: configAllowancesDefault !== '' ? Number(configAllowancesDefault) : 0,
@@ -912,6 +922,7 @@ const OutletView = () => {
       'NIMMADHI MATTRESS',
       `Invoice: ${receipt.saleReferenceId || '-'}`,
       `Customer: ${receipt.customerName}`,
+      `Cash discount: ${formatCurrency(receipt.cashDiscount || 0)}`,
       `Bill amount: ${formatCurrency(receipt.billAmount)}`,
       `Paid now: ${formatCurrency(receipt.advanceAmount)}`,
       `Balance due: ${formatCurrency(receipt.balanceDue)}`,
@@ -1236,7 +1247,7 @@ const OutletView = () => {
                   <Input label="Extra discount reason (optional)" placeholder="Customer negotiation, damaged display, etc." value={extraDiscountReason} onChange={(e) => setExtraDiscountReason(e.target.value)} />
                   {billAmount && <div className="sales-builder-payment-summary">Extra discount: <strong>{formatCurrency(calculatedExtraDiscount)}</strong><br />Net bill amount: <strong>{formatCurrency(netBillAmount)}</strong></div>}
                   </>}
-                  {ownedShowroomSales && <div className="sales-builder-payment-summary">Grand total (tax included): <strong>{formatCurrency(netBillAmount)}</strong></div>}
+                  {ownedShowroomSales && <><Input label="Cash discount (₹)" type="number" min="0" step="0.01" placeholder="0.00" value={cashDiscount} onChange={e => setCashDiscount(e.target.value)} /><div className="sales-builder-payment-summary">Total after percentage discount: <strong>{formatCurrency(grossAmount)}</strong><br />Cash discount: <strong>− {formatCurrency(enteredDiscount)}</strong><br />Grand total (tax included): <strong>{formatCurrency(netBillAmount)}</strong></div></>}
                   <Input label="Amount paid now (advance)" type="number" min="0" step="0.01" placeholder="0.00" value={advanceAmount} onChange={(e) => setAdvanceAmount(e.target.value)} />
                   {grossAmount > 0 && <div className="sales-builder-payment-summary">Balance due: <strong>{formatCurrency(Math.max(0, netBillAmount - Number(advanceAmount || 0)))}</strong></div>}
                 </section>
@@ -1323,7 +1334,7 @@ const OutletView = () => {
               <section className="sales-receipt-customer"><div><span>BILLED TO</span><strong>{receipt.customerName}</strong><p>{receipt.customerPhone}<br />{receipt.customerAddress}</p></div><div><span>PAYMENT</span><strong>{receipt.paymentMethod}</strong><p>{receipt.paymentStatus === 'PAID' ? 'Paid in full' : 'Advance payment received'}</p></div></section>
               {receipt.pricingMode === 'MRP_DISCOUNT' ? <><p className="showroom-receipt-meta">Work order: {receipt.workOrderNo || receipt.factoryOrderDisplayId} · Bill: {receipt.billNo || '—'}<br />Sales person: {receipt.createdByName || 'Name unavailable'} · Planned dispatch: {receipt.dispatchDate || '—'}</p><div style={{overflowX:'auto'}}><table className="sales-receipt-items"><thead><tr><th>Brand / Model / Colour / Size</th><th>Qty</th><th>Sticker MRP</th><th>Discount</th><th>Value</th><th>Total</th></tr></thead><tbody>{(receipt.items || []).map((item,index) => <tr key={index}><td>{item.brand} · {item.model}<br />{item.colour} · {item.size}{item.scheme && <><br />Scheme: {item.scheme}</>}<br />Tax included: {item.taxPercent}%</td><td>{item.quantity}</td><td>{formatCurrency(Number(item.mrpSticker))}</td><td>{item.discountPercent}%</td><td>{formatCurrency(Number(item.value))}</td><td>{formatCurrency(Number(item.totalSalesValue))}</td></tr>)}</tbody></table></div></> : <table className="sales-receipt-items"><thead><tr><th>Product</th><th>Quantity</th></tr></thead><tbody>{(receipt.items || []).map((item, index) => <tr key={`${item.product_id}-${index}`}><td>{item.productName || item.product_id}</td><td>{item.quantity}</td></tr>)}</tbody></table>}
               {(receipt.eligibleOffers || []).some((offer) => Number(offer.freeQuantity || 0) > 0) && <section className="sales-receipt-offers"><strong>Complimentary items</strong>{(receipt.eligibleOffers || []).filter((offer) => Number(offer.freeQuantity || 0) > 0).map((offer) => <p key={offer.offerId}>{offerSummary(offer)}</p>)}</section>}
-              <section className="sales-receipt-totals">{Number(receipt.extraDiscountAmount || 0) > 0 && <><div><span>Bill before discount</span><strong>{formatCurrency(receipt.grossBillAmount)}</strong></div><div><span>Extra discount</span><strong>− {formatCurrency(receipt.extraDiscountAmount)}</strong></div></>}<div><span>Total bill</span><strong>{formatCurrency(receipt.billAmount)}</strong></div>{receipt.pricingMode === 'MRP_DISCOUNT' && <div><span>Tax included in total</span><strong>{formatCurrency((receipt.items || []).reduce((total,item) => total + Number(item.taxAmount || 0),0))}</strong></div>}<div><span>Total paid</span><strong>{formatCurrency(receipt.advanceAmount)}</strong></div><div className="sales-receipt-balance"><span>Balance due</span><strong>{formatCurrency(receipt.balanceDue)}</strong></div></section>
+              <section className="sales-receipt-totals">{Number(receipt.extraDiscountAmount || 0) > 0 && <><div><span>Bill before discount</span><strong>{formatCurrency(receipt.grossBillAmount)}</strong></div><div><span>{receipt.pricingMode === 'MRP_DISCOUNT' ? 'Cash discount' : 'Extra discount'}</span><strong>− {formatCurrency(receipt.extraDiscountAmount)}</strong></div></>}<div><span>Total bill</span><strong>{formatCurrency(receipt.billAmount)}</strong></div>{receipt.pricingMode === 'MRP_DISCOUNT' && <div><span>Tax included in total</span><strong>{formatCurrency((receipt.items || []).reduce((total,item) => total + Number(item.taxAmount || 0),0))}</strong></div>}<div><span>Total paid</span><strong>{formatCurrency(receipt.advanceAmount)}</strong></div><div className="sales-receipt-balance"><span>Balance due</span><strong>{formatCurrency(receipt.balanceDue)}</strong></div></section>
               <footer>Thank you for choosing Nimmadhi Mattress. Please retain this invoice for your records.</footer>
               <div className="sales-receipt-actions"><Button variant="secondary" onClick={() => window.print()}>Print receipt</Button><Button onClick={sendReceiptToCustomer}>Send receipt</Button></div>
             </article>
@@ -1500,6 +1511,7 @@ const OutletView = () => {
                                   { key: 'mrpSticker', label: 'Sticker MRP', render: row => row.mrpSticker != null ? formatCurrency(Number(row.mrpSticker)) : '—' },
                                   { key: 'discountPercent', label: 'Discount', render: row => row.discountPercent != null ? `${row.discountPercent}%` : '—' },
                                   { key: 'value', label: 'Value', render: row => row.value != null ? formatCurrency(Number(row.value)) : '—' },
+                                  { key: 'cashDiscount', label: 'Cash discount', render: row => formatCurrency(Number(row.cashDiscount || 0)) },
                                   { key: 'billAmount', label: 'Grand total', render: row => formatCurrency(Number(row.billAmount || 0)) },
                                   { key: 'scheme', label: 'Scheme', render: row => row.scheme || '—' },
                                   { key: 'taxPercent', label: 'Included tax', render: row => row.taxPercent != null ? `${row.taxPercent}%` : '—' },
@@ -1751,6 +1763,10 @@ const OutletView = () => {
             onChange={(e) => setEmpBasicSalary(e.target.value)}
             disabled={isSubmittingEmployee}
           />
+          <Input label="Bank account number" type="text" inputMode="numeric" value={empBank.bankAccountNumber} onChange={e => setEmpBank({...empBank, bankAccountNumber: e.target.value})} disabled={isSubmittingEmployee} />
+          <Input label="IFSC code" value={empBank.ifscCode} onChange={e => setEmpBank({...empBank, ifscCode: e.target.value.toUpperCase()})} disabled={isSubmittingEmployee} />
+          <Input label="Bank name" value={empBank.bankName} onChange={e => setEmpBank({...empBank, bankName: e.target.value})} disabled={isSubmittingEmployee} />
+          <Input label="Bank branch" value={empBank.bankBranch} onChange={e => setEmpBank({...empBank, bankBranch: e.target.value})} disabled={isSubmittingEmployee} />
           <Input label="Monthly ESI & PF amount (₹)" type="number" min="0" step="0.01" value={empMonthlyEsiPfAmount} onChange={e => setEmpMonthlyEsiPfAmount(e.target.value)} disabled={isSubmittingEmployee} />
           <Input label="Monthly travel allowance (₹)" type="number" min="0" step="0.01" value={empMonthlyTravelAllowance} onChange={e => setEmpMonthlyTravelAllowance(e.target.value)} disabled={isSubmittingEmployee} />
           <Input 
@@ -1838,6 +1854,10 @@ const OutletView = () => {
             disabled={isSavingSalaryConfig}
           />
 
+          <Input label="Bank account number" type="text" inputMode="numeric" value={configBank.bankAccountNumber} onChange={e => setConfigBank({...configBank, bankAccountNumber: e.target.value})} disabled={isSavingSalaryConfig} />
+          <Input label="IFSC code" value={configBank.ifscCode} onChange={e => setConfigBank({...configBank, ifscCode: e.target.value.toUpperCase()})} disabled={isSavingSalaryConfig} />
+          <Input label="Bank name" value={configBank.bankName} onChange={e => setConfigBank({...configBank, bankName: e.target.value})} disabled={isSavingSalaryConfig} />
+          <Input label="Bank branch" value={configBank.bankBranch} onChange={e => setConfigBank({...configBank, bankBranch: e.target.value})} disabled={isSavingSalaryConfig} />
           <Input label="Monthly ESI & PF amount (₹)" type="number" min="0" step="0.01" value={configMonthlyEsiPfAmount} onChange={e => setConfigMonthlyEsiPfAmount(e.target.value)} disabled={isSavingSalaryConfig} />
           <Input label="Monthly travel allowance (₹)" type="number" min="0" step="0.01" value={configMonthlyTravelAllowance} onChange={e => setConfigMonthlyTravelAllowance(e.target.value)} disabled={isSavingSalaryConfig} />
           <Input 

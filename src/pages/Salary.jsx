@@ -1,3 +1,4 @@
+import { bankSalaryReportXml } from '../utils/bankSalaryReport';
 import { salaryReportCsv } from '../utils/salaryReport';
 import { attendanceSalary, salaryCalendar, travelAllowancePay, netSalaryPay } from '../utils/salaryEligibility';
 import React, { useState, useEffect, useCallback } from 'react';
@@ -10,6 +11,7 @@ import { fetchEmployeesWithSalary, fetchOutletIncentives, fetchOutlets, fetchEmp
 import { LoadingState, ErrorState } from '../components/ui/StateContainers';
 
 const Salary = () => {
+  const [bankReportOpen, setBankReportOpen] = useState(false);
   const [advanceUser, setAdvanceUser] = useState(null);
   const [advanceForm, setAdvanceForm] = useState({kind: 'ADVANCE', amount: '', month: '', note: '', employeeConfirmed: false, entryId: ''});
   const [advanceError, setAdvanceError] = useState('');
@@ -174,6 +176,24 @@ const Salary = () => {
     URL.revokeObjectURL(url);
   };
 
+  const bankColumns = [
+    {key:'name',label:'Employee',render:row => row.name || row.employeeName || row.empName || 'Unnamed'},
+    {key:'bankAccountNumber',label:'A/C NO',render:row => row.bankAccountNumber || 'Not recorded'},
+    {key:'ifscCode',label:'IFSC CODE',render:row => row.ifscCode || 'Not recorded'},
+    {key:'bankName',label:'BANK',render:row => row.bankName || 'Not recorded'},
+    {key:'bankBranch',label:'BRANCH',render:row => row.bankBranch || 'Not recorded'},
+    {key:'netSalary',label:'AMT',align:'right',render:row => money(row.netSalary)},
+  ];
+  const missingBankCount = salaryData.filter(row => !row.bankAccountNumber || !row.ifscCode || !row.bankName || !row.bankBranch).length;
+  const downloadBankReport = () => {
+    const outlet = outlets.find(item => (item.outletId || item.id) === outletId);
+    const xml = bankSalaryReportXml(salaryData, month, outlet?.outletName || outlet?.name || outletId);
+    const url = URL.createObjectURL(new Blob([xml], {type:'application/vnd.ms-excel;charset=utf-8'}));
+    const link = document.createElement('a'); link.href = url;
+    link.download = `bank-salary-${outletId.replace(/[^a-zA-Z0-9_-]/g,'_')}-${month}.xml`;
+    link.click(); URL.revokeObjectURL(url);
+  };
+
   const outletOptions = [
     { value: '', label: outlets.length ? 'Select outlet' : 'No outlets available' },
     ...outlets.map((outlet) => ({
@@ -203,6 +223,7 @@ const Salary = () => {
             <Button onClick={() => loadEmployees(outletId)} disabled={employeesLoading || !outletId}>
               {employeesLoading ? 'Loading...' : 'Generate'}
             </Button>
+            <Button variant="secondary" onClick={() => setBankReportOpen(!bankReportOpen)} disabled={employeesLoading || !salaryData.length}>Bank Payment Report</Button>
             <Button variant="secondary" onClick={downloadReport} disabled={employeesLoading || Boolean(employeesError) || !salaryData.length}>Download Salary Report</Button>
           </div>
         </div>
@@ -247,6 +268,17 @@ const Salary = () => {
           )}
         </CardContent>
       </Card>
+
+      {bankReportOpen && !employeesLoading && !employeesError && <Card>
+        <CardHeader><h3>Bank salary report · {outletOptions.find(option => option.value === outletId)?.label} · {month}</h3></CardHeader>
+        <CardContent>
+          <p>AMT is the final salary payable after ESI &amp; PF, advance recovery, and other salary adjustments.</p>
+          {missingBankCount > 0 && <p role="status">Bank details are incomplete for {missingBankCount} employee(s). Add them in employee salary configuration.</p>}
+          <Table columns={bankColumns} data={salaryData} emptyStateMessage="No employees for this outlet." />
+          <p><strong>Total salary payable: {money(salaryData.reduce((sum,row) => sum + row.netSalary,0))}</strong></p>
+          <Button onClick={downloadBankReport} disabled={!salaryData.length}>Download Bank Report (Excel)</Button>
+        </CardContent>
+      </Card>}
 
       <Modal isOpen={Boolean(advanceUser)} onClose={() => { if (!advanceSaving) setAdvanceUser(null); }} title={`Advances · ${advanceUser?.name || ''}`}>
         {advanceUser && <div style={{display:'grid',gap:'1rem'}}>

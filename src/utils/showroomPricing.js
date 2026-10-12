@@ -15,3 +15,9 @@ export function showroomPrice(item) {
   const taxable = (total * 10000n + denominator / 2n) / denominator;
   return { value: Number(unit) / 100, totalSalesValue: Number(total) / 100, taxableValue: Number(taxable) / 100, taxAmount: Number(total - taxable) / 100 };
 }
+
+export function showroomBillPrice(grossAmount, cashDiscount = '0') {
+  const gross = scaled(grossAmount), discount = scaled(cashDiscount || '0');
+  if (gross === null || discount === null || discount >= gross) return null;
+  return {cashDiscount: Number(discount) / 100, netBillAmount: Number(gross - discount) / 100};
+}

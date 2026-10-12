@@ -21,3 +21,10 @@ test('report export preserves quoted customer text and avoids duplicate invoice 
  assert.ok(csv.includes('"A ""B"", C"')); assert.equal(csv.split('"100.00"').length-1,1);
  assert.ok(csv.includes('"60%"')); assert.ok(csv.includes('"18%"'));
 });
+
+import { showroomBillPrice } from './showroomPricing.js';
+test('cash discount reduces invoice total after percentage discount with exact paise', () => {
+ assert.deepEqual(showroomBillPrice('50020','20'), {cashDiscount:20,netBillAmount:50000});
+ assert.equal(showroomBillPrice('50020.25','20.15').netBillAmount,50000.10);
+ for (const discount of ['-1','50020','50021','1.234']) assert.equal(showroomBillPrice('50020',discount),null);
+});
