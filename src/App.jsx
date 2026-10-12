@@ -8,6 +8,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 // Auth Pages
 import Login from './pages/auth/Login';
 import CreateUser from './pages/auth/CreateUser';
+import ScopedAdminManagement from './pages/auth/ScopedAdminManagement';
 
 // Role Pages
 import Dashboard from './pages/Dashboard';
@@ -56,6 +57,7 @@ function App() {
             <Route index element={<RootRedirect />} />
             
             {/* MANAGER ROUTES */}
+            <Route path="admin-management" element={<ProtectedRoute allowedRoles={['MANAGER']}><ScopedAdminManagement /></ProtectedRoute>} />
             <Route path="factory-management" element={<ProtectedRoute allowedRoles={['MANAGER']}><FactoryManagement /></ProtectedRoute>} />
             <Route path="dashboard" element={
               <ProtectedRoute allowedRoles={['MANAGER']}>

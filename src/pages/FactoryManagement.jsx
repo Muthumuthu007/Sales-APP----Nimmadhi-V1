@@ -1,3 +1,4 @@
+import FactoryPendingPayments from './FactoryPendingPayments';
 import React, {useCallback, useEffect, useState} from 'react';
 import {Factory, RefreshCw} from 'lucide-react';
 import {fetchFactoryManagement, fetchOutlets, dispatchFactoryCustomer} from '../api/manager';
@@ -52,8 +53,8 @@ export default function FactoryManagement() {
       <p>NIM factory-delivery sales appear here for direct customer dispatch. Outlet stock stays unchanged.</p>
       <Select label="Own outlet" value={outletId} onChange={event => setOutletId(event.target.value)} options={[{value:'',label:'All own outlets'},...outlets.map(outlet => ({value:outlet.outletId,label:outletLabel(outlet.outletId,outlets)}))]} />
     </CardContent></Card>
-    <div style={{display:'flex',gap:'0.75rem',flexWrap:'wrap'}}>{[['PENDING','Awaiting dispatch'],['PARTIALLY_DISPATCHED','Partial dispatch'],['DISPATCHED','Dispatched to customer']].map(([id,label]) => <Button key={id} variant={tab===id ? 'primary':'secondary'} onClick={() => setTab(id)}>{label} ({orders.filter(order=>order.status===id).length})</Button>)}</div>
-    {loading ? <LoadingState message="Loading direct customer orders…" /> : error ? <ErrorState error={error} onRetry={load} /> : <Card><CardContent><Table columns={columns} data={orders.filter(order=>order.status===tab)} emptyStateMessage="No direct customer orders in this stage." /></CardContent></Card>}
+    <div style={{display:'flex',gap:'0.75rem',flexWrap:'wrap'}}>{[['PENDING','Awaiting dispatch'],['PARTIALLY_DISPATCHED','Partial dispatch'],['DISPATCHED','Dispatched to customer'],['PAYMENTS','Pending Payments']].map(([id,label]) => <Button key={id} variant={tab===id ? 'primary':'secondary'} onClick={() => setTab(id)}>{label}{id!=='PAYMENTS' && ` (${orders.filter(order=>order.status===id).length})`}</Button>)}</div>
+    {tab==='PAYMENTS' ? <FactoryPendingPayments /> : loading ? <LoadingState message="Loading direct customer orders…" /> : error ? <ErrorState error={error} onRetry={load} /> : <Card><CardContent><Table columns={columns} data={orders.filter(order=>order.status===tab)} emptyStateMessage="No direct customer orders in this stage." /></CardContent></Card>}
     <Modal isOpen={Boolean(selected)} onClose={() => !saving && setSelected(null)} title={`Factory → Customer · ${selected?.displayId || ''}`}>
       {selected && <div style={{display:'grid',gap:'1rem'}}>
         <strong>{selected.customerName} · {selected.customerPhone}</strong><p>{selected.customerAddress}</p>

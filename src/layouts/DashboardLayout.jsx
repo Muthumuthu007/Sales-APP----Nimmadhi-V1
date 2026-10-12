@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import {LocationProvider} from '../context/LocationContext';
 import Sidebar from '../components/ui/Sidebar';
 import TopBar from '../components/ui/TopBar';
 import './DashboardLayout.css';
 
 const DashboardLayout = () => {
+  const {pathname}=useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
@@ -21,7 +22,7 @@ const DashboardLayout = () => {
       <div className="layout-main">
         <TopBar onMenuClick={() => setSidebarOpen(prev => !prev)} />
         <main className="layout-content">
-          <LocationProvider><Outlet /></LocationProvider>
+          {pathname==='/admin-management' ? <Outlet /> : <LocationProvider><Outlet /></LocationProvider>}
         </main>
       </div>
     </div>

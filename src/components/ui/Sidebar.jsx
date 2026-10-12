@@ -21,6 +21,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     { to: '/complimentary-products', icon: <Gift size={20} />, label: 'Complimentary Products' },
     { to: '/discounts', icon: <BadgeIndianRupee size={20} />, label: 'Discounts' },
     { to: '/employees', icon: <UsersRound size={20} />, label: 'Employees' },
+    { to: '/admin-management', icon: <UsersRound size={20} />, label: 'Admin Management' },
     { to: '/create-user', icon: <UserPlus size={20} />, label: 'Create User' },
   ];
 

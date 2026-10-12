@@ -1,6 +1,4 @@
-import ScopedAdminManagement from './ScopedAdminManagement';
-import {AuthContext} from '../../context/AuthContext';
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Input, Select } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
@@ -11,8 +9,6 @@ import './CreateUser.css';
 const emptyForm = { name: '', phone: '', password: '', outletId: '', role: 'EMPLOYEE', workType: 'OFFICE', salaryModel: 'MONTHLY', basicSalary: '', perDayRate: '', overtimeRate: '0', monthlyTravelAllowance: '0', monthlyEsiPfAmount: '0', bankAccountNumber: '', ifscCode: '', bankName: '', bankBranch: '' };
 
 const CreateUser = () => {
-  const {adminAccess}=useContext(AuthContext);
-  const [accountType,setAccountType]=useState('EMPLOYEE');
   const [form, setForm] = useState(emptyForm);
   const [outlets, setOutlets] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -44,8 +40,7 @@ const CreateUser = () => {
     } finally { setIsLoading(false); }
   };
 
-  if(accountType==='ADMIN' && !adminAccess?.restricted) return <div style={{display:'grid',gap:'1rem'}}><Button variant="secondary" onClick={()=>setAccountType('EMPLOYEE')}>Employee accounts</Button><ScopedAdminManagement /></div>;
-  return <main className="create-user-page">{!adminAccess?.restricted && <Button variant="secondary" onClick={()=>setAccountType('ADMIN')}>Restricted admin accounts</Button>}
+  return <main className="create-user-page">
     <section className="create-user-intro"><div className="create-user-intro-icon"><UsersRound size={22} /></div><div><p className="create-user-eyebrow">Team management</p><h2>Add an employee</h2><p>Create one staff login and link it to the outlet where the employee works.</p></div></section>
     <div className="create-user-layout"><Card className="create-user-card"><CardHeader title="Employee details" /><CardContent>
       {error && <div className="create-user-alert create-user-alert-error" role="alert">{error}</div>}

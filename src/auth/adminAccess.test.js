@@ -17,3 +17,8 @@ test('permissions are stored before navigation and cleared when another user sig
  assert.deepEqual(JSON.parse(storage.getItem('adminAccess')),restricted);assert.equal(storage.getItem('managerLocationFilter'),null);
  persistSession(storage,{token:'main-token',role:'MANAGER',username:'main'});assert.equal(storage.getItem('adminAccess'),null);
 });
+
+test('admin management is exclusive to the main admin even when all modules are granted',()=>{
+ assert.equal(canAccessAdminPath(null,'/admin-management'),true);
+ assert.equal(canAccessAdminPath({restricted:true,modules:adminModules.map(item=>item[0])},'/admin-management'),false);
+});
