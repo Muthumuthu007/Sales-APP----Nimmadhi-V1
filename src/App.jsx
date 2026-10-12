@@ -10,6 +10,7 @@ import CreateUser from './pages/auth/CreateUser';
 
 // Role Pages
 import Dashboard from './pages/Dashboard';
+import FactoryManagement from './pages/FactoryManagement';
 import Orders from './pages/Orders';
 import OrderDetails from './pages/OrderDetails';
 import LoadPlans from './pages/LoadPlans';
@@ -54,6 +55,7 @@ function App() {
             <Route index element={<RootRedirect />} />
             
             {/* MANAGER ROUTES */}
+            <Route path="factory-management" element={<ProtectedRoute allowedRoles={['MANAGER']}><FactoryManagement /></ProtectedRoute>} />
             <Route path="dashboard" element={
               <ProtectedRoute allowedRoles={['MANAGER']}>
                 <Dashboard />

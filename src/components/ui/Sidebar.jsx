@@ -1,6 +1,6 @@
 import React, { useContext } from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, ShoppingCart, CalendarDays, Truck, CreditCard, Store, UserPlus, UsersRound, Gift, BadgeIndianRupee, ClipboardCheck, QrCode } from 'lucide-react';
+import { LayoutDashboard, ShoppingCart, CalendarDays, Truck, CreditCard, Store, UserPlus, UsersRound, Gift, BadgeIndianRupee, ClipboardCheck, QrCode, Factory } from 'lucide-react';
 import { AuthContext } from '../../context/AuthContext';
 import './Sidebar.css';
 
@@ -9,6 +9,7 @@ const Sidebar = ({ isOpen, onClose }) => {
 
   const managerLinks = [
     { to: '/dashboard', icon: <LayoutDashboard size={20} />, label: 'Dashboard' },
+    { to: '/factory-management', icon: <Factory size={20} />, label: 'Factory Management' },
     { to: '/orders', icon: <ShoppingCart size={20} />, label: 'Orders' },
     { to: '/load-plans', icon: <CalendarDays size={20} />, label: 'Load Plans' },
     { to: '/dispatch-plans', icon: <QrCode size={20} />, label: 'Dispatch Plans' },

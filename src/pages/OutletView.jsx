@@ -1,3 +1,4 @@
+import { missingSaleFields } from '../utils/salesValidation';
 import { complimentaryForProduct } from '../utils/orderComplimentary';
 import OrderProduct from '../components/OrderProduct';
 import React, { useState, useEffect, useMemo } from 'react';
@@ -167,6 +168,8 @@ const OutletView = () => {
   const [ownedShowroomSales, setOwnedShowroomSales] = useState(() => String(outletId || '').toUpperCase().startsWith('NIM'));
   const [salesItems, setSalesItems] = useState([]);
   const [showroomItem, setShowroomItem] = useState({ ...emptyShowroomItem });
+  const [salesValidationErrors, setSalesValidationErrors] = useState([]);
+  const [salesFulfillmentMode, setSalesFulfillmentMode] = useState('');
   const [saleDetails, setSaleDetails] = useState({ billNo: '', dispatchDate: '' });
   const [salesProduct, setSalesProduct] = useState('');
   const [salesQuantity, setSalesQuantity] = useState(1);
@@ -204,15 +207,19 @@ const OutletView = () => {
 
   const handleAddSalesItem = () => {
     if (!salesProduct) {
-      setSalesError('Please select a product.');
+      setSalesValidationErrors(['Product']);
       return;
     }
     if (!Number.isSafeInteger(Number(salesQuantity)) || Number(salesQuantity) <= 0) {
-      setSalesError('Quantity must be greater than 0.');
+      setSalesValidationErrors(['Quantity must be greater than zero']);
       return;
     }
     if (ownedShowroomSales && (!['brand', 'model', 'colour', 'size'].every(key => showroomItem[key].trim()) || !showroomPrice({ ...showroomItem, quantity: Number(salesQuantity) })?.value)) {
-      setSalesError('Enter brand, model, colour, size, sticker MRP, and a valid discount and tax percentage.');
+      const fields = ['brand','model','colour','size'].filter(key => !showroomItem[key].trim()).map(key => ({brand:'Brand',model:'Model',colour:'Colour',size:'Size'})[key]);
+      if (!showroomItem.mrpSticker || Number(showroomItem.mrpSticker) <= 0) fields.push('Sticker MRP');
+      if (showroomItem.discountPercent === '' || Number(showroomItem.discountPercent) < 0 || Number(showroomItem.discountPercent) > 99.99) fields.push('Discount percentage');
+      if (showroomItem.taxPercent === '' || Number(showroomItem.taxPercent) < 0 || Number(showroomItem.taxPercent) > 100) fields.push('Tax percentage');
+      setSalesValidationErrors(fields.length ? fields : ['Valid product pricing and quantity']);
       return;
     }
     const existingIndex = salesItems.findIndex(i => i.product_id === salesProduct && (!ownedShowroomSales || Object.keys(emptyShowroomItem).every(key => i[key] === showroomItem[key])));
@@ -241,18 +248,17 @@ const OutletView = () => {
   };
 
   const handleRecordSalesSubmit = async () => {
-    if (salesItems.length === 0) {
-      setSalesError('Add at least one item to record sales.');
-      return;
-    }
-    if (!customerName.trim() || !customerPhone.trim() || !customerAddress.trim()) {
-      setSalesError('Customer name, phone number, and address are required.');
-      return;
-    }
+    const missing = missingSaleFields({items:salesItems, customerName, customerPhone, customerAddress, salesDate,
+      ownedShowroom:ownedShowroomSales, dispatchDate:saleDetails.dispatchDate, fulfillmentMode:salesFulfillmentMode});
+    if (missing.length) { setSalesValidationErrors(missing); return; }
     const parsedBillAmount = grossAmount;
     const parsedAdvanceAmount = Number(advanceAmount || 0);
     if (!Number.isFinite(parsedBillAmount) || parsedBillAmount <= 0 || !Number.isFinite(enteredDiscount) || enteredDiscount < 0 || (!ownedShowroomSales && extraDiscountType === 'PERCENT' && enteredDiscount > 100) || calculatedExtraDiscount >= parsedBillAmount || !Number.isFinite(parsedAdvanceAmount) || parsedAdvanceAmount < 0 || parsedAdvanceAmount > netBillAmount) {
-      setSalesError('Enter a valid bill amount and an advance amount that does not exceed it.');
+      const errors = [];
+      if (!Number.isFinite(parsedBillAmount) || parsedBillAmount <= 0) errors.push('Bill amount must be greater than zero');
+      if (!Number.isFinite(enteredDiscount) || enteredDiscount < 0 || calculatedExtraDiscount >= parsedBillAmount || (!ownedShowroomSales && extraDiscountType === 'PERCENT' && enteredDiscount > 100)) errors.push('Discount must be valid and less than the bill amount');
+      if (!Number.isFinite(parsedAdvanceAmount) || parsedAdvanceAmount < 0 || parsedAdvanceAmount > netBillAmount) errors.push('Amount paid now cannot exceed the final bill amount');
+      setSalesValidationErrors(errors);
       return;
     }
     setIsSubmittingSales(true);
@@ -269,7 +275,7 @@ const OutletView = () => {
         customerAddress: customerAddress.trim(),
         paymentMethod,
         billAmount: parsedBillAmount,
-        ...(ownedShowroomSales ? { pricingMode: 'MRP_DISCOUNT', ...saleDetails, dispatchDate: saleDetails.dispatchDate || null } : {}),
+        ...(ownedShowroomSales ? { fulfillmentMode: salesFulfillmentMode, pricingMode: 'MRP_DISCOUNT', ...saleDetails, dispatchDate: saleDetails.dispatchDate || null } : {}),
         advanceAmount: parsedAdvanceAmount,
         extraDiscountType,
         cashDiscount: ownedShowroomSales ? cashDiscount || '0' : '0',
@@ -281,6 +287,7 @@ const OutletView = () => {
       setSalesSuccess('Sales invoice created successfully.');
       setSalesItems([]);
       setSaleDetails({ billNo: '', dispatchDate: '' });
+      setSalesFulfillmentMode('');
       setShowroomItem({ ...emptyShowroomItem });
       setCustomerName('');
       setCustomerPhone('');
@@ -1219,8 +1226,8 @@ const OutletView = () => {
 
               {ownedShowroomSales && (
                 <div className="order-builder-alert order-builder-alert-info">
-                  <strong>NIMMADHI Outlet — Factory delivery</strong><br />
-                  Products can be ordered without local showroom stock. Each quantity is checked against the current max producible quantity before the order is accepted.
+                  <strong>NIMMADHI Outlet — Customer delivery choice</strong><br />
+                  Immediate delivery uses available outlet stock. Factory delivery creates a direct customer order in Factory Management and keeps outlet stock unchanged.
                 </div>
               )}
 
@@ -1228,7 +1235,7 @@ const OutletView = () => {
                 <section className="sales-builder-date-card">
                   <div className="order-builder-section-label"><span>1</span><div><strong>Sales date</strong><small>Choose the date for this entry</small></div></div>
                   <Input type="date" label="Date of sale" value={salesDate} onChange={(e) => setSalesDate(e.target.value)} />
-                  {ownedShowroomSales && <><Input label="Bill number (optional)" value={saleDetails.billNo} onChange={event => setSaleDetails({ ...saleDetails, billNo: event.target.value })} maxLength={80} /><Input label="Planned dispatch date (optional)" type="date" value={saleDetails.dispatchDate} onChange={event => setSaleDetails({ ...saleDetails, dispatchDate: event.target.value })} /><p className="showroom-sale-hint">Work-order number is generated with the factory order.<br />Sales person: <strong>{loggedInEmployeeName || 'Recorded from your login'}</strong></p></>}
+                  {ownedShowroomSales && <><Input label="Bill number (optional)" value={saleDetails.billNo} onChange={event => setSaleDetails({ ...saleDetails, billNo: event.target.value })} maxLength={80} /><Input label="Dispatch date" type="date" value={saleDetails.dispatchDate} onChange={event => setSaleDetails({ ...saleDetails, dispatchDate: event.target.value })} /><p className="showroom-sale-hint">Work-order number is generated with the factory order.<br />Sales person: <strong>{loggedInEmployeeName || 'Recorded from your login'}</strong></p></>}
                 </section>
                 <section className="sales-builder-date-card sales-builder-customer-card">
                   <div className="order-builder-section-label"><span>2</span><div><strong>Customer details</strong><small>Required for every sales receipt</small></div></div>
@@ -1247,12 +1254,13 @@ const OutletView = () => {
                   <Input label="Extra discount reason (optional)" placeholder="Customer negotiation, damaged display, etc." value={extraDiscountReason} onChange={(e) => setExtraDiscountReason(e.target.value)} />
                   {billAmount && <div className="sales-builder-payment-summary">Extra discount: <strong>{formatCurrency(calculatedExtraDiscount)}</strong><br />Net bill amount: <strong>{formatCurrency(netBillAmount)}</strong></div>}
                   </>}
+                  {ownedShowroomSales && <Select label="Customer needs" value={salesFulfillmentMode} onChange={e => setSalesFulfillmentMode(e.target.value)} options={[{value:'',label:'Choose delivery option'},{value:'LOCAL_STOCK',label:'Needed immediately — deliver from outlet stock'},{value:'FACTORY_DELIVERY',label:'Factory dispatch directly to customer'}]} />}
                   {ownedShowroomSales && <><Input label="Cash discount (₹)" type="number" min="0" step="0.01" placeholder="0.00" value={cashDiscount} onChange={e => setCashDiscount(e.target.value)} /><div className="sales-builder-payment-summary">Total after percentage discount: <strong>{formatCurrency(grossAmount)}</strong><br />Cash discount: <strong>− {formatCurrency(enteredDiscount)}</strong><br />Grand total (tax included): <strong>{formatCurrency(netBillAmount)}</strong></div></>}
                   <Input label="Amount paid now (advance)" type="number" min="0" step="0.01" placeholder="0.00" value={advanceAmount} onChange={(e) => setAdvanceAmount(e.target.value)} />
                   {grossAmount > 0 && <div className="sales-builder-payment-summary">Balance due: <strong>{formatCurrency(Math.max(0, netBillAmount - Number(advanceAmount || 0)))}</strong></div>}
                 </section>
                 <section className="sales-builder-entry-card">
-                  <div className="order-builder-section-label"><span>3</span><div><strong>Sold product</strong><small>{ownedShowroomSales ? 'Factory-delivery products are limited by max producible quantity' : 'Only products available at this outlet are listed'}</small></div></div>
+                  <div className="order-builder-section-label"><span>3</span><div><strong>Sold product</strong><small>{ownedShowroomSales ? 'Choose products for outlet or factory delivery' : 'Only products available at this outlet are listed'}</small></div></div>
                   <SearchableSelect label="Select product" options={salesProductOptions} value={salesProduct} onChange={val => { setSalesProduct(val); const name = salesProductOptions.find(option => option.value === val)?.label?.split(' — max produce:')[0] || ''; const size = name.match(/\d+(?:\.\d+)?[xX×]\d+(?:\.\d+)?[xX×]\d+(?:\.\d+)?/); setShowroomItem({ ...showroomItem, model: name, size: size ? size[0].replace(/[xX]/g, ' × ') : '' }); }} placeholder={ownedShowroomSales ? 'Search factory products...' : 'Search available products...'} />
                   {ownedShowroomSales && <ShowroomSaleFields item={showroomItem} onChange={setShowroomItem} quantity={Number(salesQuantity)} />}
                   <div className="sales-builder-add-row">
@@ -1283,7 +1291,7 @@ const OutletView = () => {
                 )}
               </div>
 
-              <Button className="order-builder-submit" onClick={handleRecordSalesSubmit} disabled={isSubmittingSales || salesItems.length === 0}>
+              <Button className="order-builder-submit" onClick={handleRecordSalesSubmit} disabled={isSubmittingSales}>
                 <ShoppingBag size={18} /> {isSubmittingSales ? 'Recording sales…' : 'Submit sales record'}
               </Button>
             </CardContent>
@@ -1332,7 +1340,7 @@ const OutletView = () => {
             <article className="sales-receipt">
               <header className="sales-receipt-header"><div><p className="sales-receipt-kicker">NIMMADHI</p><h2>MATTRESS</h2><span>Get your sleep</span></div><div className="sales-receipt-invoice"><span>INVOICE</span><strong>{receipt.saleReferenceId || '-'}</strong><small>{receipt.saleDate}</small></div></header>
               <section className="sales-receipt-customer"><div><span>BILLED TO</span><strong>{receipt.customerName}</strong><p>{receipt.customerPhone}<br />{receipt.customerAddress}</p></div><div><span>PAYMENT</span><strong>{receipt.paymentMethod}</strong><p>{receipt.paymentStatus === 'PAID' ? 'Paid in full' : 'Advance payment received'}</p></div></section>
-              {receipt.pricingMode === 'MRP_DISCOUNT' ? <><p className="showroom-receipt-meta">Work order: {receipt.workOrderNo || receipt.factoryOrderDisplayId} · Bill: {receipt.billNo || '—'}<br />Sales person: {receipt.createdByName || 'Name unavailable'} · Planned dispatch: {receipt.dispatchDate || '—'}</p><div style={{overflowX:'auto'}}><table className="sales-receipt-items"><thead><tr><th>Brand / Model / Colour / Size</th><th>Qty</th><th>Sticker MRP</th><th>Discount</th><th>Value</th><th>Total</th></tr></thead><tbody>{(receipt.items || []).map((item,index) => <tr key={index}><td>{item.brand} · {item.model}<br />{item.colour} · {item.size}{item.scheme && <><br />Scheme: {item.scheme}</>}<br />Tax included: {item.taxPercent}%</td><td>{item.quantity}</td><td>{formatCurrency(Number(item.mrpSticker))}</td><td>{item.discountPercent}%</td><td>{formatCurrency(Number(item.value))}</td><td>{formatCurrency(Number(item.totalSalesValue))}</td></tr>)}</tbody></table></div></> : <table className="sales-receipt-items"><thead><tr><th>Product</th><th>Quantity</th></tr></thead><tbody>{(receipt.items || []).map((item, index) => <tr key={`${item.product_id}-${index}`}><td>{item.productName || item.product_id}</td><td>{item.quantity}</td></tr>)}</tbody></table>}
+              {receipt.pricingMode === 'MRP_DISCOUNT' ? <><p className="showroom-receipt-meta">Delivery: {receipt.fulfillmentMode === 'LOCAL_STOCK' ? 'Immediate — outlet stock' : 'Factory → customer'} · Work order: {receipt.workOrderNo || receipt.factoryOrderDisplayId || '—'} · Bill: {receipt.billNo || '—'}<br />Sales person: {receipt.createdByName || 'Name unavailable'} · Planned dispatch: {receipt.dispatchDate || '—'}</p><div style={{overflowX:'auto'}}><table className="sales-receipt-items"><thead><tr><th>Brand / Model / Colour / Size</th><th>Qty</th><th>Sticker MRP</th><th>Discount</th><th>Value</th><th>Total</th></tr></thead><tbody>{(receipt.items || []).map((item,index) => <tr key={index}><td>{item.brand} · {item.model}<br />{item.colour} · {item.size}{item.scheme && <><br />Scheme: {item.scheme}</>}<br />Tax included: {item.taxPercent}%</td><td>{item.quantity}</td><td>{formatCurrency(Number(item.mrpSticker))}</td><td>{item.discountPercent}%</td><td>{formatCurrency(Number(item.value))}</td><td>{formatCurrency(Number(item.totalSalesValue))}</td></tr>)}</tbody></table></div></> : <table className="sales-receipt-items"><thead><tr><th>Product</th><th>Quantity</th></tr></thead><tbody>{(receipt.items || []).map((item, index) => <tr key={`${item.product_id}-${index}`}><td>{item.productName || item.product_id}</td><td>{item.quantity}</td></tr>)}</tbody></table>}
               {(receipt.eligibleOffers || []).some((offer) => Number(offer.freeQuantity || 0) > 0) && <section className="sales-receipt-offers"><strong>Complimentary items</strong>{(receipt.eligibleOffers || []).filter((offer) => Number(offer.freeQuantity || 0) > 0).map((offer) => <p key={offer.offerId}>{offerSummary(offer)}</p>)}</section>}
               <section className="sales-receipt-totals">{Number(receipt.extraDiscountAmount || 0) > 0 && <><div><span>Bill before discount</span><strong>{formatCurrency(receipt.grossBillAmount)}</strong></div><div><span>{receipt.pricingMode === 'MRP_DISCOUNT' ? 'Cash discount' : 'Extra discount'}</span><strong>− {formatCurrency(receipt.extraDiscountAmount)}</strong></div></>}<div><span>Total bill</span><strong>{formatCurrency(receipt.billAmount)}</strong></div>{receipt.pricingMode === 'MRP_DISCOUNT' && <div><span>Tax included in total</span><strong>{formatCurrency((receipt.items || []).reduce((total,item) => total + Number(item.taxAmount || 0),0))}</strong></div>}<div><span>Total paid</span><strong>{formatCurrency(receipt.advanceAmount)}</strong></div><div className="sales-receipt-balance"><span>Balance due</span><strong>{formatCurrency(receipt.balanceDue)}</strong></div></section>
               <footer>Thank you for choosing Nimmadhi Mattress. Please retain this invoice for your records.</footer>
@@ -1341,7 +1349,12 @@ const OutletView = () => {
           )}
         </Modal>
 
-        <Modal isOpen={Boolean(paymentTarget)} onClose={() => !settlingPayment && setPaymentTarget(null)} title={`Record pending payment — ${paymentTarget?.customerName || ''}`}>
+        <Modal isOpen={salesValidationErrors.length > 0} onClose={() => setSalesValidationErrors([])} title="Complete the required sales details">
+        <p>Please fill or correct these fields:</p>
+        <ul>{salesValidationErrors.map(field => <li key={field}>{field}</li>)}</ul>
+        <Button onClick={() => setSalesValidationErrors([])}>OK</Button>
+      </Modal>
+      <Modal isOpen={Boolean(paymentTarget)} onClose={() => !settlingPayment && setPaymentTarget(null)} title={`Record pending payment — ${paymentTarget?.customerName || ''}`}>
           {paymentTarget && <div className="sales-builder-content" style={{ display: 'grid', gap: '1rem' }}>
             <p className="text-muted">Invoice <strong>{paymentTarget.saleReferenceId}</strong> · Balance due: <strong>{formatCurrency(paymentTarget.balanceDue)}</strong></p>
             <Select label="Payment method" value={settlementMethod} onChange={(event) => setSettlementMethod(event.target.value)} options={[{ value: 'CASH', label: 'Cash' }, { value: 'CARD', label: 'Card' }, { value: 'UPI', label: 'UPI' }]} />

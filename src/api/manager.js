@@ -74,3 +74,10 @@ export async function undoLoadPlan(plan, action) {
 export async function fetchOutletStockForApproval(outletId) {
   return api.get(`/manager/outlets/${encodeURIComponent(outletId)}/stock`);
 }
+
+export async function fetchFactoryManagement(outletId = '') {
+  return api.get('/manager/factory-management', {params:{outletId}});
+}
+export async function dispatchFactoryCustomer(orderId, data) {
+  return api.post(`/manager/factory-management/${encodeURIComponent(orderId)}/dispatch`, data);
+}
