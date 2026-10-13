@@ -8,7 +8,21 @@
 .showroom-item-details { display: block; font-size: 12px; color: #94a3b8; line-height: 1.7; margin-top: 6px; }
 @media(max-width:480px) { .showroom-sale-grid { grid-template-columns: 1fr; } }
 
-.showroom-pillow-picker { display: grid; gap: 12px; padding: 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,.1); background: rgba(255,255,255,.025); }
-.showroom-pillow-actions { display: flex; gap: 12px; align-items: flex-end; }
-.showroom-pillow-actions .input-group { flex: 1; }
-.showroom-pillow-actions .btn { min-height: 44px; }
+.showroom-accessory-picker { display: grid; gap: 12px; padding: 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,.1); background: rgba(255,255,255,.025); }
+.showroom-accessory-actions { display: flex; gap: 12px; align-items: flex-end; }
+.showroom-accessory-actions .input-group { flex: 1; }
+.showroom-accessory-actions .btn { min-height: 44px; }
+
+.showroom-sale-fields, .showroom-sale-grid > *, .showroom-accessory-picker { min-width: 0; }
+.showroom-accessory-actions { flex-wrap: wrap; }
+.showroom-accessory-actions .input-group { flex: 1 1 140px; min-width: 0; }
+.showroom-price-preview > div { min-width: 0; overflow-wrap: anywhere; }
+@media(max-width:600px) {
+ .showroom-sale-grid { grid-template-columns: minmax(0,1fr); }
+ .showroom-accessory-picker { padding: 12px; }
+ .showroom-accessory-actions { display: grid; grid-template-columns: minmax(0,1fr); }
+ .showroom-accessory-actions .btn { width: 100%; }
+ .showroom-price-preview { gap: 12px; padding: 14px; }
+ .showroom-price-preview strong { font-size: 16px; }
+ .showroom-sale-fields input { font-size: 16px; }
+}

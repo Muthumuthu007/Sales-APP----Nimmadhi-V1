@@ -1,3 +1,4 @@
+import ProductionGroupChoices from '../components/ProductionGroupChoices';
 import {useManagerLocation} from '../context/LocationContext';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -117,7 +118,7 @@ const Outlets = () => {
   useEffect(() => {
     let active = true;
     fetchProductGroups()
-      .then((response) => { if (active) setProductGroups(response?.groups || []); })
+      .then((response) => { if (active) setProductGroups((response?.groups || []).filter(group=>group.groupKind!=='MAIN')); })
       .catch(() => { if (active) setError('Unable to load production groups. Please refresh and try again.'); })
       .finally(() => { if (active) setGroupsLoading(false); });
     return () => { active = false; };
@@ -267,7 +268,7 @@ const Outlets = () => {
               {form.locationType === 'OUTLET' && <section className="outlets-product-access" aria-labelledby="product-access-title">
                 <div className="outlets-product-access-heading"><div><span id="product-access-title">Product access</span><small>Select the production groups this outlet can view and order.</small></div><strong>{selectedGroupIds.length} selected</strong></div>
                 {groupsLoading ? <p className="outlets-product-access-loading">Loading production groups…</p> : <div className="outlets-product-groups">
-                  {productGroups.map((group) => <label key={group.groupId} className={`outlets-product-group ${selectedGroupIds.includes(group.groupId) ? 'selected' : ''}`}><input type="checkbox" checked={selectedGroupIds.includes(group.groupId)} onChange={() => toggleProductGroup(group.groupId)} disabled={saving} /><span>{group.groupName}</span></label>)}
+                  <ProductionGroupChoices groups={productGroups} renderGroup={(group) => <label key={group.groupId} className={`outlets-product-group ${selectedGroupIds.includes(group.groupId) ? 'selected' : ''}`}><input type="checkbox" checked={selectedGroupIds.includes(group.groupId)} onChange={() => toggleProductGroup(group.groupId)} disabled={saving} /><span>{group.groupPath || group.groupName}</span></label>} />
                 </div>}
               </section>}
               <div className="outlet-address-map">
@@ -318,14 +319,14 @@ const Outlets = () => {
         {groupBusy && !groupAccess && <p>Loading product groups…</p>}
         {groupAccess?.unrestricted && <p>This outlet already has access to all product groups.</p>}
         <div className="outlets-product-groups">
-          {(groupAccess?.groups || []).map((group) => {
+          <ProductionGroupChoices groups={groupAccess?.groups || []} renderGroup={(group) => {
             const assigned = groupAccess.allowedGroupIds.includes(group.groupId);
             const checked = assigned || newGroupIds.includes(group.groupId);
             return <label key={group.groupId} className={`outlets-product-group ${checked ? 'selected' : ''}`}>
               <input type="checkbox" checked={checked} disabled={assigned || groupBusy} onChange={() => setNewGroupIds((ids) => ids.includes(group.groupId) ? ids.filter((id) => id !== group.groupId) : [...ids, group.groupId])} />
-              <span>{group.groupName}{assigned ? ' (Already assigned)' : ''}</span>
+              <span>{group.groupPath || group.groupName}{assigned ? ' (Already assigned)' : ''}</span>
             </label>;
-          })}
+          }} />
         </div>
         <div className="outlet-delete-actions"><Button variant="secondary" onClick={() => setGroupOutlet(null)} disabled={groupBusy}>Close</Button><Button variant="primary" onClick={saveGroupAssignment} disabled={groupBusy || !newGroupIds.length}>{groupBusy && groupAccess ? 'Saving…' : `Assign ${newGroupIds.length || ''} additional groups`}</Button></div>
       </Modal>

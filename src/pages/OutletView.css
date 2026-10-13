@@ -91,3 +91,11 @@
 .sales-invoice-dialog .sales-receipt-items td:first-child { min-width: 180px; line-height: 1.65; }
 .sales-invoice-dialog .sales-receipt-items th { font-size: .75rem; }
 .sales-invoice-dialog .sales-receipt-items td { color: #172033; background: #fff; }
+
+.order-builder-categories { display: grid; gap: 1rem; max-height: 24rem; overflow-y: auto; min-width: 0; padding-right: .25rem; }
+.order-builder-category { min-width: 0; }
+.order-builder-category > strong { display: block; margin-bottom: .6rem; }
+.order-builder-category .order-builder-group-grid { max-height: none; overflow: visible; padding-right: 0; }
+.order-builder-category .order-builder-group span { white-space: normal; overflow-wrap: anywhere; line-height: 1.4; }
+.order-builder-category .order-builder-group small { flex-shrink: 0; }
+@media(max-width:600px) { .order-builder-categories { max-height: none; overflow: visible; }.order-builder-category .order-builder-group-grid { grid-template-columns: minmax(0,1fr); } }

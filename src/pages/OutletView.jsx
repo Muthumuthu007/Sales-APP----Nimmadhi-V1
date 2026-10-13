@@ -1,3 +1,5 @@
+import GroupedProductPicker from '../components/GroupedProductPicker';
+import {productionOption,groupedProductOptions} from '../utils/productHierarchy';
 import { missingSaleFields } from '../utils/salesValidation';
 import { complimentaryForProduct } from '../utils/orderComplimentary';
 import OrderProduct from '../components/OrderProduct';
@@ -67,10 +69,11 @@ const OutletView = () => {
               const id = p.id || p.product_id || p._id || p.uuid;
               const name = p.name || p.product_name || p.productName || p.title || p.description;
               return {
+                ...productionOption(p),
                 label: name || id || 'Unknown Product',
                 value: id || name,
                 groupId: p.group_id || p.groupId,
-                group: p.group_name || p.groupName || 'Ungrouped'
+                group: p.groupPath || p.group_name || p.groupName || 'Ungrouped'
               };
             }
             return { label: String(p), value: String(p) };
@@ -110,11 +113,7 @@ const OutletView = () => {
   const [successMsg, setSuccessMsg] = useState(null);
 
   const productGroups = useMemo(() => (
-    [...new Set(
-      productOptions
-        .filter(option => option.value && option.group)
-        .map(option => option.group)
-    )].sort((left, right) => left.localeCompare(right))
+    groupedProductOptions(productOptions).flatMap(main=>main.groups.map(group=>({...group,mainGroupName:main.name})))
   ), [productOptions]);
 
   // An outlet may only order from groups assigned to it by the manager. Keep a
@@ -126,8 +125,8 @@ const OutletView = () => {
       setSelectedProduct('');
       return;
     }
-    if (!productGroups.includes(selectedProductGroup)) {
-      setSelectedProductGroup(productGroups[0]);
+    if (!productGroups.some(group=>group.id===selectedProductGroup)) {
+      setSelectedProductGroup(productGroups[0].id);
       setSelectedProduct('');
     }
   }, [productGroups, selectedProductGroup]);
@@ -137,7 +136,7 @@ const OutletView = () => {
     const products = productOptions.filter(option => option.value);
     return [
       placeholder,
-      ...products.filter(option => option.group === selectedProductGroup)
+      ...products.filter(option => (option.groupId || option.group) === selectedProductGroup)
     ];
   }, [productOptions, selectedProductGroup]);
 
@@ -724,6 +723,7 @@ const OutletView = () => {
           const options = [
              { label: 'Select a product...', value: '' },
              ...list.map(p => ({
+               ...productionOption(p),
                label: `${p.name || p.product_name || p.productName || p.title || String(p.id || p.product_id)}${response?.ownedShowroom ? ` — max produce: ${p.maxProduce ?? 0}` : ''}`,
                value: String(p.id || p.product_id)
              }))
@@ -996,16 +996,13 @@ const OutletView = () => {
               <div className="order-builder-workspace">
                 <section className="order-builder-groups">
                   <div className="order-builder-section-label"><span>1</span><div><strong>Production group</strong><small>Start with a collection</small></div></div>
-                  <div className="order-builder-group-grid">
-                    {productGroups.map(group => {
-                      const count = productOptions.filter(option => option.group === group).length;
-                      return <button type="button" key={group} className={`order-builder-group ${selectedProductGroup === group ? 'selected' : ''}`} onClick={() => { setSelectedProductGroup(group); setSelectedProduct(''); }}><span>{group}</span><small>{count}</small></button>;
-                    })}
+                  <div className="order-builder-categories">
+                    {groupedProductOptions(productOptions).map(main=><section className="order-builder-category" key={main.name}><strong>{main.name}</strong><div className="order-builder-group-grid">{main.groups.map(group=><button type="button" key={group.id} className={`order-builder-group ${selectedProductGroup===group.id?'selected':''}`} onClick={()=>{setSelectedProductGroup(group.id);setSelectedProduct('');}}><span>{group.label}</span><small>{group.options.length}</small></button>)}</div></section>)}
                   </div>
                 </section>
                 <section className="order-builder-selection">
-                  <div className="order-builder-section-label"><span>2</span><div><strong>Product and quantity</strong><small>{selectedProductGroup ? `${selectedProductGroup} products only` : 'Select a production group'}</small></div></div>
-                  <SearchableSelect label="Select product" options={visibleProductOptions} value={selectedProduct} onChange={(val) => setSelectedProduct(val)} placeholder={selectedProductGroup ? `Select a ${selectedProductGroup} product...` : 'Select a production group first'} />
+                  <div className="order-builder-section-label"><span>2</span><div><strong>Product and quantity</strong><small>{selectedProductGroup ? `${productGroups.find(group=>group.id===selectedProductGroup)?.label || ''} products only` : 'Select a production group'}</small></div></div>
+                  <SearchableSelect label="Select product" options={visibleProductOptions} value={selectedProduct} onChange={(val) => setSelectedProduct(val)} placeholder={selectedProductGroup ? `Select a ${productGroups.find(group=>group.id===selectedProductGroup)?.label || ''} product...` : 'Select a production group first'} />
                   <Select label="Size option" value={customized ? 'CUSTOM' : 'STANDARD'} onChange={(event) => setCustomized(event.target.value === 'CUSTOM')} options={[{ value: 'STANDARD', label: 'Standard product size' }, { value: 'CUSTOM', label: 'Customized size' }]} />
                   {customized && <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.75rem' }}>
                     <Input label="Length" type="number" min="0.01" step="0.01" value={customSize.length} onChange={(event) => setCustomSize({ ...customSize, length: event.target.value })} />
@@ -1261,7 +1258,7 @@ const OutletView = () => {
                 </section>
                 <section className="sales-builder-entry-card">
                   <div className="order-builder-section-label"><span>3</span><div><strong>Sold product</strong><small>{ownedShowroomSales ? 'Choose products for outlet or factory delivery' : 'Only products available at this outlet are listed'}</small></div></div>
-                  <SearchableSelect label="Select product" options={salesProductOptions} value={salesProduct} onChange={val => { setSalesProduct(val); const name = salesProductOptions.find(option => option.value === val)?.label?.split(' — max produce:')[0] || ''; const size = name.match(/\d+(?:\.\d+)?[xX×]\d+(?:\.\d+)?[xX×]\d+(?:\.\d+)?/); setShowroomItem({ ...showroomItem, model: name, size: size ? size[0].replace(/[xX]/g, ' × ') : '' }); }} placeholder={ownedShowroomSales ? 'Search factory products...' : 'Search available products...'} />
+                  <GroupedProductPicker label="Sale product" options={salesProductOptions} value={salesProduct} onChange={val => { setSalesProduct(val); const name = salesProductOptions.find(option => option.value === val)?.label?.split(' — max produce:')[0] || ''; const size = name.match(/\d+(?:\.\d+)?[xX×]\d+(?:\.\d+)?[xX×]\d+(?:\.\d+)?/); setShowroomItem({ ...showroomItem, model: name, size: size ? size[0].replace(/[xX]/g, ' × ') : '' }); }} placeholder={ownedShowroomSales ? 'Search factory products...' : 'Search available products...'} />
                   {ownedShowroomSales && <ShowroomSaleFields item={showroomItem} onChange={setShowroomItem} quantity={Number(salesQuantity)} />}
                   <div className="sales-builder-add-row">
                     <Input label="Quantity sold" type="number" min="1" value={salesQuantity} onChange={(e) => setSalesQuantity(e.target.value)} />

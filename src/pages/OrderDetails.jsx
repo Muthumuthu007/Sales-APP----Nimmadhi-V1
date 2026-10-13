@@ -1,3 +1,5 @@
+import GroupedProductPicker from '../components/GroupedProductPicker';
+import {productionOption} from '../utils/productHierarchy';
 import OrderProduct from '../components/OrderProduct';
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
@@ -87,11 +89,11 @@ const OrderDetails = () => {
         // Safe relative internal call to api
         const res = await api.get('/products');
         const list = res?.products || [];
-        const options = [{ label: 'Select product...', value: '' }, ...list.map(p => {
+        const options = [{ label: 'Select product...', value: '' }, ...list.filter(p=>p.isAccessory).map(p => {
           if (typeof p === 'object' && p) {
             const pid = p.id || p.product_id || p.uuid;
             const pname = p.name || p.product_name || p.title;
-            return { label: pname || pid, value: pid || pname };
+            return { ...productionOption(p), label: pname || pid, value: pid || pname };
           }
           return { label: String(p), value: String(p) };
         })];
@@ -363,11 +365,11 @@ const OrderDetails = () => {
                         {item.freeItems.length > 0 && (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '0.5rem' }}>
                             {item.freeItems.map((fItem, fIdx) => (
-                              <div key={fIdx} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', backgroundColor: 'var(--color-background)', padding: '0.5rem', borderRadius: '4px' }}>
-                                <Select 
+                              <div key={fIdx} className="complimentary-item-editor">
+                                <GroupedProductPicker label="Complimentary accessory"
                                   options={productOptions}
                                   value={fItem.product_id}
-                                  onChange={(e) => updateFreeItem(idx, fIdx, 'product_id', e.target.value)}
+                                  onChange={(value) => updateFreeItem(idx, fIdx, 'product_id', value)}
                                   disabled={isSubmitting || !isEditable}
                                 />
                                 <Input 
