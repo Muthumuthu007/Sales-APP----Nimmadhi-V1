@@ -1,3 +1,4 @@
+import {isLocationCreateDisabled} from '../utils/locationCreation';
 import ProductionGroupChoices from '../components/ProductionGroupChoices';
 import {useManagerLocation} from '../context/LocationContext';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -256,13 +257,13 @@ const Outlets = () => {
       </section>
       <div className="outlets-layout">
         <Card className="outlets-create-card">
-          <CardHeader title="Create outlet" />
+          <CardHeader title={form.locationType === 'GODOWN' ? 'Create godown' : 'Create outlet'} />
           <CardContent>
             {error && <div className="outlets-alert outlets-alert-error" role="alert">{error}</div>}
             {success && <div className="outlets-alert outlets-alert-success" role="status">{success}</div>}
             <form className="outlets-form" onSubmit={handleSubmit}>
-              <Input label="Outlet ID" placeholder="e.g. OUT010" value={form.outletId} onChange={update('outletId')} disabled={saving} />
-              <Input label="Outlet name" placeholder="e.g. Chennai Silks – Thiruvallur" value={form.outletName} onChange={update('outletName')} disabled={saving} />
+              <Input label={form.locationType === 'GODOWN' ? 'Godown ID' : 'Outlet ID'} placeholder="e.g. OUT010" value={form.outletId} onChange={update('outletId')} disabled={saving} />
+              <Input label={form.locationType === 'GODOWN' ? 'Godown name' : 'Outlet name'} placeholder="e.g. Chennai Silks – Thiruvallur" value={form.outletName} onChange={update('outletName')} disabled={saving} />
               <Input label="Location (city / region)" placeholder="e.g. Chennai or Madurai" value={form.locationName} onChange={update('locationName')} disabled={saving} maxLength={80} />
               <Select label="Location type" value={form.locationType} onChange={update('locationType')} disabled={saving} options={[{ value: 'OUTLET', label: 'Outlet' }, { value: 'GODOWN', label: 'Godown' }]} />
               {form.locationType === 'OUTLET' && <section className="outlets-product-access" aria-labelledby="product-access-title">
@@ -286,7 +287,7 @@ const Outlets = () => {
                 {form.latitude && form.longitude && <p className="outlet-map-confirmed">Saved coordinates: {form.latitude}, {form.longitude}</p>}
               </div>
               <Input label="Phone (optional)" placeholder="Store contact number" value={form.phone} onChange={update('phone')} disabled={saving} />
-              <Button type="submit" variant="primary" className="outlets-submit" disabled={saving || groupsLoading || !selectedGroupIds.length}><Plus size={18} />{saving ? 'Creating outlet…' : 'Create outlet'}</Button>
+              <Button type="submit" variant="primary" className="outlets-submit" disabled={isLocationCreateDisabled({saving, locationType: form.locationType, groupsLoading, selectedGroupIds})}><Plus size={18} />{saving ? 'Creating…' : form.locationType === 'GODOWN' ? 'Confirm & create godown' : 'Create outlet'}</Button>
             </form>
           </CardContent>
         </Card>
