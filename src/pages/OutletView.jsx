@@ -1,3 +1,4 @@
+import GodownQuantityStock from '../components/GodownQuantityStock';
 import GroupedProductPicker from '../components/GroupedProductPicker';
 import {productionOption,groupedProductOptions} from '../utils/productHierarchy';
 import { missingSaleFields } from '../utils/salesValidation';
@@ -27,6 +28,8 @@ import './OutletView.css';
 
 const OutletView = () => {
   const { outletId, role, empName: loggedInEmployeeName } = React.useContext(AuthContext);
+  const [isGodown, setIsGodown] = useState(null);
+  useEffect(() => { let alive = true; api.get('/outlet/workspace').then(data => { if (alive) setIsGodown(data.locationType === 'GODOWN'); }).catch(() => {}); return () => { alive = false; }; }, [outletId]);
   const [activeTab, setActiveTab] = useState(() => (
     ['OUTLET', 'EMPLOYEE', 'CASHIER', 'SUPERVISOR'].includes(role) ? 'ATTENDANCE' : 'CREATE_ORDER'
   ));
@@ -52,7 +55,7 @@ const OutletView = () => {
     { id: 'DUE_CUSTOMERS', label: 'Pending Payments' },
     { id: 'REPORTS', label: 'Reports' },
   ];
-  const tabs = (['OUTLET', 'EMPLOYEE', 'CASHIER', 'SUPERVISOR'].includes(role) ? employeeTabs : outletTabs).filter(tab => tab.id !== 'DUE_CUSTOMERS' || !String(outletId || '').toUpperCase().startsWith('NIM'));
+  const tabs = (['OUTLET', 'EMPLOYEE', 'CASHIER', 'SUPERVISOR'].includes(role) ? employeeTabs : outletTabs).filter(tab => (tab.id !== 'SALES' || isGodown === false)).concat(isGodown ? [{id:'PRODUCT_IN',label:'Product In'},{id:'SALES_OUT',label:'Sales Out'}] : []).filter(tab => tab.id !== 'DUE_CUSTOMERS' || !String(outletId || '').toUpperCase().startsWith('NIM'));
 
   // --- Create Order State ---
   const [productOptions, setProductOptions] = useState([{ label: 'Loading products...', value: '' }]);
@@ -697,7 +700,7 @@ const OutletView = () => {
       setStockLoading(true);
       setStockError(null);
       
-      fetchOutletStock(outletId).then(response => {
+      (isGodown ? api.get('/godown/quantity-stock').then(data => ({products:data.stock})) : fetchOutletStock(outletId)).then(response => {
         if (isMounted) {
           const stockProducts = Array.isArray(response) ? response : (response?.products || []);
           setStockItems(stockProducts.map((product) => ({
@@ -771,7 +774,7 @@ const OutletView = () => {
     }
     
     return () => { isMounted = false; };
-  }, [activeTab, outletId, productNameById]);
+  }, [activeTab, outletId, productNameById, isGodown]);
 
   const openManualReceipt = (order) => {
     setReceiptTarget(order);
@@ -964,6 +967,8 @@ const OutletView = () => {
       )}
 
       <div>
+        {activeTab === 'PRODUCT_IN' && isGodown && <GodownQuantityStock key="in" direction="IN" />}
+        {activeTab === 'SALES_OUT' && isGodown && <GodownQuantityStock key="out" direction="OUT" />}
         {activeTab === 'ATTENDANCE' && <EmployeeAttendance />}
         {activeTab === 'CREATE_ORDER' && (
           <Card className="order-builder-card">
@@ -1193,7 +1198,7 @@ const OutletView = () => {
           </Card>
         )}
 
-        {activeTab === 'SALES' && (
+        {activeTab === 'SALES' && isGodown === false && (
           <Card className="sales-builder-card">
             <CardHeader title="Record daily sales" action={<span className="sales-builder-step">Sales entry</span>} />
             <CardContent className="sales-builder-content">
