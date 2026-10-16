@@ -183,7 +183,7 @@ const Outlets = () => {
         locationName: form.locationName.trim(),
         address: form.address.trim(),
         phone: form.phone.trim(),
-        allowedGroupIds: selectedGroupIds,
+        allowedGroupIds: form.locationType === 'GODOWN' ? [] : selectedGroupIds,
         latitude: Number(form.latitude),
         longitude: Number(form.longitude),
       });
