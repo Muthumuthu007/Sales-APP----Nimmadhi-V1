@@ -55,7 +55,7 @@ const OutletView = () => {
     { id: 'DUE_CUSTOMERS', label: 'Pending Payments' },
     { id: 'REPORTS', label: 'Reports' },
   ];
-  const tabs = (['OUTLET', 'EMPLOYEE', 'CASHIER', 'SUPERVISOR'].includes(role) ? employeeTabs : outletTabs).filter(tab => (tab.id !== 'SALES' || isGodown === false)).concat(isGodown ? [{id:'PRODUCT_IN',label:'Product In'},{id:'SALES_OUT',label:'Sales Out'}] : []).filter(tab => tab.id !== 'DUE_CUSTOMERS' || !String(outletId || '').toUpperCase().startsWith('NIM'));
+  const tabs = (['OUTLET', 'EMPLOYEE', 'CASHIER', 'SUPERVISOR'].includes(role) ? employeeTabs : outletTabs).filter(tab => (tab.id !== 'SALES' || isGodown === false)).concat(isGodown ? [{id:'PRODUCT_IN',label:'Product In'},{id:'SALES_OUT',label:'Sales Out'}] : []).filter(tab => tab.id !== 'DUE_CUSTOMERS' || (isGodown === false && !String(outletId || '').toUpperCase().startsWith('NIM')));
 
   // --- Create Order State ---
   const [productOptions, setProductOptions] = useState([{ label: 'Loading products...', value: '' }]);
@@ -162,6 +162,7 @@ const OutletView = () => {
 
   // --- Stock View State ---
   const [stockItems, setStockItems] = useState([]);
+  const [stockReload, setStockReload] = useState(0);
   const [stockLoading, setStockLoading] = useState(false);
   const [stockError, setStockError] = useState(null);
 
@@ -696,7 +697,7 @@ const OutletView = () => {
           setOrdersLoading(false);
         }
       });
-    } else if (activeTab === 'STOCK' && outletId) {
+    } else if (activeTab === 'STOCK' && outletId && isGodown !== null) {
       setStockLoading(true);
       setStockError(null);
       
@@ -739,7 +740,7 @@ const OutletView = () => {
            setSalesProductOptions([{ label: 'Error loading options', value: '' }]);
         }
       });
-    } else if (activeTab === 'DUE_CUSTOMERS' && outletId) {
+    } else if (activeTab === 'DUE_CUSTOMERS' && isGodown === false && outletId) {
       setDueCustomersLoading(true);
       setDueCustomersError(null);
       fetchDueCustomers(outletId).then((response) => {
@@ -774,7 +775,7 @@ const OutletView = () => {
     }
     
     return () => { isMounted = false; };
-  }, [activeTab, outletId, productNameById, isGodown]);
+  }, [activeTab, outletId, productNameById, isGodown, stockReload]);
 
   const openManualReceipt = (order) => {
     setReceiptTarget(order);
@@ -1178,7 +1179,7 @@ const OutletView = () => {
                 </div>
               ) : stockError ? (
                 <div style={{ padding: '1.5rem' }}>
-                  <ErrorState error={stockError} onRetry={() => setActiveTab('STOCK')} />
+                  <ErrorState error={stockError} onRetry={() => setStockReload(value => value + 1)} />
                 </div>
               ) : (
                 <Table 
@@ -1300,7 +1301,7 @@ const OutletView = () => {
           </Card>
         )}
 
-        {activeTab === 'DUE_CUSTOMERS' && (
+        {activeTab === 'DUE_CUSTOMERS' && isGodown === false && (
           <Card>
             <CardHeader title="Pending customer payments" action={<span className="sales-builder-step">Advance payments awaiting balance</span>} />
             <CardContent style={{ padding: 0 }}>

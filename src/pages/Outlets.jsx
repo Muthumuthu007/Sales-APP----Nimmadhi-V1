@@ -308,17 +308,17 @@ const Outlets = () => {
                 <p><MapPin size={15} />{outlet.address || 'Address not added'}</p>
                 <p>Location: {outlet.locationName || 'Unassigned'}</p>
                 <p><Phone size={15} />{outlet.phone || 'Phone not added'}</p>
-                <div className="outlet-card-actions"><Button variant="secondary" onClick={()=>{setRegionOutlet(outlet);setRegionName(outlet.locationName || '');setRegionError('');}}>Assign location</Button>{outlet.locationType !== 'GODOWN' && <Button variant="secondary" onClick={() => openGroupAssignment(outlet)}><Plus size={16} />Assign product groups</Button>}<Button variant="secondary" className="outlet-location-button" onClick={() => openLocation(outlet)}><MapPin size={16} />Attendance location</Button><Button variant="secondary" className="outlet-delete-button" onClick={() => openDeleteConfirmation(outlet)}><Trash2 size={16} />Delete outlet</Button></div>
+                <div className="outlet-card-actions"><Button variant="secondary" onClick={()=>{setRegionOutlet(outlet);setRegionName(outlet.locationName || '');setRegionError('');}}>Assign location</Button><Button variant="secondary" onClick={() => openGroupAssignment(outlet)}><Plus size={16} />Assign product groups</Button><Button variant="secondary" className="outlet-location-button" onClick={() => openLocation(outlet)}><MapPin size={16} />Attendance location</Button><Button variant="secondary" className="outlet-delete-button" onClick={() => openDeleteConfirmation(outlet)}><Trash2 size={16} />Delete outlet</Button></div>
               </article>)}
             </div>
           )}
         </CardContent>
       </Card>
       <Modal isOpen={Boolean(groupOutlet)} onClose={() => !groupBusy && setGroupOutlet(null)} title={`Assign product groups — ${groupOutlet?.outletName || groupOutlet?.outletId || ''}`}>
-        <p>Existing assignments are kept. Select additional groups this outlet can view and order.</p>
+        <p>Existing assignments are kept. Select additional groups this location can view and use.</p>
         {groupError && <div className="outlets-alert" role="alert">{groupError}</div>}
         {groupBusy && !groupAccess && <p>Loading product groups…</p>}
-        {groupAccess?.unrestricted && <p>This outlet already has access to all product groups.</p>}
+        {groupAccess?.unrestricted && <p>{groupAccess.canConfigureGodown ? 'This godown currently has access to all groups. Select the groups to assign; saving will limit its product list to those groups.' : 'This location already has access to all product groups.'}</p>}
         <div className="outlets-product-groups">
           <ProductionGroupChoices groups={groupAccess?.groups || []} renderGroup={(group) => {
             const assigned = groupAccess.allowedGroupIds.includes(group.groupId);
