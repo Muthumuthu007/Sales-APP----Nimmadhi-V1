@@ -12,3 +12,5 @@
 .offer-product-option:hover{background:rgba(255,255,255,.05)}
 .offer-product-option input{width:18px;height:18px;flex:0 0 18px;margin-top:.1rem;accent-color:#fbbf24}
 .offer-product-option span{overflow-wrap:anywhere;min-width:0}
+
+.offer-current-assignment{display:block;margin-top:.25rem;color:var(--color-text-muted);font-size:.78rem;font-weight:400}
