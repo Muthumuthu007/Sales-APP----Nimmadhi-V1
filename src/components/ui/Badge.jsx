@@ -7,6 +7,9 @@ const STATUS_COLORS = {
   PARTIALLY_APPROVED: 'badge-yellow',
   APPROVED: 'badge-green',
   DISPATCHED: 'badge-primary',
+  PARTIALLY_DISPATCHED: 'badge-primary',
+  PARTIALLY_RECEIVED: 'badge-yellow',
+  RECEIVED: 'badge-green',
   REJECTED: 'badge-red',
 };
 

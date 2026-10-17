@@ -1069,12 +1069,12 @@ const OutletView = () => {
               ) : (
                 <Table 
                   columns={[
-                    { key: 'orderId', label: 'Order ID' },
+                    { key: 'orderId', label: 'Order ID', render: (row) => row.displayId || row.orderId },
                     { key: 'createdBy', label: 'Created by', render: (row) => row.createdByName || (row.createdBy ? 'Name unavailable' : 'Not recorded') },
                     { key: 'isCustomized', label: 'Order type', render: (row) => row.isCustomized ? 'Customized' : 'Standard' },
                     { key: 'createdAt', label: 'Date', render: (row) => row.createdAt ? new Date(row.createdAt).toLocaleDateString() : '-' },
                     { key: 'items', label: 'Items Count', align: 'center', render: (row) => row.items?.length || 0 },
-                    { key: 'status', label: 'Status', render: (row) => <Badge status={row.status} /> },
+                    { key: 'status', label: 'Status', render: (row) => <div style={{display:'flex',gap:'0.4rem',flexWrap:'wrap'}}><Badge status={row.status} />{row.approvalStatus === 'PARTIALLY_APPROVED' && row.status !== row.approvalStatus && <Badge status={row.approvalStatus} />}</div> },
                     { key: 'actions', label: 'Actions', render: (row) => (
                       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                         <Button size="sm" variant="secondary" onClick={() => setViewOrderTarget(row)}>View</Button>
@@ -1110,7 +1110,9 @@ const OutletView = () => {
                   { key: 'productName', label: 'Product', render: (item) => <OrderProduct item={item} name={item.productName || getProductName(item.product_id) || item.product_id} /> },
                   { key: 'orderedQty', label: 'Ordered', align: 'center', render: (item) => item.orderedQty ?? item.quantity ?? 0 },
                   { key: 'approvedQty', label: 'Approved', align: 'center', render: (item) => item.approvedQty ?? 0 },
-                  { key: 'pendingQty', label: 'Pending', align: 'center', render: (item) => item.pendingQty ?? 0 },
+                  { key: 'pendingQty', label: 'Approval pending', align: 'center', render: (item) => item.pendingQty ?? 0 },
+                  { key: 'dispatchedQty', label: 'Dispatched', align: 'center', render: (item) => item.dispatchedQty ?? 0 },
+                  { key: 'receivedQty', label: 'Received', align: 'center', render: (item) => item.receivedQty ?? 0 },
                 ]}
                 data={viewOrderTarget.items || []}
                 emptyStateMessage="This order does not contain any item details."
@@ -1140,7 +1142,7 @@ const OutletView = () => {
                     { key: 'receiptItems', label: 'Pending products', align: 'center', render: (row) => row.receiptItems?.length || 0 },
                     { key: 'action', label: 'Action', render: (row) => <Button size="sm" onClick={() => openManualReceipt(row)}>Receive manually</Button> },
                   ]}
-                  data={myOrders.filter((order) => order.status === 'DISPATCHED' && order.loadPlanId && order.receiptItems?.length)}
+                  data={myOrders.flatMap(order => order.receiptPlans?.length ? order.receiptPlans.map(plan => ({...order,...plan, id:`${order.orderId}-${plan.loadPlanId}`})) : order.loadPlanId && order.receiptItems?.length ? [order] : [])}
                   emptyStateMessage="No dispatched products are awaiting receipt."
                 />
               )}
