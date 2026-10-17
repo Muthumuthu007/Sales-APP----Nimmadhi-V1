@@ -1,5 +1,6 @@
 import GodownQuantityStock from '../components/GodownQuantityStock';
 import GroupedProductPicker from '../components/GroupedProductPicker';
+import {showroomItemForProduct} from '../utils/showroomPricing';
 import {productionOption,groupedProductOptions} from '../utils/productHierarchy';
 import { missingSaleFields } from '../utils/salesValidation';
 import { complimentaryForProduct } from '../utils/orderComplimentary';
@@ -728,6 +729,7 @@ const OutletView = () => {
              { label: 'Select a product...', value: '' },
              ...list.map(p => ({
                ...productionOption(p),
+               mrpSticker: p.mrpSticker ?? null,
                label: `${p.name || p.product_name || p.productName || p.title || String(p.id || p.product_id)}${response?.ownedShowroom ? ` — max produce: ${p.maxProduce ?? 0}` : ''}`,
                value: String(p.id || p.product_id)
              }))
@@ -1266,7 +1268,7 @@ const OutletView = () => {
                 </section>
                 <section className="sales-builder-entry-card">
                   <div className="order-builder-section-label"><span>3</span><div><strong>Sold product</strong><small>{ownedShowroomSales ? 'Choose products for outlet or factory delivery' : 'Only products available at this outlet are listed'}</small></div></div>
-                  <GroupedProductPicker label="Sale product" options={salesProductOptions} value={salesProduct} onChange={val => { setSalesProduct(val); const name = salesProductOptions.find(option => option.value === val)?.label?.split(' — max produce:')[0] || ''; const size = name.match(/\d+(?:\.\d+)?[xX×]\d+(?:\.\d+)?[xX×]\d+(?:\.\d+)?/); setShowroomItem({ ...showroomItem, model: name, size: size ? size[0].replace(/[xX]/g, ' × ') : '' }); }} placeholder={ownedShowroomSales ? 'Search factory products...' : 'Search available products...'} />
+                  <GroupedProductPicker label="Sale product" options={salesProductOptions} value={salesProduct} onChange={val => { setSalesProduct(val); setShowroomItem(current => showroomItemForProduct(current, salesProductOptions.find(option => option.value === val))); }} placeholder={ownedShowroomSales ? 'Search factory products...' : 'Search available products...'} />
                   {ownedShowroomSales && <ShowroomSaleFields item={showroomItem} onChange={setShowroomItem} quantity={Number(salesQuantity)} />}
                   <div className="sales-builder-add-row">
                     <Input label="Quantity sold" type="number" min="1" value={salesQuantity} onChange={(e) => setSalesQuantity(e.target.value)} />

@@ -21,3 +21,11 @@ export function showroomBillPrice(grossAmount, cashDiscount = '0') {
   if (gross === null || discount === null || discount >= gross) return null;
   return {cashDiscount: Number(discount) / 100, netBillAmount: Number(gross - discount) / 100};
 }
+
+// A sale may override the saved default without changing the product price list.
+export function showroomItemForProduct(current, option) {
+  const name = option?.label?.split(' — max produce:')[0] || '';
+  const size = name.match(/\d+(?:\.\d+)?[xX×]\d+(?:\.\d+)?[xX×]\d+(?:\.\d+)?/);
+  return {...current, model: name, size: size ? size[0].replace(/[xX]/g, ' × ') : '',
+    mrpSticker: option?.mrpSticker == null ? '' : String(option.mrpSticker)};
+}

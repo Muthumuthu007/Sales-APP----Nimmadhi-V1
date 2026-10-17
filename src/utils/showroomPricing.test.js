@@ -28,3 +28,15 @@ test('cash discount reduces invoice total after percentage discount with exact p
  assert.equal(showroomBillPrice('50020.25','20.15').netBillAmount,50000.10);
  for (const discount of ['-1','50020','50021','1.234']) assert.equal(showroomBillPrice('50020',discount),null);
 });
+
+test('saved product MRP defaults are editable and do not leak into the next product', async () => {
+ const {showroomItemForProduct,emptyShowroomItem} = await import('./showroomPricing.js');
+ const option={label:'72X36X5 Bed — max produce: 0',mrpSticker:'50020.00'};
+ const item=showroomItemForProduct(emptyShowroomItem,option);
+ assert.equal(item.mrpSticker,'50020.00');
+ const edited={...item,mrpSticker:'50000',discountPercent:'0'};
+ assert.equal(showroomPrice({...edited,quantity:1}).totalSalesValue,50000);
+ assert.equal(option.mrpSticker,'50020.00');
+ assert.equal(showroomItemForProduct(edited,{label:'Another bed'}).mrpSticker,'');
+ assert.equal(showroomItemForProduct(edited,option).mrpSticker,'50020.00');
+});
