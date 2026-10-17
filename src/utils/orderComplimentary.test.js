@@ -12,3 +12,10 @@ test('order summary shows only the selected product and group complimentary offe
   assert.deepEqual(complimentaryForProduct(offers,'A','G1').map(o=>o.offerId), ['product','group','all']);
   assert.deepEqual(complimentaryForProduct(offers,'C',undefined).map(o=>o.offerId), ['all']);
 });
+
+test('unchecked group products receive only their separate product offer', () => {
+  const offers=[{offerId:'group',scope:'GROUP',groupId:'G',freeQuantity:2,excludedProductIds:['A']},{offerId:'specific',scope:'PRODUCT',productId:'A',freeQuantity:1}];
+  assert.deepEqual(complimentaryForProduct(offers,'A','G').map(offer=>offer.offerId),['specific']);
+  assert.deepEqual(complimentaryForProduct(offers,'B','G').map(offer=>offer.offerId),['group']);
+  assert.deepEqual(complimentaryForProduct(offers,'new-product','G').map(offer=>offer.offerId),['group']);
+});

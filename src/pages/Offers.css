@@ -4,3 +4,11 @@
 .offer-rule strong,.offer-rule p { overflow-wrap: anywhere; }
 .offers-form select { min-width: 0; min-height: 44px; }
 @media(max-width:600px) { .offers-form select { font-size: 16px; }.offers-intro h2 { font-size: 1.4rem; }.offer-rule .btn { width: 100%; } }
+
+.offers-form .offer-eligible-products {padding:1rem;border:1px solid rgba(251,191,36,.25);border-radius:.7rem;min-width:0;display:grid;gap:.8rem}
+.offer-eligible-summary{display:flex;align-items:center;justify-content:space-between;gap:.75rem;flex-wrap:wrap;font-size:.85rem}
+.offer-product-checklist{max-height:300px;overflow:auto;display:grid;gap:.35rem}
+.offers-form .offer-product-option{display:flex;align-items:flex-start;gap:.75rem;text-transform:none;letter-spacing:normal;font-weight:400;font-size:.9rem;line-height:1.45;padding:.6rem;border-radius:.4rem;color:var(--color-text-main);cursor:pointer}
+.offer-product-option:hover{background:rgba(255,255,255,.05)}
+.offer-product-option input{width:18px;height:18px;flex:0 0 18px;margin-top:.1rem;accent-color:#fbbf24}
+.offer-product-option span{overflow-wrap:anywhere;min-width:0}
