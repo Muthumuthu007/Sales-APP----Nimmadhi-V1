@@ -1,3 +1,4 @@
+import GodownReports from '../components/GodownReports';
 import GodownCustody from '../components/GodownCustody';
 import DispatchPlans from './DispatchPlans';
 import DispatchSources from '../components/DispatchSources';
@@ -33,6 +34,7 @@ import './OutletView.css';
 const OutletView = () => {
   const { outletId, role, empName: loggedInEmployeeName } = React.useContext(AuthContext);
   const [isGodown, setIsGodown] = useState(null);
+  const [godownStockView, setGodownStockView] = useState('CURRENT');
   useEffect(() => { let alive = true; api.get('/outlet/workspace').then(data => { if (alive) setIsGodown(data.locationType === 'GODOWN'); }).catch(() => {}); return () => { alive = false; }; }, [outletId]);
   const [activeTab, setActiveTab] = useState(() => (
     ['OUTLET', 'EMPLOYEE', 'CASHIER', 'SUPERVISOR'].includes(role) ? 'ATTENDANCE' : 'CREATE_ORDER'
@@ -1177,10 +1179,10 @@ const OutletView = () => {
           </div>
         </Modal>
 
-        {activeTab === 'STOCK' && isGodown && <GodownCustody stockView />}
         {activeTab === 'STOCK' && (
           <Card>
-            <CardHeader title={isGodown ? "Godown own stock — ordered and received" : "Current Inventory & Stock Flow"} />
+            <CardHeader title={isGodown ? "Current godown stock" : "Current Inventory & Stock Flow"} action={isGodown ? <Button variant="secondary" disabled={stockLoading} onClick={() => setStockReload(value => value + 1)}>Refresh current stock</Button> : undefined} />
+            {isGodown && <div style={{padding:'1rem 1.5rem'}}><Select label="Stock display" value={godownStockView} onChange={event => setGodownStockView(event.target.value)} options={[{value:'CURRENT',label:'Current stock'},{value:'FLOW',label:'Stock flow details'}]} /><p>Current stock is the quantity physically remaining after dispatches. Available quantity excludes stock reserved for assigned orders. Temporary outlet goods are listed separately below.</p></div>}
             <CardContent style={{ padding: 0 }}>
               {stockLoading ? (
                 <div style={{ padding: '3rem 0' }}>
@@ -1192,7 +1194,13 @@ const OutletView = () => {
                 </div>
               ) : (
                 <Table 
-                  columns={[
+                  columns={isGodown && godownStockView === 'CURRENT' ? [
+                    {key:'productName',label:'Product',render:row=>row.productName || 'Product name unavailable'},
+                    {key:'closingQty',label:'Current Stock',align:'center',render:row=>Number(row.closingQty || 0)},
+                    {key:'reservedQty',label:'Reserved',align:'center',render:row=>Number(row.reservedQty || 0)},
+                    {key:'availableQty',label:'Available to Dispatch',align:'center',render:row=>Number(row.availableQty ?? (Number(row.closingQty || 0)-Number(row.reservedQty || 0)))},
+                    {key:'lastUpdated',label:'Last Updated',render:row=>row.lastUpdated ? new Date(row.lastUpdated).toLocaleString() : '—'},
+                  ] : [
                     { key: 'productName', label: 'Product Name', render: (row) => row.productName || 'Product name unavailable' },
                     { key: 'openingQty', label: 'Opening', align: 'center', render: (row) => row.openingQty || 0 },
                     { key: 'receivedQty', label: 'Received', align: 'center', render: (row) => row.receivedQty || 0 },
@@ -1207,6 +1215,8 @@ const OutletView = () => {
             </CardContent>
           </Card>
         )}
+
+        {activeTab === 'STOCK' && isGodown && <GodownCustody stockView />}
 
         {activeTab === 'SALES' && isGodown === false && (
           <Card className="sales-builder-card">
@@ -1378,7 +1388,8 @@ const OutletView = () => {
           </div>}
         </Modal>
 
-        {activeTab === 'REPORTS' && (
+        {activeTab === 'REPORTS' && isGodown && <GodownReports />}
+        {activeTab === 'REPORTS' && isGodown === false && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%' }}>
             {reportView === 'list' ? (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
