@@ -10,3 +10,10 @@ test('regular outlet does not require factory delivery details and complete NIM 
  assert.deepEqual(missingSaleFields(sale),[]);
  assert.deepEqual(missingSaleFields({...sale,ownedShowroom:true,dispatchDate:'2026-10-12',fulfillmentMode:'LOCAL_STOCK'}),[]);
 });
+
+test('regular outlets can submit without customer fields while NIM outlets still require them',()=>{
+ const sale={items:[{}],salesDate:'2026-10-18'};
+ assert.deepEqual(missingSaleFields({...sale,ownedShowroom:false}),[]);
+ const missing=missingSaleFields({...sale,ownedShowroom:true,dispatchDate:'2026-10-18',fulfillmentMode:'LOCAL_STOCK'});
+ assert.deepEqual(missing,['Customer name','Customer phone number','Customer address']);
+});

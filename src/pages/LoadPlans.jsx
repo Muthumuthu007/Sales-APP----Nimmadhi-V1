@@ -1,10 +1,11 @@
+import {splitAllocation, allocationPayload} from '../utils/loadPlanAllocations';
 import OrderProduct from '../components/OrderProduct';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader } from '../components/ui/Card';
 import { Table } from '../components/ui/Table';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
-import { Select } from '../components/ui/Input';
+import { Input, Select } from '../components/ui/Input';
 import { LoadingState, ErrorState } from '../components/ui/StateContainers';
 import {
   fetchLoadPlans, downloadLoadPlansExcel, fetchOutlets, fetchGodowns,
@@ -40,6 +41,9 @@ const LoadPlans = () => {
   const [detailsPlan, setDetailsPlan] = useState(null);
   const [allocationPlan, setAllocationPlan] = useState(null);
   const [allocationRows, setAllocationRows] = useState([]);
+  const [allocationLoadFailed, setAllocationLoadFailed] = useState(false);
+  const [allocationLoading, setAllocationLoading] = useState(false);
+  const allocationRequest = useRef(0);
   const [allocationError, setAllocationError] = useState(null);
   const [savingAllocation, setSavingAllocation] = useState(false);
 
@@ -70,7 +74,7 @@ const LoadPlans = () => {
 
   useEffect(() => {
     let isMounted = true;
-    
+
     async function loadData() {
       setLoading(true);
       setError(null);
@@ -96,6 +100,7 @@ const LoadPlans = () => {
   }, [activeTab, reloadKey]);
 
   const planItems = (plan) => {
+    if (!plan) return [];
     const items = plan?.items?.length ? plan.items : [plan];
     return items.map((item, index) => ({
       ...item,
@@ -107,15 +112,20 @@ const LoadPlans = () => {
   };
 
   const openAllocation = async (plan) => {
+    const requestId = ++allocationRequest.current;
+    setAllocationLoading(true);
+    setAllocationLoadFailed(false);
     setAllocationPlan(plan);
     setAllocationError(null);
     const items = planItems(plan);
     setAllocationRows(items.map((item) => ({ ...item, sourceType: 'FACTORY', sourceLocationId: 'FACTORY' })));
     try {
       const existing = await fetchLoadPlanFulfillment(plan.loadPlanId || plan.id, plan.orderId);
+      if (requestId !== allocationRequest.current) return;
       const lines = existing?.fulfillments || [];
       if (lines.length) {
         setAllocationRows(lines.map((line, index) => ({
+          ...items.find(item => item.productId === line.productId),
           id: `${line.productId}-${index}`,
           productId: line.productId,
           productName: line.productName || line.productId,
@@ -125,33 +135,29 @@ const LoadPlans = () => {
         })));
       }
     } catch {
-      setAllocationError('Unable to load the saved source assignments. You can still assign sources below.');
+      if (requestId === allocationRequest.current) { setAllocationLoadFailed(true); setAllocationError('Unable to load saved assignments. Close and retry before changing sources.'); }
+    } finally {
+      if (requestId === allocationRequest.current) setAllocationLoading(false);
     }
   };
 
   const updateAllocationRow = (index, patch) => {
+    if (!allocationLoadFailed) setAllocationError(null);
     setAllocationRows((rows) => rows.map((row, rowIndex) => (
       rowIndex === index ? { ...row, ...patch } : row
     )));
   };
 
   const saveAllocation = async () => {
-    if (!allocationPlan) return;
-    if (allocationRows.some((row) => row.sourceType === 'GODOWN' && !row.sourceLocationId)) {
-      setAllocationError('Select a godown for every Godown-sourced product.');
-      return;
-    }
+    if (!allocationPlan || allocationLoading || allocationLoadFailed) return;
+    const result = allocationPayload(planItems(allocationPlan), allocationRows);
+    if (result.error) { setAllocationError(result.error); return; }
     setSavingAllocation(true);
     setAllocationError(null);
     try {
       await saveLoadPlanFulfillment(allocationPlan.loadPlanId || allocationPlan.id, {
         orderId: allocationPlan.orderId,
-        allocations: allocationRows.map((row) => ({
-          productId: row.productId,
-          quantity: row.quantity,
-          sourceType: row.sourceType,
-          ...(row.sourceType === 'GODOWN' ? { sourceLocationId: row.sourceLocationId } : {}),
-        })),
+        allocations: result.allocations,
       });
       setSuccessMsg(`Sources assigned for ${allocationPlan.displayId || compactId(allocationPlan.loadPlanId || allocationPlan.id)}.`);
       setAllocationPlan(null);
@@ -171,14 +177,14 @@ const LoadPlans = () => {
       const url = window.URL.createObjectURL(new Blob([blob]));
       const link = document.createElement('a');
       link.href = url;
-      
+
       const tzOffset = new Date().getTimezoneOffset() * 60000;
       const localISOTime = (new Date(Date.now() - tzOffset)).toISOString().slice(0, 10);
       link.setAttribute('download', `${activeTab.toLowerCase()}_load_plans_${localISOTime}.xlsx`);
-      
+
       document.body.appendChild(link);
       link.click();
-      
+
       // Cleanup DOM
       link.remove();
       window.URL.revokeObjectURL(url);
@@ -267,25 +273,25 @@ const LoadPlans = () => {
       )}
 
       <Card>
-        <CardHeader 
+        <CardHeader
           action={
             <div className="load-plan-tabs">
-              <Button 
-                variant={activeTab === 'APPROVED' ? 'primary' : 'secondary'} 
+              <Button
+                variant={activeTab === 'APPROVED' ? 'primary' : 'secondary'}
                 onClick={() => setActiveTab('APPROVED')}
               >
                 Production Ready (Approved)
               </Button>
-              <Button 
-                variant={activeTab === 'PENDING' ? 'primary' : 'secondary'} 
+              <Button
+                variant={activeTab === 'PENDING' ? 'primary' : 'secondary'}
                 onClick={() => setActiveTab('PENDING')}
               >
                 Awaiting (Pending)
               </Button>
             </div>
-          } 
+          }
         />
-        
+
         {loading ? (
           <LoadingState />
         ) : error ? (
@@ -305,18 +311,27 @@ const LoadPlans = () => {
       </Card>
 
       <Modal
+        className="allocation-dialog"
         isOpen={Boolean(allocationPlan)}
-        onClose={() => setAllocationPlan(null)}
+        onClose={() => { if (!savingAllocation) { allocationRequest.current++; setAllocationPlan(null); } }}
         title={`Assign fulfillment source — ${allocationPlan?.displayId || compactId(allocationPlan?.loadPlanId)}`}
       >
-        <p className="allocation-help">Choose where each product will be dispatched from. Godown quantities are reserved immediately; Factory quantities stay available for factory QR scanning.</p>
-        {allocationError && <div className="allocation-error">{allocationError}</div>}
+        <p className="allocation-help">Split an approved product between Factory and Godown. For example, assign 10 to Factory and 10 to Godown for an approved quantity of 20. Godown quantities are reserved when saved.</p>
+        {allocationError && <div role="alert" className="allocation-error">{allocationError}</div>}
+        {allocationLoading && <p role="status">Loading source assignments…</p>}
+        <div className="allocation-totals">{planItems(allocationPlan).filter((item,index,items)=>items.findIndex(product=>product.productId===item.productId)===index).map(item => {
+          const expected=planItems(allocationPlan).filter(product=>product.productId===item.productId).reduce((sum,product)=>sum+product.quantity,0);
+          const assigned=allocationRows.filter(row=>row.productId===item.productId).reduce((sum,row)=>sum+Number(row.quantity||0),0);
+          return <div key={item.id}><strong>{item.productName}</strong><span style={{color:assigned===expected?'var(--color-green)':'var(--color-red)'}}>{assigned} / {expected} units assigned</span></div>;
+        })}</div>
+        <fieldset className="allocation-fields" disabled={savingAllocation || allocationLoading}>
         <div className="allocation-list">
           {allocationRows.map((row, index) => (
             <div className="allocation-row" key={row.id}>
-              <div className="allocation-product"><OrderProduct item={row} /><span>{row.quantity} unit{row.quantity === 1 ? '' : 's'}</span></div>
+              <div className="allocation-product"><OrderProduct item={row} /><div className="allocation-row-actions"><Button size="sm" variant="secondary" disabled={Number(row.quantity)<2} onClick={() => setAllocationRows(rows=>splitAllocation(rows,index,crypto.randomUUID()))}>Split quantity</Button>{allocationRows.filter(item=>item.productId===row.productId).length>1 && <Button size="sm" variant="secondary" onClick={()=>setAllocationRows(rows=>rows.filter((_,rowIndex)=>rowIndex!==index))}>Remove source</Button>}</div></div>
+              <Input label={`Quantity — source ${index+1}`} type="number" min="1" step="1" value={row.quantity} onChange={event=>updateAllocationRow(index,{quantity:event.target.value})} />
               <Select
-                label="Dispatch from"
+                label={`Dispatch from — source ${index+1}`}
                 value={row.sourceType}
                 onChange={(event) => updateAllocationRow(index, {
                   sourceType: event.target.value,
@@ -326,7 +341,7 @@ const LoadPlans = () => {
               />
               {row.sourceType === 'GODOWN' && (
                 <Select
-                  label="Godown"
+                  label={`Godown — source ${index+1}`}
                   value={row.sourceLocationId === 'FACTORY' ? '' : row.sourceLocationId}
                   onChange={(event) => updateAllocationRow(index, { sourceLocationId: event.target.value })}
                   options={[{ value: '', label: 'Select Godown' }, ...godowns.map((godown) => ({ value: godown.godownId, label: `${godown.godownName || godown.godownId} (${godown.godownId})` }))]}
@@ -335,9 +350,10 @@ const LoadPlans = () => {
             </div>
           ))}
         </div>
+        </fieldset>
         <div className="allocation-actions">
           <Button variant="secondary" onClick={() => setAllocationPlan(null)} disabled={savingAllocation}>Cancel</Button>
-          <Button variant="primary" onClick={saveAllocation} disabled={savingAllocation || allocationRows.length === 0}>{savingAllocation ? 'Saving...' : 'Save source assignments'}</Button>
+          <Button variant="primary" onClick={saveAllocation} disabled={savingAllocation || allocationLoading || allocationLoadFailed || allocationRows.length === 0}>{savingAllocation ? 'Saving...' : 'Save source assignments'}</Button>
         </div>
       </Modal>
 

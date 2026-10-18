@@ -1,3 +1,4 @@
+import DispatchSources from '../components/DispatchSources';
 import GodownQuantityStock from '../components/GodownQuantityStock';
 import GroupedProductPicker from '../components/GroupedProductPicker';
 import {showroomItemForProduct} from '../utils/showroomPricing';
@@ -274,9 +275,7 @@ const OutletView = () => {
       const result = await recordSales({
         outletId: outletId,
         date: salesDate,
-        customerName: customerName.trim(),
-        customerPhone: customerPhone.trim(),
-        customerAddress: customerAddress.trim(),
+        ...(ownedShowroomSales ? {customerName: customerName.trim(), customerPhone: customerPhone.trim(), customerAddress: customerAddress.trim()} : {}),
         paymentMethod,
         billAmount: parsedBillAmount,
         ...(ownedShowroomSales ? { fulfillmentMode: salesFulfillmentMode, pricingMode: 'MRP_DISCOUNT', ...saleDetails, dispatchDate: saleDetails.dispatchDate || null } : {}),
@@ -1106,6 +1105,7 @@ const OutletView = () => {
                 <span><strong>Created by:</strong> {viewOrderTarget.createdByName || (viewOrderTarget.createdBy ? 'Name unavailable' : 'Not recorded')}</span>
                 <span><strong>Created:</strong> {viewOrderTarget.createdAt ? new Date(viewOrderTarget.createdAt).toLocaleString() : '-'}</span>
                 {viewOrderTarget.remarks && <span><strong>Remarks:</strong> {viewOrderTarget.remarks}</span>}
+                {viewOrderTarget.rejectedAt && <span><strong>Rejected:</strong> {new Date(viewOrderTarget.rejectedAt).toLocaleString()}</span>}
               </div>
               <Table
                 columns={[
@@ -1113,6 +1113,7 @@ const OutletView = () => {
                   { key: 'orderedQty', label: 'Ordered', align: 'center', render: (item) => item.orderedQty ?? item.quantity ?? 0 },
                   { key: 'approvedQty', label: 'Approved', align: 'center', render: (item) => item.approvedQty ?? 0 },
                   { key: 'pendingQty', label: 'Approval pending', align: 'center', render: (item) => item.pendingQty ?? 0 },
+                  { key: 'dispatchSources', label: 'Dispatch source', render: (item) => <DispatchSources sources={item.dispatchSources} /> },
                   { key: 'dispatchedQty', label: 'Dispatched', align: 'center', render: (item) => item.dispatchedQty ?? 0 },
                   { key: 'receivedQty', label: 'Received', align: 'center', render: (item) => item.receivedQty ?? 0 },
                 ]}
@@ -1162,7 +1163,7 @@ const OutletView = () => {
           <div style={{ display: 'grid', gap: '0.85rem' }}>
             {(receiptTarget?.receiptItems || []).map((item) => (
               <div key={item.product_id} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 150px', gap: '1rem', alignItems: 'end', padding: '0.85rem', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}>
-                <div><strong>{item.productName || getProductName(item.product_id) || item.product_id}</strong><div className="text-muted" style={{ fontSize: '0.82rem', marginTop: '0.25rem' }}>Pending: {item.remainingQty} of {item.quantity}</div></div>
+                <div><strong>{item.productName || getProductName(item.product_id) || item.product_id}</strong><div className="text-muted" style={{ fontSize: '0.82rem', marginTop: '0.25rem' }}>Pending: {item.remainingQty} of {item.quantity}</div><DispatchSources sources={item.dispatchSources} /></div>
                 <Input label="Received now" type="number" min="1" max={item.remainingQty} placeholder="Leave blank" value={receiptQuantities[item.product_id] ?? ''} onChange={(event) => setReceiptQuantities((current) => ({ ...current, [item.product_id]: event.target.value }))} disabled={receivingStock} />
               </div>
             ))}
@@ -1245,10 +1246,12 @@ const OutletView = () => {
                   {ownedShowroomSales && <><Input label="Bill number (optional)" value={saleDetails.billNo} onChange={event => setSaleDetails({ ...saleDetails, billNo: event.target.value })} maxLength={80} /><Input label="Dispatch date" type="date" value={saleDetails.dispatchDate} onChange={event => setSaleDetails({ ...saleDetails, dispatchDate: event.target.value })} /><p className="showroom-sale-hint">Work-order number is generated with the factory order.<br />Sales person: <strong>{loggedInEmployeeName || 'Recorded from your login'}</strong></p></>}
                 </section>
                 <section className="sales-builder-date-card sales-builder-customer-card">
-                  <div className="order-builder-section-label"><span>2</span><div><strong>Customer details</strong><small>Required for every sales receipt</small></div></div>
+                  <div className="order-builder-section-label"><span>2</span><div><strong>{ownedShowroomSales ? 'Customer details and payment' : 'Payment details'}</strong><small>{ownedShowroomSales ? 'Customer details are required for NIM sales' : 'Record the bill amount and payment'}</small></div></div>
+                  {ownedShowroomSales && <>
                   <Input label="Customer name" placeholder="e.g. S. Kumar" value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
                   <Input label="Customer phone number" type="tel" placeholder="e.g. 9876543210" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} />
                   <Input label="Customer address" placeholder="House, street, area, city" value={customerAddress} onChange={(e) => setCustomerAddress(e.target.value)} />
+                  </>}
                   <Select label="Payment method" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} options={[
                     { value: 'CASH', label: 'Cash' },
                     { value: 'CARD', label: 'Card' },
@@ -1316,9 +1319,9 @@ const OutletView = () => {
               ) : (
                 <Table
                   columns={[
-                    { key: 'customerName', label: 'Customer' },
+                    ...(ownedShowroomSales ? [{ key: 'customerName', label: 'Customer' },
                     { key: 'customerPhone', label: 'Phone' },
-                    { key: 'customerAddress', label: 'Address', render: (row) => row.customerAddress || '-' },
+                    { key: 'customerAddress', label: 'Address', render: (row) => row.customerAddress || '-' }] : []),
                     { key: 'products', label: 'Products', render: (row) => (
                       <div className="pending-payment-products">
                         {(row.products || []).map((product) => (
@@ -1346,12 +1349,12 @@ const OutletView = () => {
           {receipt && (
             <article className="sales-receipt">
               <header className="sales-receipt-header"><div><p className="sales-receipt-kicker">NIMMADHI</p><h2>MATTRESS</h2><span>Get your sleep</span></div><div className="sales-receipt-invoice"><span>INVOICE</span><strong>{receipt.saleReferenceId || '-'}</strong><small>{receipt.saleDate}</small></div></header>
-              <section className="sales-receipt-customer"><div><span>BILLED TO</span><strong>{receipt.customerName}</strong><p>{receipt.customerPhone}<br />{receipt.customerAddress}</p></div><div><span>PAYMENT</span><strong>{receipt.paymentMethod}</strong><p>{receipt.paymentStatus === 'PAID' ? 'Paid in full' : 'Advance payment received'}</p></div></section>
+              <section className="sales-receipt-customer">{receipt.customerName && <div><span>BILLED TO</span><strong>{receipt.customerName}</strong><p>{receipt.customerPhone}<br />{receipt.customerAddress}</p></div>}<div><span>PAYMENT</span><strong>{receipt.paymentMethod}</strong><p>{receipt.paymentStatus === 'PAID' ? 'Paid in full' : 'Advance payment received'}</p></div></section>
               {receipt.pricingMode === 'MRP_DISCOUNT' ? <><p className="showroom-receipt-meta">Delivery: {receipt.fulfillmentMode === 'LOCAL_STOCK' ? 'Immediate — outlet stock' : 'Factory → customer'} · Work order: {receipt.workOrderNo || receipt.factoryOrderDisplayId || '—'} · Bill: {receipt.billNo || '—'}<br />Sales person: {receipt.createdByName || 'Name unavailable'} · Planned dispatch: {receipt.dispatchDate || '—'}</p><div style={{overflowX:'auto'}}><table className="sales-receipt-items"><thead><tr><th>Brand / Model / Colour / Size</th><th>Qty</th><th>Sticker MRP</th><th>Discount</th><th>Value</th><th>Total</th></tr></thead><tbody>{(receipt.items || []).map((item,index) => <tr key={index}><td>{item.brand} · {item.model}<br />{item.colour} · {item.size}{item.scheme && <><br />Scheme: {item.scheme}</>}<br />Tax included: {item.taxPercent}%</td><td>{item.quantity}</td><td>{formatCurrency(Number(item.mrpSticker))}</td><td>{item.discountPercent}%</td><td>{formatCurrency(Number(item.value))}</td><td>{formatCurrency(Number(item.totalSalesValue))}</td></tr>)}</tbody></table></div></> : <table className="sales-receipt-items"><thead><tr><th>Product</th><th>Quantity</th></tr></thead><tbody>{(receipt.items || []).map((item, index) => <tr key={`${item.product_id}-${index}`}><td>{item.productName || item.product_id}</td><td>{item.quantity}</td></tr>)}</tbody></table>}
               {(receipt.eligibleOffers || []).some((offer) => Number(offer.freeQuantity || 0) > 0) && <section className="sales-receipt-offers"><strong>Complimentary items</strong>{(receipt.eligibleOffers || []).filter((offer) => Number(offer.freeQuantity || 0) > 0).map((offer) => <p key={offer.offerId}>{offerSummary(offer)}</p>)}</section>}
               <section className="sales-receipt-totals">{Number(receipt.extraDiscountAmount || 0) > 0 && <><div><span>Bill before discount</span><strong>{formatCurrency(receipt.grossBillAmount)}</strong></div><div><span>{receipt.pricingMode === 'MRP_DISCOUNT' ? 'Cash discount' : 'Extra discount'}</span><strong>− {formatCurrency(receipt.extraDiscountAmount)}</strong></div></>}<div><span>Total bill</span><strong>{formatCurrency(receipt.billAmount)}</strong></div>{receipt.pricingMode === 'MRP_DISCOUNT' && <div><span>Tax included in total</span><strong>{formatCurrency((receipt.items || []).reduce((total,item) => total + Number(item.taxAmount || 0),0))}</strong></div>}<div><span>Total paid</span><strong>{formatCurrency(receipt.advanceAmount)}</strong></div><div className="sales-receipt-balance"><span>Balance due</span><strong>{formatCurrency(receipt.balanceDue)}</strong></div></section>
               <footer>Thank you for choosing Nimmadhi Mattress. Please retain this invoice for your records.</footer>
-              <div className="sales-receipt-actions"><Button variant="secondary" onClick={() => window.print()}>Print receipt</Button><Button onClick={sendReceiptToCustomer}>Send receipt</Button></div>
+              <div className="sales-receipt-actions"><Button variant="secondary" onClick={() => window.print()}>Print receipt</Button>{receipt.customerPhone && <Button onClick={sendReceiptToCustomer}>Send receipt</Button>}</div>
             </article>
           )}
         </Modal>
@@ -1526,7 +1529,7 @@ const OutletView = () => {
                                   { key: 'workOrderNo', label: 'Work order', render: row => row.workOrderNo || '—' },
                                   { key: 'billNo', label: 'Bill no.', render: row => row.billNo || '—' },
                                   { key: 'dispatchDate', label: 'Planned dispatch', render: row => row.dispatchDate || '—' },
-                                  { key: 'customerName', label: 'Customer' }, { key: 'customerAddress', label: 'Address' }, { key: 'customerPhone', label: 'Phone' },
+                                  ...(ownedShowroomSales ? [{ key: 'customerName', label: 'Customer' }, { key: 'customerAddress', label: 'Address' }, { key: 'customerPhone', label: 'Phone' }] : []),
                                   { key: 'brand', label: 'Brand' }, { key: 'model', label: 'Model' }, { key: 'colour', label: 'Colour' }, { key: 'size', label: 'Size' },
                                   { key: 'mrpSticker', label: 'Sticker MRP', render: row => row.mrpSticker != null ? formatCurrency(Number(row.mrpSticker)) : '—' },
                                   { key: 'discountPercent', label: 'Discount', render: row => row.discountPercent != null ? `${row.discountPercent}%` : '—' },
