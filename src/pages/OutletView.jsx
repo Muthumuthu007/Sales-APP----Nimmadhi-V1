@@ -1,3 +1,4 @@
+import GodownCustody from '../components/GodownCustody';
 import DispatchPlans from './DispatchPlans';
 import DispatchSources from '../components/DispatchSources';
 import GodownQuantityStock from '../components/GodownQuantityStock';
@@ -971,7 +972,7 @@ const OutletView = () => {
 
       <div>
         {activeTab === 'ASSIGNED_DISPATCH' && isGodown && <DispatchPlans godownMode />}
-        {activeTab === 'PRODUCT_IN' && isGodown && <GodownQuantityStock key="in" direction="IN" />}
+        {activeTab === 'PRODUCT_IN' && isGodown && <GodownCustody />}
         {activeTab === 'SALES_OUT' && isGodown && <GodownQuantityStock key="out" direction="OUT" />}
         {activeTab === 'ATTENDANCE' && <EmployeeAttendance />}
         {activeTab === 'CREATE_ORDER' && (
@@ -1176,9 +1177,10 @@ const OutletView = () => {
           </div>
         </Modal>
 
+        {activeTab === 'STOCK' && isGodown && <GodownCustody stockView />}
         {activeTab === 'STOCK' && (
           <Card>
-            <CardHeader title="Current Inventory & Stock Flow" />
+            <CardHeader title={isGodown ? "Godown own stock — ordered and received" : "Current Inventory & Stock Flow"} />
             <CardContent style={{ padding: 0 }}>
               {stockLoading ? (
                 <div style={{ padding: '3rem 0' }}>
