@@ -1,3 +1,4 @@
+import {businessDate} from '../utils/businessDate';
 import React, {useEffect, useRef, useState} from 'react';
 import api from '../api/axios';
 import {Card, CardHeader, CardContent} from './ui/Card';
@@ -5,7 +6,7 @@ import {Input, Select} from './ui/Input';
 import {Button} from './ui/Button';
 import {Table} from './ui/Table';
 import './GodownReports.css';
-const today = () => new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+const today = businessDate;
 export default function GodownReports() {
  const [kind,setKind]=useState('temporary'),[period,setPeriod]=useState('daily'),[date,setDate]=useState(today),[location,setLocation]=useState(''),[outlet,setOutlet]=useState('');
  const [report,setReport]=useState(null),[loading,setLoading]=useState(false),[error,setError]=useState(''),[downloading,setDownloading]=useState(false);

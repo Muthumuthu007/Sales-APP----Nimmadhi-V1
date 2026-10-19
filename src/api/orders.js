@@ -1,3 +1,4 @@
+import {idempotentPost} from './idempotent';
 import api from './axios';
 import { showroomReportCsv } from '../utils/salesReportCsv';
 
@@ -22,7 +23,7 @@ export async function fetchOutletProductNames(outletId) {
 }
 
 export async function recordSales(data) {
-  return api.post('/outlet/sales', data);
+  return idempotentPost(api, '/outlet/sales', data);
 }
 
 export async function fetchDueCustomers(outletId) {
@@ -30,7 +31,7 @@ export async function fetchDueCustomers(outletId) {
 }
 
 export async function settleDuePayment(saleReferenceId, data) {
-  return api.post(`/outlet/customers/due/${encodeURIComponent(saleReferenceId)}/payment`, data);
+  return idempotentPost(api, `/outlet/customers/due/${encodeURIComponent(saleReferenceId)}/payment`, data);
 }
 
 export async function fetchReportData(type, date, outletId) {

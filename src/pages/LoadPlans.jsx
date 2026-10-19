@@ -1,3 +1,4 @@
+import {businessDate} from '../utils/businessDate';
 import {splitAllocation, allocationPayload} from '../utils/loadPlanAllocations';
 import OrderProduct from '../components/OrderProduct';
 import React, { useState, useEffect, useRef } from 'react';
@@ -178,8 +179,8 @@ const LoadPlans = () => {
       const link = document.createElement('a');
       link.href = url;
 
-      const tzOffset = new Date().getTimezoneOffset() * 60000;
-      const localISOTime = (new Date(Date.now() - tzOffset)).toISOString().slice(0, 10);
+
+      const localISOTime = businessDate();
       link.setAttribute('download', `${activeTab.toLowerCase()}_load_plans_${localISOTime}.xlsx`);
 
       document.body.appendChild(link);

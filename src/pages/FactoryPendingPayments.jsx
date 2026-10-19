@@ -1,3 +1,4 @@
+import {idempotentPost} from '../api/idempotent';
 import React,{useCallback,useEffect,useState} from 'react';
 import api from '../api/axios';
 import {Card,CardHeader,CardContent} from '../components/ui/Card';
@@ -27,7 +28,7 @@ export default function FactoryPendingPayments(){
   const paidAmount=Number(amount);
   if(!Number.isFinite(paidAmount)||paidAmount<=0||paidAmount>Number(target.balanceDue)){setPaymentError('Enter an amount greater than zero and no more than the balance due.');return;}
   setSaving(true);setPaymentError('');
-  try{const result=await api.post(`/manager/factory-management/payments/${encodeURIComponent(target.saleReferenceId)}/payment`,{outletId:target.outletId,paidAmount,paymentMethod:method});setReceipt(result);setMessage(`Payment recorded for ${result.saleReferenceId}. Remaining balance: ${money(result.balanceDue)}.`);setTarget(null);await load();}
+  try{const result=await idempotentPost(api, `/manager/factory-management/payments/${encodeURIComponent(target.saleReferenceId)}/payment`,{outletId:target.outletId,paidAmount,paymentMethod:method});setReceipt(result);setMessage(`Payment recorded for ${result.saleReferenceId}. Remaining balance: ${money(result.balanceDue)}.`);setTarget(null);await load();}
   catch(err){setPaymentError(err.response?.data?.error || 'Unable to record payment.');}
   finally{setSaving(false);}
  };

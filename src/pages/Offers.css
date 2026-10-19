@@ -14,3 +14,18 @@
 .offer-product-option span{overflow-wrap:anywhere;min-width:0}
 
 .offer-current-assignment{display:block;margin-top:.25rem;color:var(--color-text-muted);font-size:.78rem;font-weight:400}
+
+/* Keep offer descriptions full-width; action buttons must never squeeze text. */
+.offers-layout > .card,.offers-list{min-width:0}
+.offers-list .offer-rule{display:grid;grid-template-columns:minmax(0,1fr);align-items:start;gap:1rem}
+.offer-rule-content{min-width:0;width:100%;line-height:1.5}
+.offer-rule-content > strong{font-size:1rem;word-break:normal;overflow-wrap:break-word}
+.offer-rule-content p{align-items:flex-start;line-height:1.6;word-break:normal;overflow-wrap:break-word}
+.offer-rule-content p svg{flex:0 0 16px;margin-top:.2rem}
+.offer-rule-benefit{display:grid;flex:1;min-width:0;gap:.2rem}
+.offer-rule-benefit > span:first-child{font-size:.75rem;font-weight:600;color:var(--color-text-muted)}
+.offer-rule-benefit > span:last-child{color:var(--color-text-main);overflow-wrap:anywhere}
+.offer-rule-actions{display:flex;flex-wrap:wrap;gap:.6rem;padding-top:.8rem;border-top:1px solid var(--color-border);min-width:0}
+.offer-rule-actions .btn{flex:0 1 auto;max-width:100%;white-space:normal;text-align:center;justify-content:center}
+@media(max-width:1100px){.offers-layout{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:600px){.offer-rule-actions .btn{flex:1 1 140px;width:auto}.offers-layout{gap:1rem}}

@@ -1,3 +1,4 @@
+import {businessDate} from '../utils/businessDate';
 import GodownReports from '../components/GodownReports';
 import GodownCustody from '../components/GodownCustody';
 import DispatchPlans from './DispatchPlans';
@@ -61,7 +62,7 @@ const OutletView = () => {
     { id: 'DUE_CUSTOMERS', label: 'Pending Payments' },
     { id: 'REPORTS', label: 'Reports' },
   ];
-  const tabs = (['OUTLET', 'EMPLOYEE', 'CASHIER', 'SUPERVISOR'].includes(role) ? employeeTabs : outletTabs).filter(tab => (tab.id !== 'SALES' || isGodown === false)).concat(isGodown ? [{id:'ASSIGNED_DISPATCH',label:'Dispatch Assigned Orders'},{id:'PRODUCT_IN',label:'Temporary Stocks'},{id:'SALES_OUT',label:'Sales Out'}] : []).filter(tab => tab.id !== 'DUE_CUSTOMERS' || (isGodown === false && !String(outletId || '').toUpperCase().startsWith('NIM')));
+  const tabs = (['OUTLET', 'EMPLOYEE', 'CASHIER', 'SUPERVISOR'].includes(role) ? employeeTabs : outletTabs).filter(tab => (tab.id !== 'SALES' || isGodown === false)).concat(isGodown ? [{id:'ASSIGNED_DISPATCH',label:'Dispatch Assigned Orders'},{id:'PRODUCT_IN',label:'Temporary Stocks'},{id:'SALES_OUT',label:'Sales Out'}] : []).filter(tab => tab.id !== 'DUE_CUSTOMERS');
 
   // --- Create Order State ---
   const [productOptions, setProductOptions] = useState([{ label: 'Loading products...', value: '' }]);
@@ -182,7 +183,7 @@ const OutletView = () => {
   const [saleDetails, setSaleDetails] = useState({ billNo: '', dispatchDate: '' });
   const [salesProduct, setSalesProduct] = useState('');
   const [salesQuantity, setSalesQuantity] = useState(1);
-  const [salesDate, setSalesDate] = useState(new Date().toISOString().split('T')[0]);
+  const [salesDate, setSalesDate] = useState(businessDate());
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
@@ -262,7 +263,7 @@ const OutletView = () => {
     if (missing.length) { setSalesValidationErrors(missing); return; }
     const parsedBillAmount = grossAmount;
     const parsedAdvanceAmount = Number(advanceAmount || 0);
-    if (!Number.isFinite(parsedBillAmount) || parsedBillAmount <= 0 || !Number.isFinite(enteredDiscount) || enteredDiscount < 0 || (!ownedShowroomSales && extraDiscountType === 'PERCENT' && enteredDiscount > 100) || calculatedExtraDiscount >= parsedBillAmount || !Number.isFinite(parsedAdvanceAmount) || parsedAdvanceAmount < 0 || parsedAdvanceAmount > netBillAmount) {
+    if (ownedShowroomSales && (!Number.isFinite(parsedBillAmount) || parsedBillAmount <= 0 || !Number.isFinite(enteredDiscount) || enteredDiscount < 0 || calculatedExtraDiscount >= parsedBillAmount || !Number.isFinite(parsedAdvanceAmount) || parsedAdvanceAmount < 0 || parsedAdvanceAmount > netBillAmount)) {
       const errors = [];
       if (!Number.isFinite(parsedBillAmount) || parsedBillAmount <= 0) errors.push('Bill amount must be greater than zero');
       if (!Number.isFinite(enteredDiscount) || enteredDiscount < 0 || calculatedExtraDiscount >= parsedBillAmount || (!ownedShowroomSales && extraDiscountType === 'PERCENT' && enteredDiscount > 100)) errors.push('Discount must be valid and less than the bill amount');
@@ -279,19 +280,16 @@ const OutletView = () => {
       const result = await recordSales({
         outletId: outletId,
         date: salesDate,
-        ...(ownedShowroomSales ? {customerName: customerName.trim(), customerPhone: customerPhone.trim(), customerAddress: customerAddress.trim()} : {}),
-        paymentMethod,
-        billAmount: parsedBillAmount,
-        ...(ownedShowroomSales ? { fulfillmentMode: salesFulfillmentMode, pricingMode: 'MRP_DISCOUNT', ...saleDetails, dispatchDate: saleDetails.dispatchDate || null } : {}),
-        advanceAmount: parsedAdvanceAmount,
-        extraDiscountType,
-        cashDiscount: ownedShowroomSales ? cashDiscount || '0' : '0',
-        extraDiscountValue: ownedShowroomSales ? 0 : enteredDiscount,
-        extraDiscountReason: extraDiscountReason.trim(),
+        ...(ownedShowroomSales ? {
+          customerName: customerName.trim(), customerPhone: customerPhone.trim(), customerAddress: customerAddress.trim(),
+          paymentMethod, billAmount: parsedBillAmount, fulfillmentMode: salesFulfillmentMode, pricingMode: 'MRP_DISCOUNT',
+          ...saleDetails, dispatchDate: saleDetails.dispatchDate || null, advanceAmount: parsedAdvanceAmount,
+          extraDiscountType, cashDiscount: cashDiscount || '0', extraDiscountValue: 0, extraDiscountReason: extraDiscountReason.trim(),
+        } : {entryMode: 'QUANTITY_ONLY'}),
         soldItems: salesItems.map(({ quantity, ...item }) => ({ ...item, qty: quantity }))
       });
-      setReceipt({ ...result, items: submittedItems.map((item, index) => ({ ...item, ...(result.soldItems?.[index] || {}) })) });
-      setSalesSuccess('Sales invoice created successfully.');
+      if (ownedShowroomSales) setReceipt({ ...result, items: submittedItems.map((item, index) => ({ ...item, ...(result.soldItems?.[index] || {}) })) });
+      setSalesSuccess(ownedShowroomSales ? 'Sales invoice created successfully.' : 'Products recorded successfully and outlet stock updated.');
       setSalesItems([]);
       setSaleDetails({ billNo: '', dispatchDate: '' });
       setSalesFulfillmentMode('');
@@ -333,7 +331,7 @@ const OutletView = () => {
 
   // --- Reports State ---
   const [reportView, setReportView] = useState('list'); // 'list', 'daily', 'weekly', 'monthly'
-  const [reportDate, setReportDate] = useState(new Date().toISOString().split('T')[0]);
+  const [reportDate, setReportDate] = useState(businessDate());
   const [reportData, setReportData] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -1259,7 +1257,7 @@ const OutletView = () => {
                   <Input type="date" label="Date of sale" value={salesDate} onChange={(e) => setSalesDate(e.target.value)} />
                   {ownedShowroomSales && <><Input label="Bill number (optional)" value={saleDetails.billNo} onChange={event => setSaleDetails({ ...saleDetails, billNo: event.target.value })} maxLength={80} /><Input label="Dispatch date" type="date" value={saleDetails.dispatchDate} onChange={event => setSaleDetails({ ...saleDetails, dispatchDate: event.target.value })} /><p className="showroom-sale-hint">Work-order number is generated with the factory order.<br />Sales person: <strong>{loggedInEmployeeName || 'Recorded from your login'}</strong></p></>}
                 </section>
-                <section className="sales-builder-date-card sales-builder-customer-card">
+                {ownedShowroomSales && <section className="sales-builder-date-card sales-builder-customer-card">
                   <div className="order-builder-section-label"><span>2</span><div><strong>{ownedShowroomSales ? 'Customer details and payment' : 'Payment details'}</strong><small>{ownedShowroomSales ? 'Customer details are required for NIM sales' : 'Record the bill amount and payment'}</small></div></div>
                   {ownedShowroomSales && <>
                   <Input label="Customer name" placeholder="e.g. S. Kumar" value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
@@ -1271,20 +1269,13 @@ const OutletView = () => {
                     { value: 'CARD', label: 'Card' },
                     { value: 'UPI', label: 'UPI' },
                   ]} />
-                  {!ownedShowroomSales && <>
-                  <Input label="Bill amount before extra discount" type="number" min="0.01" step="0.01" placeholder="0.00" value={billAmount} onChange={(e) => setBillAmount(e.target.value)} />
-                  <Select label="Extra discount type" value={extraDiscountType} onChange={(e) => setExtraDiscountType(e.target.value)} options={[{ value: 'PERCENT', label: 'Percentage (%)' }, { value: 'AMOUNT', label: 'Amount (₹)' }]} />
-                  <Input label={extraDiscountType === 'PERCENT' ? 'Extra discount (%)' : 'Extra discount amount (₹)'} type="number" min="0" step="0.01" placeholder="0.00" value={extraDiscountValue} onChange={(e) => setExtraDiscountValue(e.target.value)} />
-                  <Input label="Extra discount reason (optional)" placeholder="Customer negotiation, damaged display, etc." value={extraDiscountReason} onChange={(e) => setExtraDiscountReason(e.target.value)} />
-                  {billAmount && <div className="sales-builder-payment-summary">Extra discount: <strong>{formatCurrency(calculatedExtraDiscount)}</strong><br />Net bill amount: <strong>{formatCurrency(netBillAmount)}</strong></div>}
-                  </>}
                   {ownedShowroomSales && <Select label="Customer needs" value={salesFulfillmentMode} onChange={e => setSalesFulfillmentMode(e.target.value)} options={[{value:'',label:'Choose delivery option'},{value:'LOCAL_STOCK',label:'Needed immediately — deliver from outlet stock'},{value:'FACTORY_DELIVERY',label:'Factory dispatch directly to customer'}]} />}
                   {ownedShowroomSales && <><Input label="Cash discount (₹)" type="number" min="0" step="0.01" placeholder="0.00" value={cashDiscount} onChange={e => setCashDiscount(e.target.value)} /><div className="sales-builder-payment-summary">Total after percentage discount: <strong>{formatCurrency(grossAmount)}</strong><br />Cash discount: <strong>− {formatCurrency(enteredDiscount)}</strong><br />Grand total (tax included): <strong>{formatCurrency(netBillAmount)}</strong></div></>}
                   <Input label="Amount paid now (advance)" type="number" min="0" step="0.01" placeholder="0.00" value={advanceAmount} onChange={(e) => setAdvanceAmount(e.target.value)} />
                   {grossAmount > 0 && <div className="sales-builder-payment-summary">Balance due: <strong>{formatCurrency(Math.max(0, netBillAmount - Number(advanceAmount || 0)))}</strong></div>}
-                </section>
+                </section>}
                 <section className="sales-builder-entry-card">
-                  <div className="order-builder-section-label"><span>3</span><div><strong>Sold product</strong><small>{ownedShowroomSales ? 'Choose products for outlet or factory delivery' : 'Only products available at this outlet are listed'}</small></div></div>
+                  <div className="order-builder-section-label"><span>{ownedShowroomSales ? 3 : 2}</span><div><strong>Sold product</strong><small>{ownedShowroomSales ? 'Choose products for outlet or factory delivery' : 'Only products available at this outlet are listed'}</small></div></div>
                   <GroupedProductPicker label="Sale product" options={salesProductOptions} value={salesProduct} onChange={val => { setSalesProduct(val); setShowroomItem(current => showroomItemForProduct(current, salesProductOptions.find(option => option.value === val))); }} placeholder={ownedShowroomSales ? 'Search factory products...' : 'Search available products...'} />
                   {ownedShowroomSales && <ShowroomSaleFields item={showroomItem} onChange={setShowroomItem} quantity={Number(salesQuantity)} />}
                   <div className="sales-builder-add-row">
