@@ -29,3 +29,5 @@
 .offer-rule-actions .btn{flex:0 1 auto;max-width:100%;white-space:normal;text-align:center;justify-content:center}
 @media(max-width:1100px){.offers-layout{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:600px){.offer-rule-actions .btn{flex:1 1 140px;width:auto}.offers-layout{gap:1rem}}
+
+.offers-current-products .offers-list{margin-top:1rem}.offer-product-benefits{display:grid;gap:.75rem;min-width:0}.offer-product-benefit{padding:.8rem;border:1px solid var(--color-border);border-radius:10px;min-width:0}.offer-product-benefit>div:first-child{display:flex;align-items:flex-start;gap:.5rem;line-height:1.5}.offer-product-benefit svg{flex-shrink:0;color:var(--color-primary);margin-top:.15rem}.offer-product-benefit span{min-width:0;overflow-wrap:anywhere}.offer-product-benefit small{display:block;color:var(--color-text-muted);line-height:1.5;margin-top:.5rem}.offer-product-benefit .offer-rule-actions{margin-top:.7rem}.offer-unassigned{margin-top:1.5rem}.offer-unassigned summary{cursor:pointer;margin-bottom:.8rem}.offer-unassigned .offer-rule{margin-top:.7rem}
