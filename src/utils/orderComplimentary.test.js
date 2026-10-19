@@ -5,7 +5,7 @@ test('order summary shows only the selected product and group complimentary offe
   const offers = [
     {offerId:'product',scope:'PRODUCT',productId:'A',freeQuantity:2},
     {offerId:'other',scope:'PRODUCT',productId:'B',freeQuantity:2},
-    {offerId:'group',scope:'GROUP',groupId:'G1',freeQuantity:1},
+    {offerId:'group',scope:'GROUP',groupId:'G1',includedProductIds:['A'],freeQuantity:1},
     {offerId:'all',scope:'OUTLET',freeQuantity:1},
     {offerId:'discount',scope:'PRODUCT',productId:'A',freeQuantity:0},
   ];
@@ -14,10 +14,10 @@ test('order summary shows only the selected product and group complimentary offe
 });
 
 test('unchecked group products receive only their separate product offer', () => {
-  const offers=[{offerId:'group',scope:'GROUP',groupId:'G',freeQuantity:2,excludedProductIds:['A']},{offerId:'specific',scope:'PRODUCT',productId:'A',freeQuantity:1}];
+  const offers=[{offerId:'group',scope:'GROUP',groupId:'G',includedProductIds:['B'],freeQuantity:2,excludedProductIds:['A']},{offerId:'specific',scope:'PRODUCT',productId:'A',freeQuantity:1}];
   assert.deepEqual(complimentaryForProduct(offers,'A','G').map(offer=>offer.offerId),['specific']);
   assert.deepEqual(complimentaryForProduct(offers,'B','G').map(offer=>offer.offerId),['group']);
-  assert.deepEqual(complimentaryForProduct(offers,'new-product','G').map(offer=>offer.offerId),['group']);
+  assert.deepEqual(complimentaryForProduct(offers,'new-product','G').map(offer=>offer.offerId),[]);
 });
 
 test('two offers in the same group apply only to their assigned products', () => {

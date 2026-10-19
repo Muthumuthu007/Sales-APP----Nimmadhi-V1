@@ -1,3 +1,4 @@
+import CopyComplimentary from '../components/CopyComplimentary';
 import {complimentaryProductGroups} from '../utils/complimentaryProductGroups';
 import {complimentaryForProduct} from '../utils/orderComplimentary';
 import GroupedProductPicker from '../components/GroupedProductPicker';
@@ -54,7 +55,7 @@ const Offers = ({ ruleType = 'DISCOUNT' }) => {
   const changeScope = (scope) => setOffer({ ...defaultOffer(ruleType), scope });
   const editOffer = item => {
     const members = products.filter(product=>product.groupId===item.groupId);
-    const excludedIds = Array.isArray(item.includedProductIds) ? members.filter(product=>!item.includedProductIds.includes(product.productId)).map(product=>product.productId) : [...(item.excludedProductIds || [])];
+    const excludedIds = Array.isArray(item.includedProductIds) ? members.filter(product=>!item.includedProductIds.includes(product.productId)).map(product=>product.productId) : members.map(product=>product.productId);
     setOffer({...defaultOffer(ruleType),...item,assignmentMode:'ADD',excludedProductIds:excludedIds});setProductSearch('');
   };
   const changeGroup = groupId => {
@@ -121,6 +122,7 @@ const Offers = ({ ruleType = 'DISCOUNT' }) => {
     <section className="offers-intro"><div className="offers-intro-icon">{isComplimentary ? <Gift size={22} /> : <BadgeIndianRupee size={22} />}</div><div><p>Sales administration</p><h2>{isComplimentary ? 'Complimentary products' : 'Discounts'}</h2><span>{isComplimentary ? 'Choose the qualifying group or product, then select the product to give free.' : 'Set a discount for an outlet, group, or product.'}</span></div></section>
     {error && <div className="offers-alert offers-alert-error">{error}</div>}
     {success && <div className="offers-alert offers-alert-success">{success}</div>}
+    {isComplimentary && <CopyComplimentary outlets={outlets} onCopied={()=>loadCatalog()}/> }
     <div className="offers-layout">
       <Card className="offers-form-card"><CardHeader title={isComplimentary && offer.offerId ? 'Reassign complimentary products' : 'Create an offer'} /><CardContent>
         {loading && !catalog ? <LoadingState /> : !outlets.length ? <EmptyState title="Create an outlet before configuring offers." /> : <form className="offers-form" onSubmit={submit}>
@@ -136,7 +138,7 @@ const Offers = ({ ruleType = 'DISCOUNT' }) => {
           </fieldset>}
           {isComplimentary && offer.assignmentMode === 'REPLACE' && offer.scope === 'GROUP' && reassignedProducts.length>0 && <p className="offers-help">Saving will reassign {reassignedProducts.length} selected {reassignedProducts.length===1?'product':'products'} from the previous complimentary offer. Other products will keep their existing offers.</p>}
           {offer.scope === 'PRODUCT' && <GroupedProductPicker label="Qualifying product" options={products.map(productionOption)} value={offer.productId} onChange={value=>update('productId',value)} />}
-          {isComplimentary && <label>Existing complimentary items<select value={offer.assignmentMode || 'ADD'} onChange={event=>update('assignmentMode',event.target.value)}><option value="ADD">Keep existing items — add this item</option><option value="REPLACE">Replace other group/product offers for selected products</option></select></label>}
+          {isComplimentary && <label>Existing complimentary items<select value={offer.assignmentMode || 'ADD'} onChange={event=>update('assignmentMode',event.target.value)}><option value="ADD">Update this item's quantity; keep different items</option><option value="REPLACE">Replace other group/product offers for selected products</option></select></label>}
           {isComplimentary ? <><GroupedProductPicker label="Complimentary accessory" options={complimentaryProducts.map(productionOption)} value={offer.freeProductId} onChange={value=>update('freeProductId',value)} /><Input label="Complimentary quantity" type="number" min="1" step="1" value={offer.freeQuantity} onChange={(event) => update('freeQuantity', event.target.value)} /><p className="offers-help">All products under Accessories and its subgroups can be selected as complimentary products. The qualifying group or product remains limited to the selected outlet’s assigned products.</p></> : <div className="offers-value-grid"><label>Discount type<select value={offer.discountType} onChange={(event) => update('discountType', event.target.value)}><option value="PERCENT">Percentage (%)</option><option value="AMOUNT">Fixed amount (₹)</option></select></label><Input label="Discount value" type="number" min="0.01" max={offer.discountType === 'PERCENT' ? '100' : undefined} step="0.01" value={offer.discountValue} onChange={(event) => update('discountValue', event.target.value)} placeholder="0.00" /></div>}
           <Button type="submit" variant="primary" disabled={saving || loading || (isComplimentary && offer.scope==='GROUP' && !includedCount)}>{saving ? 'Saving…' : isComplimentary ? 'Save complimentary product' : 'Save discount'}</Button>
         </form>}

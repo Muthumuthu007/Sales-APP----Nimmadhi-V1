@@ -18,3 +18,8 @@ test('zero-member offers stay available as unassigned, never invented as active 
  const result=complimentaryProductGroups(products,[rule('empty',[],'Pillow',2),rule('used',['A'],'Comforter',1)]);
  assert.equal(result.unassigned.length,1);assert.equal(result.products[0].offers.length,1);
 });
+
+test('legacy group without explicit checked products cannot leak to the group',()=>{
+ const result=complimentaryProductGroups(products,[{offerId:'legacy',scope:'GROUP',groupId:'G',freeQuantity:1}]);
+ assert.equal(result.products.length,0);assert.equal(result.unassigned.length,1);
+});
