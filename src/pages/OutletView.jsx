@@ -113,6 +113,7 @@ const OutletView = () => {
 
   const [items, setItems] = useState([]);
   const [selectedProductGroup, setSelectedProductGroup] = useState('');
+  const [groupSearch, setGroupSearch] = useState('');
   const [selectedProduct, setSelectedProduct] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [customized, setCustomized] = useState(false);
@@ -125,6 +126,14 @@ const OutletView = () => {
   const productGroups = useMemo(() => (
     groupedProductOptions(productOptions).flatMap(main=>main.groups.map(group=>({...group,mainGroupName:main.name})))
   ), [productOptions]);
+
+  const matchingGroupCategories = useMemo(() => {
+    const query = groupSearch.trim().toLowerCase();
+    return groupedProductOptions(productOptions)
+      .map(main => ({...main, groups: main.groups.filter(group =>
+        `${main.name} ${group.label}`.toLowerCase().includes(query))}))
+      .filter(main => main.groups.length > 0);
+  }, [productOptions, groupSearch]);
 
   // An outlet may only order from groups assigned to it by the manager. Keep a
   // concrete group selected, rather than offering an "all products" view that
@@ -1006,9 +1015,11 @@ const OutletView = () => {
               <div className="order-builder-workspace">
                 <section className="order-builder-groups">
                   <div className="order-builder-section-label"><span>1</span><div><strong>Production group</strong><small>Start with a collection</small></div></div>
+                  <Input label="Search production groups" type="search" value={groupSearch} onChange={event=>setGroupSearch(event.target.value)} placeholder="Search group or subgroup name…" />
                   <div className="order-builder-categories">
-                    {groupedProductOptions(productOptions).map(main=><section className="order-builder-category" key={main.name}><strong>{main.name}</strong><div className="order-builder-group-grid">{main.groups.map(group=><button type="button" key={group.id} className={`order-builder-group ${selectedProductGroup===group.id?'selected':''}`} onClick={()=>{setSelectedProductGroup(group.id);setSelectedProduct('');}}><span>{group.label}</span><small>{group.options.length}</small></button>)}</div></section>)}
+                    {matchingGroupCategories.map(main=><section className="order-builder-category" key={main.name}><strong>{main.name}</strong><div className="order-builder-group-grid">{main.groups.map(group=><button type="button" key={group.id} className={`order-builder-group ${selectedProductGroup===group.id?'selected':''}`} onClick={()=>{setSelectedProductGroup(group.id);setSelectedProduct('');}}><span>{group.label}</span><small>{group.options.length}</small></button>)}</div></section>)}
                   </div>
+                  {!matchingGroupCategories.length && <p role="status">No production groups match your search.</p>}
                 </section>
                 <section className="order-builder-selection">
                   <div className="order-builder-section-label"><span>2</span><div><strong>Product and quantity</strong><small>{selectedProductGroup ? `${productGroups.find(group=>group.id===selectedProductGroup)?.label || ''} products only` : 'Select a production group'}</small></div></div>
