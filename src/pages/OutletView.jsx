@@ -1206,12 +1206,14 @@ const OutletView = () => {
                 <Table 
                   columns={isGodown && godownStockView === 'CURRENT' ? [
                     {key:'productName',label:'Product',render:row=>row.productName || 'Product name unavailable'},
+                    {key:'mappedMrp',label:'MRP',render:row=><ProductMrp item={row} label={false}/>},
                     {key:'closingQty',label:'Current Stock',align:'center',render:row=>Number(row.closingQty || 0)},
                     {key:'reservedQty',label:'Reserved',align:'center',render:row=>Number(row.reservedQty || 0)},
                     {key:'availableQty',label:'Available to Dispatch',align:'center',render:row=>Number(row.availableQty ?? (Number(row.closingQty || 0)-Number(row.reservedQty || 0)))},
                     {key:'lastUpdated',label:'Last Updated',render:row=>row.lastUpdated ? new Date(row.lastUpdated).toLocaleString() : '—'},
                   ] : [
                     { key: 'productName', label: 'Product Name', render: (row) => row.productName || 'Product name unavailable' },
+                    {key:'mappedMrp',label:'MRP',render:row=><ProductMrp item={row} label={false}/>},
                     { key: 'openingQty', label: 'Opening', align: 'center', render: (row) => row.openingQty || 0 },
                     { key: 'receivedQty', label: 'Received', align: 'center', render: (row) => row.receivedQty || 0 },
                     { key: 'soldQty', label: 'Sold', align: 'center', render: (row) => row.soldQty || 0 },
@@ -1289,6 +1291,7 @@ const OutletView = () => {
                 <section className="sales-builder-entry-card">
                   <div className="order-builder-section-label"><span>{ownedShowroomSales ? 3 : 2}</span><div><strong>Sold product</strong><small>{ownedShowroomSales ? 'Choose products for outlet or factory delivery' : 'Only products available at this outlet are listed'}</small></div></div>
                   <GroupedProductPicker label="Sale product" options={salesProductOptions} value={salesProduct} onChange={val => { setSalesProduct(val); setShowroomItem(current => showroomItemForProduct(current, salesProductOptions.find(option => option.value === val))); }} placeholder={ownedShowroomSales ? 'Search factory products...' : 'Search available products...'} />
+                  {salesProduct && <div role="status" className="sales-product-mrp" style={{padding:'0.75rem 1rem',marginBottom:'1rem',border:'1px solid var(--color-primary)',borderRadius:'0.75rem'}}><strong>Product MRP</strong><ProductMrp item={salesProductOptions.find(option=>option.value===salesProduct) || {productId:salesProduct}} label={false}/></div>}
                   {ownedShowroomSales && <ShowroomSaleFields item={showroomItem} onChange={setShowroomItem} quantity={Number(salesQuantity)} />}
                   <div className="sales-builder-add-row">
                     <Input label="Quantity sold" type="number" min="1" value={salesQuantity} onChange={(e) => setSalesQuantity(e.target.value)} />
