@@ -1,3 +1,5 @@
+import ProductMrp from '../components/ProductMrp';
+import OrderFreeItems from '../components/OrderFreeItems';
 import GroupedProductPicker from '../components/GroupedProductPicker';
 import {productionOption} from '../utils/productHierarchy';
 import OrderProduct from '../components/OrderProduct';
@@ -307,7 +309,7 @@ const OrderDetails = () => {
               <table className="approval-table">
                 <thead>
                   <tr>
-                    <th>Product</th>
+                    <th>Product</th><th>MRP</th>
                     <th style={{ textAlign: 'center' }}>Ordered / Pending</th>
                     {isEditable && <th style={{ textAlign: 'center' }}>Approve Qty</th>}
                     <th>Free Items</th>
@@ -317,7 +319,7 @@ const OrderDetails = () => {
                   {approvalItems.map((item, idx) => (
                     <tr key={idx}>
                       <td>
-                        <OrderProduct item={item} />
+                        <OrderProduct hideMrp item={{...item,freeItems:[],complimentaryOffers:[]}} />
                         {item.isCustomized && <small style={{ color: 'var(--color-primary)' }}>Customized size</small>}
                         <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>ID: {item.product_id}</div>
                         <div role="status" style={{ display: 'inline-block', marginTop: '0.35rem', padding: '0.25rem 0.5rem', borderRadius: '4px', background: 'var(--color-secondary)', fontSize: '0.8rem' }}>
@@ -332,6 +334,7 @@ const OrderDetails = () => {
                         )}
                       </td>
                       
+                      <td><ProductMrp item={item} label={false}/></td>
                       <td style={{ textAlign: 'center' }}>
                         <div><strong>{item.orderedQty}</strong> initially</div>
                         <div style={{ color: 'var(--color-red)' }}><strong>{item.pendingQty}</strong> pending</div>
@@ -362,7 +365,8 @@ const OrderDetails = () => {
                       )}
 
                       <td>
-                        {item.freeItems.length > 0 && (
+                        <OrderFreeItems item={item} />
+                        {isEditable && item.freeItems.length > 0 && (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '0.5rem' }}>
                             {item.freeItems.map((fItem, fIdx) => (
                               <div key={fIdx} className="complimentary-item-editor">
@@ -406,7 +410,7 @@ const OrderDetails = () => {
                   ))}
                   {approvalItems.length === 0 && (
                     <tr>
-                      <td colSpan={isEditable ? "4" : "3"} style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                      <td colSpan={isEditable ? "5" : "4"} style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
                         No items tracked.
                       </td>
                     </tr>

@@ -1,5 +1,5 @@
 export function productionOption(product) {
- return {value:product.productId || product.product_id,label:product.productName || product.product_name,
+ return {mrpSticker:product.mrpSticker,value:product.productId || product.product_id,label:product.productName || product.product_name,
   groupId:product.groupId || product.group_id,group:product.groupPath || product.groupName || product.group_name || 'Ungrouped',
   mainGroupName:product.mainGroupName || 'Needs classification',mainGroupId:product.mainGroupId,isAccessory:product.isAccessory};
 }

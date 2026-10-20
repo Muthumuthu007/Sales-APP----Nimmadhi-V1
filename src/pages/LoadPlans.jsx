@@ -1,3 +1,4 @@
+import ProductMrp from '../components/ProductMrp';
 import {businessDate} from '../utils/businessDate';
 import {splitAllocation, allocationPayload} from '../utils/loadPlanAllocations';
 import OrderProduct from '../components/OrderProduct';
@@ -323,7 +324,7 @@ const LoadPlans = () => {
         <div className="allocation-totals">{planItems(allocationPlan).filter((item,index,items)=>items.findIndex(product=>product.productId===item.productId)===index).map(item => {
           const expected=planItems(allocationPlan).filter(product=>product.productId===item.productId).reduce((sum,product)=>sum+product.quantity,0);
           const assigned=allocationRows.filter(row=>row.productId===item.productId).reduce((sum,row)=>sum+Number(row.quantity||0),0);
-          return <div key={item.id}><strong>{item.productName}</strong><span style={{color:assigned===expected?'var(--color-green)':'var(--color-red)'}}>{assigned} / {expected} units assigned</span></div>;
+          return <div key={item.id}><strong>{item.productName}</strong><ProductMrp item={item}/><span style={{color:assigned===expected?'var(--color-green)':'var(--color-red)'}}>{assigned} / {expected} units assigned</span></div>;
         })}</div>
         <fieldset className="allocation-fields" disabled={savingAllocation || allocationLoading}>
         <div className="allocation-list">

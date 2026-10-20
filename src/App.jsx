@@ -1,3 +1,4 @@
+import {ProductMrpProvider} from './context/ProductMrpContext';
 import {firstAdminPath} from './auth/adminAccess';
 import React, { useContext } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
@@ -48,7 +49,7 @@ const RootRedirect = () => {
 function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
+      <ProductMrpProvider><BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/employee/login" element={<Navigate to="/login" replace />} />
@@ -143,7 +144,7 @@ function App() {
             <Route path="*" element={<RootRedirect />} />
           </Route>
         </Routes>
-      </BrowserRouter>
+      </BrowserRouter></ProductMrpProvider>
     </AuthProvider>
   );
 }

@@ -1,3 +1,4 @@
+import ProductMrp from '../ProductMrp';
 import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown } from 'lucide-react';
 import './SearchableSelect.css';
@@ -40,7 +41,7 @@ export const SearchableSelect = ({ label, options, value, onChange, error, place
           onClick={() => setIsOpen(!isOpen)}
         >
           <span className={selectedOption && selectedOption.value !== '' ? "selected-text" : "placeholder-text"}>
-            {selectedOption && selectedOption.label !== 'Select a product...' ? selectedOption.label : (placeholder || 'Select a product...')}
+            {selectedOption && selectedOption.label !== 'Select a product...' ? <>{selectedOption.label}{selectedOption.group && <ProductMrp item={selectedOption}/>}</> : (placeholder || 'Select a product...')}
           </span>
           <ChevronDown size={16} className="trigger-icon" />
         </div>
@@ -74,7 +75,7 @@ export const SearchableSelect = ({ label, options, value, onChange, error, place
                           setSearch('');
                         }}
                       >
-                        {opt.label}
+                        {opt.label}{opt.group && opt.value && <ProductMrp item={opt}/>}
                       </li>
                     ))}
                   </React.Fragment>

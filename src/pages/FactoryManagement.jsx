@@ -1,3 +1,4 @@
+import ProductMrp from '../components/ProductMrp';
 import FactoryPendingPayments from './FactoryPendingPayments';
 import React, {useCallback, useEffect, useState} from 'react';
 import {Factory, RefreshCw} from 'lucide-react';
@@ -63,7 +64,7 @@ export default function FactoryManagement() {
         {dispatchError && <p role="alert">{dispatchError}</p>}
         {selected.status !== 'DISPATCHED' && <Button onClick={dispatch} disabled={saving}>{saving ? 'Recording…':'Confirm factory dispatch to customer'}</Button>}
         <h4>Dispatch history</h4>
-        {(selected.dispatchHistory || []).map(event=><div key={event.dispatchId}><strong>{event.dispatchId}</strong><br />{event.dispatchedAt} · {event.dispatchedBy}<br />{event.items.map(item=>`${(selected.items || []).find(product=>product.product_id===item.productId)?.productName || item.productId}: ${item.quantity}`).join(', ')}</div>)}
+        {(selected.dispatchHistory || []).map(event=><div key={event.dispatchId}><strong>{event.dispatchId}</strong><br />{event.dispatchedAt} · {event.dispatchedBy}<br />{event.items.map((item,index)=><div key={index}>{(selected.items || []).find(product=>product.product_id===item.productId)?.productName || item.productId}: {item.quantity}<ProductMrp item={item}/></div>)}</div>)}
       </div>}
     </Modal>
   </div>;
