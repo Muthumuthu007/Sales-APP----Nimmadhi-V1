@@ -352,3 +352,8 @@
 .allocation-dialog .allocation-product {grid-column:1 / -1;display:flex;justify-content:space-between;align-items:start;gap:1rem;flex-wrap:wrap;}
 .allocation-dialog .allocation-row-actions {margin-top:0;}
 @media(max-width:720px){.allocation-dialog .allocation-row{grid-template-columns:1fr;}.allocation-dialog .allocation-product{display:grid;}}
+
+/* All fixed column widths include the MRP column; scroll instead of overlapping. */
+.load-plans-table { width: max(100%, 1520px); min-width: 1520px; }
+.load-plans-table .mrp-column { width: 140px; min-width: 140px; }
+.load-plans-table .quantity-column { width: 80px; min-width: 80px; white-space: nowrap; }

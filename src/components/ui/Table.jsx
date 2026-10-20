@@ -12,7 +12,7 @@ export const Table = ({ columns, data, onRowClick, emptyStateMessage = "No recor
   const productColumn=columns.findIndex(col=>['productName','product_name','product','products'].includes(col.key) || (col.key==='name' && data.some(row=>row.product_id || row.productId)));
   const hasMrp=columns.some(col=>/mrp/i.test(`${col.key} ${col.label}`));
   const displayColumns=[...columns];
-  if(productColumn>=0 && !hasMrp)displayColumns.splice(productColumn+1,0,{key:'mappedMrp',label:'MRP',render:row=>{
+  if(productColumn>=0 && !hasMrp)displayColumns.splice(productColumn+1,0,{key:'mappedMrp',label:'MRP',className:'mrp-column',render:row=>{
     const items=row.items?.length?row.items:row.products?.length && typeof row.products[0]==='object'?row.products:[row];
     return items.map((item,index)=><ProductMrp key={index} item={item} label={items.length>1}/>);
   }});

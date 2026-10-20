@@ -73,3 +73,7 @@
     padding: 0.7rem 0.75rem;
   }
 }
+
+/* Reserve a real column for retail prices, including fixed-layout tables. */
+.table .mrp-column { width: 140px; min-width: 140px; }
+.table .mrp-column .product-mrp { white-space: nowrap !important; font-variant-numeric: tabular-nums; }
