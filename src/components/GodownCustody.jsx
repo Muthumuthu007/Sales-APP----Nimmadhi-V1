@@ -1,3 +1,4 @@
+import GodownDispatchReceive from './GodownDispatchReceive';
 import React, {useEffect, useRef, useState} from 'react';
 import api from '../api/axios';
 import GroupedProductPicker from './GroupedProductPicker';
@@ -11,6 +12,7 @@ export default function GodownCustody({stockView = false}) {
  const [holdings,setHoldings]=useState([]),[outlets,setOutlets]=useState([]),[products,setProducts]=useState([]);
  const [destination,setDestination]=useState(''),[product,setProduct]=useState(''),[quantity,setQuantity]=useState('1'),[direction,setDirection]=useState('IN');
  const [busy,setBusy]=useState(false),[loading,setLoading]=useState(true),[error,setError]=useState(''),[notice,setNotice]=useState('');
+ const [entryMode,setEntryMode]=useState('MANUAL');
  const requestId=useRef(null);
  const load=async()=>{setLoading(true);setError('');try{const [data,catalogue]=await Promise.all([api.get('/godown/custody'),api.get('/products')]);setHoldings(data.holdings||[]);setOutlets(data.outlets||[]);setProducts((catalogue.products||[]).map(productionOption));}catch{setError('Unable to load temporary goods. Please retry.');}finally{setLoading(false);}};
  useEffect(()=>{load();},[]);
@@ -20,7 +22,9 @@ export default function GodownCustody({stockView = false}) {
  return <Card><CardHeader title={stockView?'Temporary goods held for outlets':'Temporary Stocks'} action={<Button variant="secondary" onClick={load} disabled={busy||loading}>Refresh</Button>}/><CardContent>
  <p>{stockView ? "The godown is temporarily holding these products for the outlets listed below. These quantities are excluded from the godown’s own stock. Receive or release goods in Temporary Stocks." : "Record goods temporarily held for an outlet, or release them when they leave. These quantities are excluded from the godown’s own stock."}</p>
  {loading&&<p role="status">Loading…</p>}{error&&<p role="alert">{error}</p>}{notice&&<p role="status">{notice}</p>}
- {!stockView&&!loading&&<form onSubmit={submit} style={{display:'grid',gap:'1rem',maxWidth:760,marginBottom:'1.5rem'}}>
+ {!stockView&&!loading&&<Select label="Temporary stock entry" value={entryMode} disabled={busy} onChange={e=>setEntryMode(e.target.value)} options={[{value:'MANUAL',label:'Manual receive / release'},{value:'DISPATCH',label:'Receive from factory dispatched orders'}]}/>}
+ {!stockView&&!loading&&entryMode==='DISPATCH'&&<GodownDispatchReceive outlets={outlets} onReceived={()=>{setNotice('Factory dispatch goods received into temporary stocks. Godown own stock is unchanged.');load();}}/>}
+ {!stockView&&!loading&&entryMode==='MANUAL'&&<form onSubmit={submit} style={{display:'grid',gap:'1rem',maxWidth:760,marginBottom:'1.5rem'}}>
  <Select label="Movement" value={direction} disabled={busy} onChange={e=>{change(setDirection,e.target.value);setProduct('');}} options={[{value:'IN',label:'Receive temporary goods'},{value:'OUT',label:'Release temporary goods to outlet'}]}/>
  <Select label="Destination outlet — goods belong to" value={destination} disabled={busy} onChange={e=>{change(setDestination,e.target.value);setProduct('');}} options={[{value:'',label:'Select destination outlet…'},...outlets.map(o=>({value:o.outletId,label:`${o.outletName} (${o.outletId})`}))]}/>
  <GroupedProductPicker options={visible} value={product} onChange={v=>change(setProduct,v)} disabled={busy}/>

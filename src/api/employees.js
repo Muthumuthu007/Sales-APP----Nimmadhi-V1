@@ -73,8 +73,8 @@ export async function fetchOutletProductGroups(outletId) {
   return api.get(`/manager/outlets/${encodeURIComponent(outletId)}/product-groups`);
 }
 
-export async function assignOutletProductGroups(outletId, groupIds) {
-  return api.post(`/manager/outlets/${encodeURIComponent(outletId)}/product-groups`, { groupIds });
+export async function assignOutletProductGroups(outletId, groupIds, productAccessVersion) {
+  return api.post(`/manager/outlets/${encodeURIComponent(outletId)}/product-groups`, { groupIds, mode:'REPLACE', productAccessVersion });
 }
 
 export async function fetchEmployeeAdvances(empId, outletId, month) {

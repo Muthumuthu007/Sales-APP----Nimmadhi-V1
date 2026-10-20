@@ -11,10 +11,10 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { LoadingState, ErrorState, EmptyState } from '../components/ui/StateContainers';
 import { fetchOutlets } from '../api/employees';
-import { deleteOutletOffer, fetchOutletOffers, saveOutletOffer } from '../api/offers';
+import { deleteOutletOffer, fetchOutletOffers, saveOutletOffer, saveComplimentaryBundle } from '../api/offers';
 import './Offers.css';
 
-const defaultOffer = (ruleType) => ({ ruleType, scope: ruleType === 'COMPLIMENTARY' ? 'GROUP' : 'OUTLET', groupId: '', productId: '', freeProductId: '', discountType: 'PERCENT', discountValue: '', freeQuantity: 1, active: true, assignmentMode: 'ADD', excludedProductIds: [] });
+const defaultOffer = (ruleType) => ({ ruleType, scope: ruleType === 'COMPLIMENTARY' ? 'GROUP' : 'OUTLET', groupId: '', productId: '', freeProductId: '', discountType: 'PERCENT', discountValue: '', freeQuantity: 1, active: true, items: [], assignmentMode: 'ADD', excludedProductIds: [] });
 
 const Offers = ({ ruleType = 'DISCOUNT' }) => {
   const isComplimentary = ruleType === 'COMPLIMENTARY';
@@ -80,13 +80,18 @@ const Offers = ({ ruleType = 'DISCOUNT' }) => {
 
   const targetLabel = (item) => item.scope === 'OUTLET' ? 'Entire outlet' : item.scope === 'GROUP' ? `Group: ${item.groupName || item.groupId}` : item.productName || `Product: ${item.productId}`;
 
+  const addComplimentaryItem = () => {
+    if (!offer.freeProductId || !Number.isInteger(Number(offer.freeQuantity)) || Number(offer.freeQuantity)<1) {setError('Choose an accessory and enter a positive whole-number quantity.');return;}
+    const row={freeProductId:offer.freeProductId,freeQuantity:Number(offer.freeQuantity)};
+    setOffer(current=>({...current,items:[...(current.items || []).filter(item=>item.freeProductId!==row.freeProductId),row],freeProductId:'',freeQuantity:1}));setError('');
+  };
   const submit = async (event) => {
     event.preventDefault();
     if (!outletId) return;
     if (offer.scope === 'GROUP' && !offer.groupId) { setError('Choose a product group.'); return; }
     if (offer.scope === 'PRODUCT' && !offer.productId) { setError('Choose a product.'); return; }
     if (isComplimentary && offer.scope === 'GROUP' && !includedCount) {setError('Check at least one product for this offer.');return;}
-    if (isComplimentary && !offer.freeProductId) { setError('Choose the complimentary product.'); return; }
+    if (isComplimentary && !offer.freeProductId && !(offer.items || []).length) { setError('Choose the complimentary product.'); return; }
     if (!isComplimentary && !(Number(offer.discountValue || 0) > 0)) { setError('Set a discount value.'); return; }
     setSaving(true); setError(''); setSuccess('');
     try {
@@ -106,8 +111,13 @@ const Offers = ({ ruleType = 'DISCOUNT' }) => {
       if (offer.scope === 'GROUP') {payload.groupId=offer.groupId;if(isComplimentary){payload.includedProductIds=groupProducts.filter(product=>!excluded.includes(product.productId)).map(product=>product.productId);if(offer.offerId)payload.offerId=offer.offerId;}}
       if (offer.scope === 'PRODUCT') {payload.productId=offer.productId;if(isComplimentary && offer.offerId)payload.offerId=offer.offerId;}
       if (isComplimentary) payload.freeProductId = offer.freeProductId;
-      await saveOutletOffer(payload);
-      setOffer(defaultOffer(ruleType)); await loadCatalog(); setSuccess(`${isComplimentary ? 'Complimentary product' : 'Discount'} saved.`);
+      if(isComplimentary && !offer.offerId){
+        const items=[...(offer.items || [])];
+        if(offer.freeProductId){const index=items.findIndex(item=>item.freeProductId===offer.freeProductId);const item={freeProductId:offer.freeProductId,freeQuantity:Number(offer.freeQuantity)};if(index>=0)items[index]=item;else items.push(item);}
+        if(items.some(item=>!Number.isInteger(item.freeQuantity)||item.freeQuantity<1))throw new Error('Invalid quantity');
+        await saveComplimentaryBundle({...payload,items});
+      }else await saveOutletOffer(payload);
+      setOffer(defaultOffer(ruleType)); await loadCatalog(); setSuccess(`${isComplimentary ? 'Complimentary items' : 'Discount'} saved.`);
     } catch (requestError) { setError(requestError.response?.data?.error || requestError.response?.data?.non_field_errors?.[0] || 'Unable to save this offer.'); }
     finally { setSaving(false); }
   };
@@ -139,9 +149,9 @@ const Offers = ({ ruleType = 'DISCOUNT' }) => {
           </fieldset>}
           {isComplimentary && offer.assignmentMode === 'REPLACE' && offer.scope === 'GROUP' && reassignedProducts.length>0 && <p className="offers-help">Saving will reassign {reassignedProducts.length} selected {reassignedProducts.length===1?'product':'products'} from the previous complimentary offer. Other products will keep their existing offers.</p>}
           {offer.scope === 'PRODUCT' && <GroupedProductPicker label="Qualifying product" options={products.map(productionOption)} value={offer.productId} onChange={value=>update('productId',value)} />}
-          {isComplimentary && <label>Existing complimentary items<select value={offer.assignmentMode || 'ADD'} onChange={event=>update('assignmentMode',event.target.value)}><option value="ADD">Update this item's quantity; keep different items</option><option value="REPLACE">Replace other group/product offers for selected products</option></select></label>}
-          {isComplimentary ? <><GroupedProductPicker label="Complimentary accessory" options={complimentaryProducts.map(productionOption)} value={offer.freeProductId} onChange={value=>update('freeProductId',value)} /><Input label="Complimentary quantity" type="number" min="1" step="1" value={offer.freeQuantity} onChange={(event) => update('freeQuantity', event.target.value)} /><p className="offers-help">All products under Accessories and its subgroups can be selected as complimentary products. The qualifying group or product remains limited to the selected outlet’s assigned products.</p></> : <div className="offers-value-grid"><label>Discount type<select value={offer.discountType} onChange={(event) => update('discountType', event.target.value)}><option value="PERCENT">Percentage (%)</option><option value="AMOUNT">Fixed amount (₹)</option></select></label><Input label="Discount value" type="number" min="0.01" max={offer.discountType === 'PERCENT' ? '100' : undefined} step="0.01" value={offer.discountValue} onChange={(event) => update('discountValue', event.target.value)} placeholder="0.00" /></div>}
-          <Button type="submit" variant="primary" disabled={saving || loading || (isComplimentary && offer.scope==='GROUP' && !includedCount)}>{saving ? 'Saving…' : isComplimentary ? 'Save complimentary product' : 'Save discount'}</Button>
+          {isComplimentary && <label>Existing complimentary items<select value={offer.assignmentMode || 'ADD'} onChange={event=>update('assignmentMode',event.target.value)}><option value="ADD">Update matching item quantities; keep other items</option><option value="REPLACE">Replace existing items with this package</option></select></label>}
+          {isComplimentary ? <><GroupedProductPicker label="Complimentary accessory" options={complimentaryProducts.map(productionOption)} value={offer.freeProductId} onChange={value=>update('freeProductId',value)} /><Input label="Complimentary quantity" type="number" min="1" step="1" value={offer.freeQuantity} onChange={(event) => update('freeQuantity', event.target.value)} />{!offer.offerId && <><Button type="button" variant="secondary" disabled={saving || loading} onClick={addComplimentaryItem}>Add complimentary item</Button><section aria-label="Complimentary items to save"><h3>Complimentary items to save ({(offer.items || []).length})</h3>{(offer.items || []).map(item=><div className="offer-rule" key={item.freeProductId}><div>{complimentaryProducts.find(p=>p.productId===item.freeProductId)?.productName || item.freeProductId}<Input label="Quantity" type="number" min="1" step="1" value={item.freeQuantity} onChange={event=>setOffer(current=>({...current,items:current.items.map(row=>row.freeProductId===item.freeProductId?{...row,freeQuantity:Number(event.target.value)}:row)}))}/></div><Button type="button" variant="secondary" onClick={()=>setOffer(current=>({...current,items:current.items.filter(row=>row.freeProductId!==item.freeProductId)}))}>Remove item</Button></div>)}{!(offer.items || []).length && <p>Add accessories above to build the complimentary package.</p>}</section></> }<p className="offers-help">All products under Accessories and its subgroups can be selected as complimentary products. The qualifying group or product remains limited to the selected outlet’s assigned products.</p></> : <div className="offers-value-grid"><label>Discount type<select value={offer.discountType} onChange={(event) => update('discountType', event.target.value)}><option value="PERCENT">Percentage (%)</option><option value="AMOUNT">Fixed amount (₹)</option></select></label><Input label="Discount value" type="number" min="0.01" max={offer.discountType === 'PERCENT' ? '100' : undefined} step="0.01" value={offer.discountValue} onChange={(event) => update('discountValue', event.target.value)} placeholder="0.00" /></div>}
+          <Button type="submit" variant="primary" disabled={saving || loading || (isComplimentary && offer.scope==='GROUP' && !includedCount)}>{saving ? 'Saving…' : isComplimentary ? (offer.offerId ? 'Save complimentary item' : 'Save all complimentary items') : 'Save discount'}</Button>
         </form>}
       </CardContent></Card>
       {isComplimentary ? <Card className="offers-current-products"><CardHeader title={`Complimentary items by product${catalog?.outlet?.outletName ? ` — ${catalog.outlet.outletName}` : ''}`} /><CardContent>

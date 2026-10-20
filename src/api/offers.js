@@ -6,3 +6,5 @@ export const deleteOutletOffer = (outletId, offerId) => api.delete(`/manager/out
 export const fetchActiveOutletOffers = () => api.get('/outlet/offers');
 
 export const copyOutletOffers = payload => api.post('/manager/outlet-offers/copy', payload);
+
+export const saveComplimentaryBundle = payload => api.post('/manager/outlet-offers/bundle', payload);

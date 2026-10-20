@@ -70,14 +70,14 @@ const Outlets = () => {
   const [groupError, setGroupError] = useState('');
   const openGroupAssignment = async (outlet) => {
     setGroupOutlet(outlet); setGroupAccess(null); setNewGroupIds([]); setGroupError(''); setGroupBusy(true);
-    try { setGroupAccess(await fetchOutletProductGroups(outlet.outletId)); }
+    try { const access=await fetchOutletProductGroups(outlet.outletId); setGroupAccess(access);setNewGroupIds(access.allowedGroupIds || []); }
     catch (err) { setGroupError(err.response?.data?.error || 'Unable to load product groups. Please reopen and try again.'); }
     finally { setGroupBusy(false); }
   };
   const saveGroupAssignment = async () => {
     setGroupBusy(true); setGroupError('');
     try {
-      await assignOutletProductGroups(groupOutlet.outletId, newGroupIds);
+      await assignOutletProductGroups(groupOutlet.outletId, newGroupIds, groupAccess.productAccessVersion);
       setSuccess(`Product groups assigned to ${groupOutlet.outletName || groupOutlet.outletId}.`);
       setGroupOutlet(null); await loadOutlets();
     } catch (err) { setGroupError(err.response?.data?.error || 'Unable to assign product groups.'); }
@@ -315,21 +315,21 @@ const Outlets = () => {
         </CardContent>
       </Card>
       <Modal isOpen={Boolean(groupOutlet)} onClose={() => !groupBusy && setGroupOutlet(null)} title={`Assign product groups — ${groupOutlet?.outletName || groupOutlet?.outletId || ''}`}>
-        <p>Existing assignments are kept. Select additional groups this location can view and use.</p>
+        <p>Check groups to allow this outlet to use them. Uncheck groups to remove access for new orders. Existing orders and stock records remain unchanged. Keep at least one group selected.</p>
         {groupError && <div className="outlets-alert" role="alert">{groupError}</div>}
         {groupBusy && !groupAccess && <p>Loading product groups…</p>}
-        {groupAccess?.unrestricted && <p>{groupAccess.canConfigureGodown ? 'This godown currently has access to all groups. Select the groups to assign; saving will limit its product list to those groups.' : 'This location already has access to all product groups.'}</p>}
+        {groupAccess?.unrestricted && <p>{groupAccess.canConfigureGodown ? 'This godown currently has access to all groups. Select the groups to assign; saving will limit its product list to those groups.' : 'This location currently has access to all product groups. Uncheck the groups you want to remove.'}</p>}
         <div className="outlets-product-groups">
           <ProductionGroupChoices groups={groupAccess?.groups || []} renderGroup={(group) => {
             const assigned = groupAccess.allowedGroupIds.includes(group.groupId);
-            const checked = assigned || newGroupIds.includes(group.groupId);
+            const checked = newGroupIds.includes(group.groupId);
             return <label key={group.groupId} className={`outlets-product-group ${checked ? 'selected' : ''}`}>
-              <input type="checkbox" checked={checked} disabled={assigned || groupBusy} onChange={() => setNewGroupIds((ids) => ids.includes(group.groupId) ? ids.filter((id) => id !== group.groupId) : [...ids, group.groupId])} />
+              <input type="checkbox" checked={checked} disabled={groupBusy} onChange={() => setNewGroupIds((ids) => ids.includes(group.groupId) ? ids.filter((id) => id !== group.groupId) : [...ids, group.groupId])} />
               <span>{group.groupPath || group.groupName}{assigned ? ' (Already assigned)' : ''}</span>
             </label>;
           }} />
         </div>
-        <div className="outlet-delete-actions"><Button variant="secondary" onClick={() => setGroupOutlet(null)} disabled={groupBusy}>Close</Button><Button variant="primary" onClick={saveGroupAssignment} disabled={groupBusy || !newGroupIds.length}>{groupBusy && groupAccess ? 'Saving…' : `Assign ${newGroupIds.length || ''} additional groups`}</Button></div>
+        <div className="outlet-delete-actions"><Button variant="secondary" onClick={() => setGroupOutlet(null)} disabled={groupBusy}>Close</Button><Button variant="primary" onClick={saveGroupAssignment} disabled={groupBusy || !newGroupIds.length}>{groupBusy && groupAccess ? 'Saving…' : `Save ${newGroupIds.length} selected groups`}</Button></div>
       </Modal>
       <Modal isOpen={Boolean(outletToDelete)} onClose={() => !deleting && setOutletToDelete(null)} title="Delete outlet and employees">
         <p className="outlet-delete-warning">This permanently deletes <strong>{outletToDelete?.outletName || outletToDelete?.outletId}</strong>, every employee login assigned to it, and all its HR/attendance records.</p>
