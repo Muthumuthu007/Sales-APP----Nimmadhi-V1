@@ -17,3 +17,11 @@ test('bank report escapes customer text and leaves missing bank fields blank wit
   assert.ok(xml.includes('&lt;Employee&gt;'));assert.ok(xml.includes('1000.00'));
   assert.ok(!xml.includes('undefined'));
 });
+
+test('cash salaries are excluded from bank payment export', () => {
+ const xml=bankSalaryReportXml([{name:'Cash employee',salaryPaymentMethod:'CASH',netSalary:10000},{name:'Bank employee',salaryPaymentMethod:'BANK',netSalary:20000}], '2026-10','Outlet');
+ assert.ok(!xml.includes('Cash employee'));
+ assert.ok(xml.includes('Bank employee'));
+ assert.ok(xml.includes('20000.00'));
+ assert.ok(!xml.includes('30000.00'));
+});

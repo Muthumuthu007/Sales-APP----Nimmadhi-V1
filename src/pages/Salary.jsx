@@ -184,10 +184,11 @@ const Salary = () => {
     {key:'bankBranch',label:'BRANCH',render:row => row.bankBranch || 'Not recorded'},
     {key:'netSalary',label:'AMT',align:'right',render:row => money(row.netSalary)},
   ];
-  const missingBankCount = salaryData.filter(row => !row.bankAccountNumber || !row.ifscCode || !row.bankName || !row.bankBranch).length;
+  const bankSalaryData = salaryData.filter(row => row.salaryPaymentMethod !== 'CASH');
+  const missingBankCount = bankSalaryData.filter(row => !row.bankAccountNumber || !row.ifscCode || !row.bankName || !row.bankBranch).length;
   const downloadBankReport = () => {
     const outlet = outlets.find(item => (item.outletId || item.id) === outletId);
-    const xml = bankSalaryReportXml(salaryData, month, outlet?.outletName || outlet?.name || outletId);
+    const xml = bankSalaryReportXml(bankSalaryData, month, outlet?.outletName || outlet?.name || outletId);
     const url = URL.createObjectURL(new Blob([xml], {type:'application/vnd.ms-excel;charset=utf-8'}));
     const link = document.createElement('a'); link.href = url;
     link.download = `bank-salary-${outletId.replace(/[^a-zA-Z0-9_-]/g,'_')}-${month}.xml`;
@@ -274,9 +275,9 @@ const Salary = () => {
         <CardContent>
           <p>AMT is the final salary payable after ESI &amp; PF, advance recovery, and other salary adjustments.</p>
           {missingBankCount > 0 && <p role="status">Bank details are incomplete for {missingBankCount} employee(s). Add them in employee salary configuration.</p>}
-          <Table columns={bankColumns} data={salaryData} emptyStateMessage="No employees for this outlet." />
-          <p><strong>Total salary payable: {money(salaryData.reduce((sum,row) => sum + row.netSalary,0))}</strong></p>
-          <Button onClick={downloadBankReport} disabled={!salaryData.length}>Download Bank Report (Excel)</Button>
+          <Table columns={bankColumns} data={bankSalaryData} emptyStateMessage="No employees for this outlet." />
+          <p><strong>Total salary payable: {money(bankSalaryData.reduce((sum,row) => sum + row.netSalary,0))}</strong></p>
+          <Button onClick={downloadBankReport} disabled={!bankSalaryData.length}>Download Bank Report (Excel)</Button>
         </CardContent>
       </Card>}
 

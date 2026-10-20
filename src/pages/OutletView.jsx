@@ -386,7 +386,7 @@ const OutletView = () => {
   const [empPassword, setEmpPassword] = useState('');
   const [empDesignation, setEmpDesignation] = useState('SALES');
   const [empSalaryModel, setEmpSalaryModel] = useState('MONTHLY');
-  const emptyBank = {bankAccountNumber:'', ifscCode:'', bankName:'', bankBranch:''};
+  const emptyBank = {salaryPaymentMethod:'BANK', bankAccountNumber:'', ifscCode:'', bankName:'', bankBranch:''};
   const [empBank, setEmpBank] = useState(emptyBank);
   const [configBank, setConfigBank] = useState(emptyBank);
   const [empMonthlyEsiPfAmount, setEmpMonthlyEsiPfAmount] = useState('0');
@@ -559,7 +559,7 @@ const OutletView = () => {
       setEmpBasicSalary('');
       setEmpMonthlyTravelAllowance('0');
       setEmpMonthlyEsiPfAmount('0');
-      setEmpBank({bankAccountNumber:'', ifscCode:'', bankName:'', bankBranch:''});
+      setEmpBank(emptyBank);
       setEmpOvertimeRate('');
       
       // Reload list
@@ -585,7 +585,7 @@ const OutletView = () => {
   const handleOpenSalaryConfig = (employee) => {
     setSelectedEmployeeForSalary(employee);
     const sal = employee.salary || {};
-    setConfigBank(Object.fromEntries(['bankAccountNumber','ifscCode','bankName','bankBranch'].map(field => [field, sal[field] || ''])));
+    setConfigBank({...Object.fromEntries(['bankAccountNumber','ifscCode','bankName','bankBranch'].map(field => [field, sal[field] || ''])),salaryPaymentMethod:sal.salaryPaymentMethod || 'BANK'});
     setConfigSalaryModel(sal.salaryModel || 'MONTHLY');
     setConfigMonthlyEsiPfAmount(String(sal.monthlyEsiPfAmount || 0));
     setConfigMonthlyTravelAllowance(String(sal.monthlyTravelAllowance || 0));
@@ -1803,10 +1803,13 @@ const OutletView = () => {
             onChange={(e) => setEmpBasicSalary(e.target.value)}
             disabled={isSubmittingEmployee}
           />
+          <Select label="Salary payment method" value={empBank.salaryPaymentMethod} onChange={e=>setEmpBank({...empBank,salaryPaymentMethod:e.target.value})} options={[{value:'BANK',label:'Bank transfer'},{value:'CASH',label:'Cash'}]} disabled={isSubmittingEmployee} />
+          {empBank.salaryPaymentMethod === 'BANK' && <>
           <Input label="Bank account number" type="text" inputMode="numeric" value={empBank.bankAccountNumber} onChange={e => setEmpBank({...empBank, bankAccountNumber: e.target.value})} disabled={isSubmittingEmployee} />
           <Input label="IFSC code" value={empBank.ifscCode} onChange={e => setEmpBank({...empBank, ifscCode: e.target.value.toUpperCase()})} disabled={isSubmittingEmployee} />
           <Input label="Bank name" value={empBank.bankName} onChange={e => setEmpBank({...empBank, bankName: e.target.value})} disabled={isSubmittingEmployee} />
           <Input label="Bank branch" value={empBank.bankBranch} onChange={e => setEmpBank({...empBank, bankBranch: e.target.value})} disabled={isSubmittingEmployee} />
+          </>}
           <Input label="Monthly ESI & PF amount (₹)" type="number" min="0" step="0.01" value={empMonthlyEsiPfAmount} onChange={e => setEmpMonthlyEsiPfAmount(e.target.value)} disabled={isSubmittingEmployee} />
           <Input label="Monthly travel allowance (₹)" type="number" min="0" step="0.01" value={empMonthlyTravelAllowance} onChange={e => setEmpMonthlyTravelAllowance(e.target.value)} disabled={isSubmittingEmployee} />
           <Input 
@@ -1894,10 +1897,13 @@ const OutletView = () => {
             disabled={isSavingSalaryConfig}
           />
 
+          <Select label="Salary payment method" value={configBank.salaryPaymentMethod} onChange={e=>setConfigBank({...configBank,salaryPaymentMethod:e.target.value})} options={[{value:'BANK',label:'Bank transfer'},{value:'CASH',label:'Cash'}]} disabled={isSavingSalaryConfig} />
+          {configBank.salaryPaymentMethod === 'BANK' && <>
           <Input label="Bank account number" type="text" inputMode="numeric" value={configBank.bankAccountNumber} onChange={e => setConfigBank({...configBank, bankAccountNumber: e.target.value})} disabled={isSavingSalaryConfig} />
           <Input label="IFSC code" value={configBank.ifscCode} onChange={e => setConfigBank({...configBank, ifscCode: e.target.value.toUpperCase()})} disabled={isSavingSalaryConfig} />
           <Input label="Bank name" value={configBank.bankName} onChange={e => setConfigBank({...configBank, bankName: e.target.value})} disabled={isSavingSalaryConfig} />
           <Input label="Bank branch" value={configBank.bankBranch} onChange={e => setConfigBank({...configBank, bankBranch: e.target.value})} disabled={isSavingSalaryConfig} />
+          </>}
           <Input label="Monthly ESI & PF amount (₹)" type="number" min="0" step="0.01" value={configMonthlyEsiPfAmount} onChange={e => setConfigMonthlyEsiPfAmount(e.target.value)} disabled={isSavingSalaryConfig} />
           <Input label="Monthly travel allowance (₹)" type="number" min="0" step="0.01" value={configMonthlyTravelAllowance} onChange={e => setConfigMonthlyTravelAllowance(e.target.value)} disabled={isSavingSalaryConfig} />
           <Input 

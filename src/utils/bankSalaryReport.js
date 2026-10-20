@@ -1,5 +1,6 @@
 const escapeXml = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&apos;');
 export function bankSalaryReportXml(rows, month, outlet) {
+  rows = rows.filter(employee => employee.salaryPaymentMethod !== 'CASH');
   const cell = (value, type = 'String', style = '') => `<Cell${style ? ` ss:StyleID="${style}"` : ''}><Data ss:Type="${type}">${escapeXml(value)}</Data></Cell>`;
   const row = cells => `<Row>${cells.join('')}</Row>`;
   const total = Math.round(rows.reduce((sum, employee) => sum + Number(employee.netSalary || 0), 0) * 100) / 100;

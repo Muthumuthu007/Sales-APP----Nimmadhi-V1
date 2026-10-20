@@ -188,3 +188,20 @@ img, video, svg {
 ::-webkit-scrollbar-thumb:hover {
   background-color: var(--color-primary);
 }
+
+/* Native option menus must not inherit light text over a light OS popup. */
+select {
+  color-scheme: dark;
+}
+
+@media (forced-colors: none) {
+  select option,
+  select optgroup {
+    background-color: #1e293b;
+    color: #f1f5f9;
+  }
+
+  select option:disabled {
+    color: #94a3b8;
+  }
+}
