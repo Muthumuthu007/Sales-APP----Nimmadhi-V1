@@ -22,7 +22,7 @@ export const Table = ({ columns, data, onRowClick, emptyStateMessage = "No recor
         <thead>
           <tr>
             {displayColumns.map((col, index) => (
-              <th key={index} className={`${col.align || 'left'} ${col.className || ''}`}>{col.label}</th>
+              <th scope="col" key={index} className={`${col.align || 'left'} ${col.className || ''}`}>{col.label}</th>
             ))}
           </tr>
         </thead>
@@ -34,7 +34,7 @@ export const Table = ({ columns, data, onRowClick, emptyStateMessage = "No recor
               className={onRowClick ? 'clickable' : ''}
             >
               {displayColumns.map((col, colIndex) => (
-                <td key={colIndex} className={`${col.align || 'left'} ${col.className || ''}`}>
+                <td key={colIndex} data-label={typeof col.label === 'string' ? col.label : col.key} className={`${col.align || 'left'} ${col.className || ''} ${colIndex === productColumn || /actions?/i.test(col.key) ? 'table-cell--wide' : ''}`}>
                   {col.render ? col.render(row, rowIndex) : row[col.key]}
                 </td>
               ))}

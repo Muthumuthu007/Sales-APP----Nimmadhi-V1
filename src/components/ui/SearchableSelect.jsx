@@ -1,11 +1,12 @@
 import ProductMrp from '../ProductMrp';
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useId } from 'react';
 import { ChevronDown } from 'lucide-react';
 import './SearchableSelect.css';
 
 export const SearchableSelect = ({ label, options, value, onChange, error, placeholder }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const listId = useId();
   const wrapperRef = useRef(null);
 
   // Close dropdown on outside click
@@ -34,31 +35,34 @@ export const SearchableSelect = ({ label, options, value, onChange, error, place
 
   return (
     <div className="input-group" ref={wrapperRef}>
-      {label && <label className="input-label">{label}</label>}
+      {label && <label htmlFor={`${listId}-trigger`} className="input-label">{label}</label>}
       <div className="searchable-select">
-        <div 
+        <button type="button" id={`${listId}-trigger`} aria-haspopup="listbox" aria-expanded={isOpen} aria-controls={listId}
           className={`select-trigger ${error ? 'input-error' : ''} ${isOpen ? 'open' : ''}`}
           onClick={() => setIsOpen(!isOpen)}
+          onKeyDown={event => { if (event.key === 'Escape') setIsOpen(false); }}
         >
           <span className={selectedOption && selectedOption.value !== '' ? "selected-text" : "placeholder-text"}>
             {selectedOption && selectedOption.label !== 'Select a product...' ? <>{selectedOption.label}{selectedOption.group && <ProductMrp item={selectedOption}/>}</> : (placeholder || 'Select a product...')}
           </span>
           <ChevronDown size={16} className="trigger-icon" />
-        </div>
+        </button>
 
         {isOpen && (
           <div className="select-dropdown">
             <div className="select-search-box">
               <input 
                 type="text" 
-                placeholder="Search products..." 
+                placeholder="Search products..."
+                aria-label={label ? `Search ${label}` : 'Search products'}
+                onKeyDown={event => { if (event.key === 'Escape') { setIsOpen(false); document.getElementById(`${listId}-trigger`)?.focus(); } }}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 autoFocus
                 onClick={(e) => e.stopPropagation()}
               />
             </div>
-            <ul className="select-options-list">
+            <ul id={listId} className="select-options-list" role="listbox" aria-label={label || 'Products'}>
               {filteredOptions.length > 0 ? (
                 Object.entries(groupedOptions).map(([group, groupOptions]) => (
                   <React.Fragment key={group}>
@@ -69,6 +73,8 @@ export const SearchableSelect = ({ label, options, value, onChange, error, place
                       <li 
                         key={`${group}-${opt.value}-${i}`} 
                         className={`select-option ${value === opt.value ? 'selected' : ''}`}
+                        role="option" aria-selected={value === opt.value} tabIndex={0}
+                        onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onChange(opt.value); setIsOpen(false); setSearch(''); document.getElementById(`${listId}-trigger`)?.focus(); } }}
                         onClick={() => {
                           onChange(opt.value);
                           setIsOpen(false);

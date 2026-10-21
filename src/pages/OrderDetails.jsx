@@ -254,7 +254,7 @@ const OrderDetails = () => {
   return (
     <div className="page-stack">
       <div className="page-header" style={{ justifyContent: 'flex-start' }}>
-        <button onClick={() => navigate('/orders')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)' }}>
+        <button aria-label="Back to orders" onClick={() => navigate('/orders')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)' }}>
           <ArrowLeft size={24} />
         </button>
         <h2 style={{ margin: 0 }}>Approval Workspace: Order {order.orderId || order.id}</h2>
@@ -274,7 +274,7 @@ const OrderDetails = () => {
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 1fr) minmax(0, 3fr)', gap: '1.5rem' }}>
+      <div className="order-details-layout">
         <Card style={{ alignSelf: 'start' }}>
           <CardHeader title="Order Metadata" />
           <CardContent style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -318,7 +318,7 @@ const OrderDetails = () => {
                 <tbody>
                   {approvalItems.map((item, idx) => (
                     <tr key={idx}>
-                      <td>
+                      <td data-label="Product">
                         <OrderProduct hideMrp item={{...item,freeItems:[],complimentaryOffers:[]}} />
                         {item.isCustomized && <small style={{ color: 'var(--color-primary)' }}>Customized size</small>}
                         <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>ID: {item.product_id}</div>
@@ -334,16 +334,17 @@ const OrderDetails = () => {
                         )}
                       </td>
                       
-                      <td><ProductMrp item={item} label={false}/></td>
-                      <td style={{ textAlign: 'center' }}>
+                      <td data-label="MRP"><ProductMrp item={item} label={false}/></td>
+                      <td data-label="Ordered / Pending" style={{ textAlign: 'center' }}>
                         <div><strong>{item.orderedQty}</strong> initially</div>
                         <div style={{ color: 'var(--color-red)' }}><strong>{item.pendingQty}</strong> pending</div>
                         {item.approvedQty > 0 && <div style={{ fontSize: '0.75rem', color: 'var(--color-green)' }}>({item.approvedQty} previously approved)</div>}
                       </td>
 
                       {isEditable && (
-                        <td style={{ textAlign: 'center' }}>
-                          <input 
+                        <td data-label="Approve quantity" style={{ textAlign: 'center' }}>
+                          <input
+                            aria-label={`Approve quantity for ${item.productName || item.product_id}`}
                             type="number" 
                             min="0" 
                             max={item.pendingQty}
@@ -364,7 +365,7 @@ const OrderDetails = () => {
                         </td>
                       )}
 
-                      <td>
+                      <td data-label="Free Items">
                         <OrderFreeItems item={item} />
                         {isEditable && item.freeItems.length > 0 && (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '0.5rem' }}>
@@ -420,7 +421,7 @@ const OrderDetails = () => {
             </div>
           </CardContent>
           {isEditable && (
-            <div style={{ padding: '1rem', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--color-secondary)' }}>
+            <div className="order-approval-actions" style={{ padding: '1rem', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--color-secondary)' }}>
               <Button 
                 variant="danger" 
                 onClick={() => setIsRejectModalOpen(true)}

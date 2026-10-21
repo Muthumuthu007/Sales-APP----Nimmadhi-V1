@@ -71,3 +71,12 @@
     display: block;
   }
 }
+
+/* Use the visible viewport as mobile browser chrome and keyboards change. */
+.layout-container { height: 100dvh; }
+.layout-content { min-height: 0; scroll-padding-block: 1rem; padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
+@media (max-width: 1024px) {
+  .sidebar-backdrop { display: block; }
+  .layout-content { padding: 1rem; }
+}
+@media (max-width: 480px) { .layout-content { padding: .75rem; padding-bottom: max(1rem, env(safe-area-inset-bottom)); } }

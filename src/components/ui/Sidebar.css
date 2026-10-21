@@ -120,3 +120,12 @@
     transform: translateX(0);
   }
 }
+
+.sidebar-close { display: none; }
+@media (max-width: 1024px) {
+  .sidebar { position: fixed; inset: 0 auto 0 0; height: 100dvh; width: min(300px, 88vw); transform: translateX(-100%); box-shadow: 4px 0 30px #0006; visibility: hidden; }
+  .sidebar--open { transform: translateX(0); visibility: visible; }
+  .sidebar-header { position: relative; padding-right: 3.5rem; }
+  .sidebar-close { display: grid; place-items: center; position: absolute; right: .5rem; top: .75rem; width: 44px; height: 44px; color: var(--color-text-main); background: transparent; border: 0; border-radius: 8px; }
+  .sidebar-nav { padding-bottom: max(1rem, env(safe-area-inset-bottom)); overscroll-behavior: contain; }
+}

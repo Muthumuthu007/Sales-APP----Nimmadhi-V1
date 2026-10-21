@@ -1,7 +1,7 @@
 import {canAccessAdminPath} from '../../auth/adminAccess';
 import React, { useContext } from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, ShoppingCart, CalendarDays, Truck, CreditCard, Store, UserPlus, UsersRound, Gift, BadgeIndianRupee, ClipboardCheck, QrCode, Factory } from 'lucide-react';
+import { LayoutDashboard, ShoppingCart, CalendarDays, X, Truck, CreditCard, Store, UserPlus, UsersRound, Gift, BadgeIndianRupee, ClipboardCheck, QrCode, Factory } from 'lucide-react';
 import { AuthContext } from '../../context/AuthContext';
 import './Sidebar.css';
 
@@ -32,8 +32,9 @@ const Sidebar = ({ isOpen, onClose }) => {
   const links = role === 'MANAGER' ? managerLinks.filter(link=>canAccessAdminPath(adminAccess,link.to)) : employeeLinks;
 
   return (
-    <aside className={`sidebar${isOpen ? ' sidebar--open' : ''}`}>
+    <aside id="main-navigation" aria-label="Main navigation" className={`sidebar${isOpen ? ' sidebar--open' : ''}`}>
       <div className="sidebar-header">
+        <button type="button" className="sidebar-close" onClick={onClose} aria-label="Close navigation menu"><X size={22}/></button>
         <div className="logo-icon">✨</div>
         <div className="logo-text-group">
           <h2>NIMMADHI</h2>

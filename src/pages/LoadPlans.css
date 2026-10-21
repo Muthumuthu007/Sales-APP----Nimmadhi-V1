@@ -357,3 +357,7 @@
 .load-plans-table { width: max(100%, 1520px); min-width: 1520px; }
 .load-plans-table .mrp-column { width: 140px; min-width: 140px; }
 .load-plans-table .quantity-column { width: 80px; min-width: 80px; white-space: nowrap; }
+@media screen and (max-width: 640px) {
+  .load-plan-tabs button { white-space: normal; font-size: .8rem; }
+  .load-plan-tabs { align-items: stretch; }
+}

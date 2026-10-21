@@ -4,7 +4,7 @@ import './TopBar.css';
 import { User, Bell, LogOut, Menu } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-const TopBar = ({ onMenuClick }) => {
+const TopBar = ({ onMenuClick, menuOpen = false }) => {
   const { adminAccess, role, logout, username, outletId, outletName, empId, empName } = useContext(AuthContext);
   const navigate = useNavigate();
 
@@ -20,18 +20,20 @@ const TopBar = ({ onMenuClick }) => {
         <button
           className="hamburger-btn"
           onClick={onMenuClick}
-          aria-label="Open navigation menu"
+          aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}
+          aria-expanded={menuOpen}
+          aria-controls="main-navigation"
         >
           <Menu size={22} />
         </button>
         <h3 className="page-title">Management Dashboard</h3>
       </div>
       <div className="topbar-right">
-        <button className="role-switch" onClick={handleLogout} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <button className="role-switch" aria-label="Logout" onClick={handleLogout} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <LogOut size={16} />
           <span className="logout-label">Logout</span>
         </button>
-        <button className="icon-btn">
+        <button className="icon-btn" aria-label="Notifications">
           <Bell size={20} />
           <span className="badge-dot"></span>
         </button>

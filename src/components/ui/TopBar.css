@@ -206,3 +206,16 @@
     font-size: 0.9rem;
   }
 }
+
+@media (max-width: 1024px) {
+  .hamburger-btn { display: flex; }
+  .topbar { padding-inline: .75rem; gap: .5rem; }
+  .topbar-left { flex: 1; gap: .4rem; }
+  .logout-label { display: none; }
+  .topbar-right { gap: .25rem; }
+}
+@media (max-width: 480px) {
+  .topbar-left .page-title { font-size: .95rem; }
+  .topbar .role-switch { padding: .6rem; min-width: 44px; }
+  .topbar .user-profile { display: none; }
+}

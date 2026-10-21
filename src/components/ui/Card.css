@@ -52,3 +52,4 @@
     padding: var(--space-4);
   }
 }
+.card-action { min-width: 0; max-width: 100%; }

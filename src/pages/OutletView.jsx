@@ -967,17 +967,24 @@ const OutletView = () => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       {!(activeTab === 'REPORTS' && reportView !== 'list') && (
-        <div className="outlet-tab-nav">
+        <div className="outlet-module-navigation">
+        <label className="outlet-mobile-navigation">Go to module
+          <select value={activeTab} onChange={event => setActiveTab(event.target.value)}>
+            {tabs.map(tab => <option key={tab.id} value={tab.id}>{tab.label}</option>)}
+          </select>
+        </label>
+        <div className="outlet-tab-nav" aria-label="Outlet modules">
           {tabs.map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={`outlet-tab-btn${activeTab === tab.id ? ' outlet-tab-btn--active' : ''}`}
+              aria-pressed={activeTab === tab.id}
             >
               {tab.label}
             </button>
           ))}
-        </div>
+        </div></div>
       )}
 
       <div>
@@ -1177,7 +1184,7 @@ const OutletView = () => {
           {receiptError && <div className="order-builder-alert order-builder-alert-error">{receiptError}</div>}
           <div style={{ display: 'grid', gap: '0.85rem' }}>
             {(receiptTarget?.receiptItems || []).map((item) => (
-              <div key={item.product_id} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 150px', gap: '1rem', alignItems: 'end', padding: '0.85rem', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}>
+              <div key={item.product_id} className="receipt-product-row">
                 <div><strong>{item.productName || getProductName(item.product_id) || item.product_id}</strong><div className="text-muted" style={{ fontSize: '0.82rem', marginTop: '0.25rem' }}>Pending: {item.remainingQty} of {item.quantity}</div><DispatchSources sources={item.dispatchSources} /></div>
                 <Input label="Received now" type="number" min="1" max={item.remainingQty} placeholder="Leave blank" value={receiptQuantities[item.product_id] ?? ''} onChange={(event) => setReceiptQuantities((current) => ({ ...current, [item.product_id]: event.target.value }))} disabled={receivingStock} />
               </div>

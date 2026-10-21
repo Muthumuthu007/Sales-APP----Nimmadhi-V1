@@ -142,3 +142,13 @@
   font-size: 0.875rem;
   color: var(--color-text-muted);
 }
+
+.selected-text { min-width: 0; white-space: normal; overflow-wrap: anywhere; text-align: left; }
+.select-trigger { gap: .6rem; font-family: inherit; text-align: left; }
+.select-option { flex-wrap: wrap; gap: .35rem; overflow-wrap: anywhere; min-height: 44px; }
+.select-search-box input { min-height: 44px; }
+@media screen and (max-width: 640px) {
+  .select-dropdown { max-height: min(320px, 48dvh); }
+  .select-options-list { max-height: 36dvh; }
+  .select-option { padding-block: .85rem; font-size: .95rem; }
+}

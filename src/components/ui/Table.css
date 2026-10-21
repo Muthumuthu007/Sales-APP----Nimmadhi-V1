@@ -77,3 +77,21 @@
 /* Reserve a real column for retail prices, including fixed-layout tables. */
 .table .mrp-column { width: 140px; min-width: 140px; }
 .table .mrp-column .product-mrp { white-space: nowrap !important; font-variant-numeric: tabular-nums; }
+
+/* Phone records keep every field and action readable without a horizontal hunt. */
+@media screen and (max-width: 640px) {
+  .table-container { border: 0; background: none; backdrop-filter: none; overflow: visible; }
+  .table.table { display: block; width: 100%; min-width: 0; table-layout: auto; }
+  .table.table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .table.table tbody { display: grid; gap: 1rem; }
+  .table.table tbody > tr { display: block; min-width: 0; border: 1px solid var(--color-border); border-radius: 12px; background: rgba(15,23,42,.45); overflow: hidden; }
+  .table.table tbody > tr > td { display: block; width: 100%; min-width: 0; max-width: none; padding: .75rem 1rem; text-align: left; white-space: normal; overflow: visible; overflow-wrap: anywhere; }
+  .table.table tbody > tr > td::before { content: attr(data-label); display: block; margin-bottom: .3rem; color: #fbbf24; font: 600 .7rem/1.4 Inter, sans-serif; text-transform: uppercase; letter-spacing: .05em; }
+  .table.table td:last-child { border-bottom: 0; }
+  .table.table td .btn { min-height: 44px; max-width: 100%; white-space: normal; }
+  .table.table .product-mrp { white-space: normal !important; }
+}
+@media screen and (max-width: 640px) {
+  .table.table tbody > tr { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .table.table tbody > tr > td.table-cell--wide { grid-column: 1 / -1; }
+}
