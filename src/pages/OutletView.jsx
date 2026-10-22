@@ -1279,24 +1279,23 @@ const OutletView = () => {
                   {ownedShowroomSales && <><Input label="Bill number (optional)" value={saleDetails.billNo} onChange={event => setSaleDetails({ ...saleDetails, billNo: event.target.value })} maxLength={80} /><Input label="Dispatch date" type="date" value={saleDetails.dispatchDate} onChange={event => setSaleDetails({ ...saleDetails, dispatchDate: event.target.value })} /><p className="showroom-sale-hint">Work-order number is generated with the factory order.<br />Sales person: <strong>{loggedInEmployeeName || 'Recorded from your login'}</strong></p></>}
                 </section>
                 {ownedShowroomSales && <section className="sales-builder-date-card sales-builder-customer-card">
-                  <div className="order-builder-section-label"><span>2</span><div><strong>{ownedShowroomSales ? 'Customer details and payment' : 'Payment details'}</strong><small>{ownedShowroomSales ? 'Customer details are required for NIM sales' : 'Record the bill amount and payment'}</small></div></div>
-                  {ownedShowroomSales && <>
-                  <Input label="Customer name" placeholder="e.g. S. Kumar" value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
-                  <Input label="Customer phone number" type="tel" placeholder="e.g. 9876543210" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} />
-                  <Input label="Customer address" placeholder="House, street, area, city" value={customerAddress} onChange={(e) => setCustomerAddress(e.target.value)} />
-                  </>}
+                  <div className="order-builder-section-label"><span>2</span><div><strong>Cash and payment details</strong><small>Record the discount, payment, and balance</small></div></div>
                   <Select label="Payment method" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} options={[
                     { value: 'CASH', label: 'Cash' },
                     { value: 'CARD', label: 'Card' },
                     { value: 'UPI', label: 'UPI' },
                   ]} />
-                  {ownedShowroomSales && <Select label="Customer needs" value={salesFulfillmentMode} onChange={e => setSalesFulfillmentMode(e.target.value)} options={[{value:'',label:'Choose delivery option'},{value:'LOCAL_STOCK',label:'Needed immediately — deliver from outlet stock'},{value:'FACTORY_DELIVERY',label:'Factory dispatch directly to customer'}]} />}
                   {ownedShowroomSales && <><Input label="Cash discount (₹)" type="number" min="0" step="0.01" placeholder="0.00" value={cashDiscount} onChange={e => setCashDiscount(e.target.value)} /><div className="sales-builder-payment-summary">Total after percentage discount: <strong>{formatCurrency(grossAmount)}</strong><br />Cash discount: <strong>− {formatCurrency(enteredDiscount)}</strong><br />Grand total (tax included): <strong>{formatCurrency(netBillAmount)}</strong></div></>}
                   <Input label="Amount paid now (advance)" type="number" min="0" step="0.01" placeholder="0.00" value={advanceAmount} onChange={(e) => setAdvanceAmount(e.target.value)} />
                   {grossAmount > 0 && <div className="sales-builder-payment-summary">Balance due: <strong>{formatCurrency(Math.max(0, netBillAmount - Number(advanceAmount || 0)))}</strong></div>}
+                  <div className="order-builder-section-label"><span>3</span><div><strong>Customer details</strong><small>Customer details are required for NIM sales</small></div></div>
+                  <Input label="Customer name" placeholder="e.g. S. Kumar" value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
+                  <Input label="Customer phone number" type="tel" placeholder="e.g. 9876543210" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} />
+                  <Input label="Customer address" placeholder="House, street, area, city" value={customerAddress} onChange={(e) => setCustomerAddress(e.target.value)} />
+                  {ownedShowroomSales && <Select label="Customer needs" value={salesFulfillmentMode} onChange={e => setSalesFulfillmentMode(e.target.value)} options={[{value:'',label:'Choose delivery option'},{value:'LOCAL_STOCK',label:'Needed immediately — deliver from outlet stock'},{value:'FACTORY_DELIVERY',label:'Factory dispatch directly to customer'}]} />}
                 </section>}
                 <section className="sales-builder-entry-card">
-                  <div className="order-builder-section-label"><span>{ownedShowroomSales ? 3 : 2}</span><div><strong>Sold product</strong><small>{ownedShowroomSales ? 'Choose products for outlet or factory delivery' : 'Only products available at this outlet are listed'}</small></div></div>
+                  <div className="order-builder-section-label"><span>{ownedShowroomSales ? 4 : 2}</span><div><strong>Sold product</strong><small>{ownedShowroomSales ? 'Choose products for outlet or factory delivery' : 'Only products available at this outlet are listed'}</small></div></div>
                   <GroupedProductPicker label="Sale product" options={salesProductOptions} value={salesProduct} onChange={val => { setSalesProduct(val); setShowroomItem(current => showroomItemForProduct(current, salesProductOptions.find(option => option.value === val))); }} placeholder={ownedShowroomSales ? 'Search factory products...' : 'Search available products...'} />
                   {salesProduct && <div role="status" className="sales-product-mrp" style={{padding:'0.75rem 1rem',marginBottom:'1rem',border:'1px solid var(--color-primary)',borderRadius:'0.75rem'}}><strong>Product MRP</strong><ProductMrp item={salesProductOptions.find(option=>option.value===salesProduct) || {productId:salesProduct}} label={false}/></div>}
                   {ownedShowroomSales && <ShowroomSaleFields item={showroomItem} onChange={setShowroomItem} quantity={Number(salesQuantity)} />}
