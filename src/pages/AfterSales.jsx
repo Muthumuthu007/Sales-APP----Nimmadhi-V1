@@ -24,7 +24,7 @@ export default function AfterSales({godownMode=false, factoryMode=false}) {
  const lookupSale=async()=>{setLookingUp(true);setError('');setSales([]);setForm(f=>({...f,saleId:''}));try {const data=await api.get('/after-sales/sales',{params:{outletId:form.outletId,invoice:invoice.trim()}});setSales(data.sales || []);if(!data.sales?.length)setError('No sale found. Check the original outlet and exact invoice number or sale reference.');}catch(err){setError(message(err));}finally{setLookingUp(false);}};
  const selected=records.find(r=>r.caseId===selectedId);
  const sale=sales.find(r=>r.saleId===form.saleId);
- const filtered=useMemo(()=>records.filter(r=>(!factoryMode || ['TO_FACTORY','AT_FACTORY','WORK_COMPLETE','FACTORY_ORDERED','NEW_TO_GODOWN','TO_OUTLET'].includes(r.status)) && [r.caseId,r.customerName,r.customerPhone,r.productName,r.replacementProductName,r.billNo,r.label,r.status].join(' ').toLowerCase().includes(search.toLowerCase())),[records,search,factoryMode]);
+ const filtered=useMemo(()=>records.filter(r=>(!factoryMode || ['TO_FACTORY','AT_FACTORY','WORK_COMPLETE','REFURB_TO_GODOWN','FACTORY_ORDERED','NEW_TO_GODOWN','TO_OUTLET'].includes(r.status)) && [r.caseId,r.customerName,r.customerPhone,r.productName,r.replacementProductName,r.billNo,r.label,r.status].join(' ').toLowerCase().includes(search.toLowerCase())),[records,search,factoryMode]);
  const change=(field,value)=>{setForm(f=>({...f,[field]:value}));setRequestId(crypto.randomUUID());};
  const changeDetails=(field,value)=>{setDetails(f=>({...f,[field]:value}));setRequestId(crypto.randomUUID());};
  const submit=async()=>{setSaving(true);setError('');try {
@@ -35,7 +35,7 @@ export default function AfterSales({godownMode=false, factoryMode=false}) {
  const openAction=value=>{setAction(value);setDetails({notes:'',refurbishmentMode:'',eligibilityBasis:'',deliveryDate:'',replacementProductId:'',priceHandling:''});setRequestId(crypto.randomUUID());setError('');};
  return <div className="after-sales">
   <Card><CardHeader title={factoryMode?'After-sales factory work':'After-sales · Refurbishment & Replacement'} action={<Button variant="secondary" onClick={load} disabled={loading || saving}>Refresh</Button>}/><CardContent>
-   <p>Refurbishment: Customer → Outlet → Godown → Factory → Outlet → Customer.</p>
+   <p>Refurbishment: Customer → Outlet → Godown → Factory → Godown → Outlet → Customer.</p>
    <p>Replacement: Godown orders → Factory → Godown → Customer. Returned beds go to Inventory Credit Note.</p>
    <p>Service beds are tracked separately from available stock. Each case represents one sold bed.</p>
    <Input label="Search cases by customer, product, invoice or status" value={search} onChange={e=>setSearch(e.target.value)}/>
@@ -66,22 +66,23 @@ export default function AfterSales({godownMode=false, factoryMode=false}) {
     {godownMode && <><p>Ordering godown: {outletId}</p><Select label="New product B replacing the original product A" value={form.replacementProductId || ''} onChange={e=>change('replacementProductId',e.target.value)} options={[{value:'',label:'Choose the requested replacement bed'},...products.map(p=>({value:p.product_id || p.productId,label:p.product_name || p.productName}))]}/>{sale && form.replacementProductId && <p><strong>{products.find(p=>(p.product_id || p.productId)===form.replacementProductId)?.product_name}</strong> replaces <strong>{sale.productName}</strong> · Quantity: 1</p>}</>}
     <Input label="Customer request / reason" value={form.reason} onChange={e=>change('reason',e.target.value)}/>
     <Input label="Inspection findings and inspecting officer" value={form.inspectionNotes} onChange={e=>change('inspectionNotes',e.target.value)}/>
-    <Button disabled={saving || !sale || !form.godownId || !form.reason.trim() || !form.inspectionNotes.trim() || (godownMode && !form.replacementProductId)} onClick={submit}>{saving?'Saving…':godownMode?'Submit replacement order for review':'Submit to godown / Admin review'}</Button>
+    <Button disabled={saving || !sale || !form.godownId || !form.reason.trim() || !form.inspectionNotes.trim() || (godownMode && !form.replacementProductId)} onClick={submit}>{saving?'Saving…':godownMode?'Submit replacement order for review':'Record bed collected at outlet'}</Button>
    </div>:selected && <div className="after-sales-form">
     <strong>{selected.label} bed · {selected.productName}</strong><ProductMrp item={{productId:selected.productId}}/>
     <p>Case: {selected.caseId}<br/>Original sale: {selected.billNo || selected.saleReferenceId} · {selected.saleDate}<br/>Sold unit: {selected.unitNumber}</p>
     <p>{selected.customerName} · {selected.customerPhone}<br/>{selected.customerAddress}</p>
     <p>Outlet: {selected.outletId} · Godown: {selected.godownId}<br/>Status: {label(selected.status)}<br/>Reason: {selected.reason}<br/>Inspection: {selected.inspectionNotes}</p>
-    {selected.refurbishmentMode && <p>Factory work: {label(selected.refurbishmentMode)}</p>}
+    {selected.caseType==='REFURBISHMENT' && <p>Factory supplies a completely new bed of the same product. Return route: Factory → Godown → Outlet → Customer.</p>}
     {selected.replacementProductName && <p><strong>{selected.replacementProductName}</strong> replaces <strong>{selected.productName}</strong> · Quantity: 1{selected.replacementOrderId && <><br/>Replacement order: {selected.replacementOrderId}</>}<ProductMrp item={{productId:selected.replacementProductId}}/><br/>Eligible until: {selected.eligibilityDeadline}<br/>Price adjustment: {label(selected.priceHandling)}<br/>Returned bed: {label(selected.returnStatus)}</p>}
+    {selected.caseType==='REFURBISHMENT' && ['REQUESTED','AT_OUTLET'].includes(selected.status) && <p>The outlet must record Send To Godown. Godown can then confirm receipt and send the bed to Factory.</p>}
     <div className="after-sales-actions">{(selected.availableActions || []).map(value=><Button key={value} variant={action===value?'primary':'secondary'} disabled={saving} onClick={()=>openAction(value)}>{label(value)}</Button>)}</div>
     {action && <div className="after-sales-form"><h4>{label(action)}</h4>
-      {action==='APPROVE' && (selected.caseType==='REFURBISHMENT'?<Select label="Factory work required" value={details.refurbishmentMode} onChange={e=>changeDetails('refurbishmentMode',e.target.value)} options={[{value:'',label:'Confirm work type'},{value:'REPAIR_SAME_BED',label:'Repair and return the same bed'},{value:'SUPPLY_NEW_BED',label:'Supply a new bed; keep original at factory'}]}/>:<>
+      {action==='APPROVE' && selected.caseType==='REPLACEMENT' && <>
        {!selected.replacementProductId && <Select label="Replacement product" value={details.replacementProductId} onChange={e=>changeDetails('replacementProductId',e.target.value)} options={[{value:'',label:'Choose the requested new bed'},...products.map(p=>({value:p.product_id || p.productId,label:p.product_name || p.productName}))]}/>}
        <Select label="Six-month eligibility starts from" value={details.eligibilityBasis} onChange={e=>changeDetails('eligibilityBasis',e.target.value)} options={[{value:'',label:'Confirm policy basis'},{value:'INVOICE',label:'Original invoice date'},{value:'DELIVERY',label:'Original customer delivery date'}]}/>
        {details.eligibilityBasis==='DELIVERY' && <Input label="Verified original customer delivery date" type="date" value={details.deliveryDate} onChange={e=>changeDetails('deliveryDate',e.target.value)}/>}
        <Select label="Replacement price difference" value={details.priceHandling} onChange={e=>changeDetails('priceHandling',e.target.value)} options={[{value:'',label:'Confirm handling'},{value:'NO_ADJUSTMENT',label:'No payment or refund required'},{value:'HANDLED_SEPARATELY',label:'Handled separately; record reference in notes'}]}/>
-      </>)}
+      </>}
       <Input label="Notes / handover or delivery acknowledgement" value={details.notes || ''} onChange={e=>changeDetails('notes',e.target.value)}/>
       <Button onClick={submit} disabled={saving || !details.notes?.trim()}>{saving?'Saving…':`Confirm ${label(action)}`}</Button>
     </div>}
