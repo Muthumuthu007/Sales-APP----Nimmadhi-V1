@@ -10,6 +10,7 @@ import './AfterSales.css';
 
 const label=value=>String(value || '').toLowerCase().replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase());
 const message=err=>{const data=err.response?.data;return typeof data==='string'?data:Array.isArray(data)?data.join(' '):data?.error || data?.detail || 'Unable to save. Refresh and try again.';};
+const currency=value=>new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(Number(value || 0));
 const empty={caseType:'REFURBISHMENT',saleId:'',unitNumber:'1',godownId:'',reason:'',inspectionNotes:'',customerName:'',customerPhone:'',customerAddress:''};
 export default function AfterSales({godownMode=false, factoryMode=false}) {
  const {role,outletId}=useContext(AuthContext);const admin=['MANAGER','FACTORY_MANAGER'].includes(role);
@@ -32,7 +33,7 @@ export default function AfterSales({godownMode=false, factoryMode=false}) {
    else {await api.post(`/after-sales/${selectedId}/action`,{...details,action,requestId});setAction('');}
    setRequestId(crypto.randomUUID());await load();
  }catch(err){setError(message(err));}finally{setSaving(false);}};
- const openAction=value=>{setAction(value);setDetails({notes:'',refurbishmentMode:'',eligibilityBasis:'',deliveryDate:'',replacementProductId:'',priceHandling:''});setRequestId(crypto.randomUUID());setError('');};
+ const openAction=value=>{setAction(value);setDetails({notes:'',refurbishmentMode:'',eligibilityBasis:'DISPATCH',originalDispatchDate:'',replacementProductId:'',originalCreditAmount:'',replacementPrice:'',amount:'',paymentMethod:'CASH',transactionReference:''});setRequestId(crypto.randomUUID());setError('');};
  return <div className="after-sales">
   <Card><CardHeader title={factoryMode?'After-sales factory work':'After-sales · Refurbishment & Replacement'} action={<Button variant="secondary" onClick={load} disabled={loading || saving}>Refresh</Button>}/><CardContent>
    <p>Refurbishment: Customer → Outlet → Godown → Factory → Godown → Outlet → Customer.</p>
@@ -72,17 +73,37 @@ export default function AfterSales({godownMode=false, factoryMode=false}) {
     <p>Case: {selected.caseId}<br/>Original sale: {selected.billNo || selected.saleReferenceId} · {selected.saleDate}<br/>Sold unit: {selected.unitNumber}</p>
     <p>{selected.customerName} · {selected.customerPhone}<br/>{selected.customerAddress}</p>
     <p>Outlet: {selected.outletId} · Godown: {selected.godownId}<br/>Status: {label(selected.status)}<br/>Reason: {selected.reason}<br/>Inspection: {selected.inspectionNotes}</p>
-    {selected.caseType==='REFURBISHMENT' && <p>Factory supplies a completely new bed of the same product. Return route: Factory → Godown → Outlet → Customer.</p>}
+    {selected.caseType==='REFURBISHMENT' && <p>Factory can repair this bed or supply a new bed of the same product. Return route: Factory → Godown → Outlet → Customer.</p>}
     {selected.replacementProductName && <p><strong>{selected.replacementProductName}</strong> replaces <strong>{selected.productName}</strong> · Quantity: 1{selected.replacementOrderId && <><br/>Replacement order: {selected.replacementOrderId}</>}<ProductMrp item={{productId:selected.replacementProductId}}/><br/>Eligible until: {selected.eligibilityDeadline}<br/>Price adjustment: {label(selected.priceHandling)}<br/>Returned bed: {label(selected.returnStatus)}</p>}
     {selected.caseType==='REFURBISHMENT' && ['REQUESTED','AT_OUTLET'].includes(selected.status) && <p>The outlet must record Send To Godown. Godown can then confirm receipt and send the bed to Factory.</p>}
+    {selected.caseType==='REFURBISHMENT' && selected.history.some(event=>event.action==='COMPLETE_REFURBISHMENT') && ['REPAIR_SAME_BED','SUPPLY_NEW_SAME_PRODUCT'].includes(selected.refurbishmentMode) && <p>Factory work recorded: {selected.refurbishmentMode==='REPAIR_SAME_BED'?'Same bed repaired':'New bed supplied — same product'}</p>}
+    {selected.caseType==='REPLACEMENT' && selected.adjustmentDirection && <section className="after-sales-form" aria-label="Replacement payment and refund details">
+      <h4>Replacement payment / refund</h4>
+      <p>Agreed credit for original bed: <strong>{currency(selected.originalCreditAmount)}</strong><br/>New bed price: <strong>{currency(selected.replacementPrice)}</strong></p>
+      <p>{selected.adjustmentDirection==='PAYMENT'?'Customer pays extra':selected.adjustmentDirection==='REFUND'?'Refund to customer':'No price difference'}: <strong>{currency(selected.adjustmentAmount)}</strong><br/>Recorded: {currency(selected.adjustmentSettled)}<br/>Remaining {selected.adjustmentDirection==='REFUND'?'refund':'payment'}: <strong>{currency(selected.adjustmentBalance)}</strong><br/>Status: {label(selected.adjustmentStatus)}</p>
+      <p>These are replacement adjustments linked to the original sale. Recording a refund logs money already returned; it does not transfer money through a bank.</p>
+      {selected.adjustmentHistory?.length>0 && <><h4>Payment / refund history</h4><ol className="after-sales-history">{selected.adjustmentHistory.map(entry=><li key={entry.transactionId}><strong>{label(entry.direction)} · {currency(entry.amount)} · {label(entry.paymentMethod)}</strong><br/>{new Date(entry.recordedAt).toLocaleString()} · {entry.recordedBy}<br/>Reference: {entry.transactionReference || 'Cash'}<br/>{entry.notes}</li>)}</ol></>}
+    </section>}
     <div className="after-sales-actions">{(selected.availableActions || []).map(value=><Button key={value} variant={action===value?'primary':'secondary'} disabled={saving} onClick={()=>openAction(value)}>{label(value)}</Button>)}</div>
     {action && <div className="after-sales-form"><h4>{label(action)}</h4>
       {action==='APPROVE' && selected.caseType==='REPLACEMENT' && <>
        {!selected.replacementProductId && <Select label="Replacement product" value={details.replacementProductId} onChange={e=>changeDetails('replacementProductId',e.target.value)} options={[{value:'',label:'Choose the requested new bed'},...products.map(p=>({value:p.product_id || p.productId,label:p.product_name || p.productName}))]}/>}
-       <Select label="Six-month eligibility starts from" value={details.eligibilityBasis} onChange={e=>changeDetails('eligibilityBasis',e.target.value)} options={[{value:'',label:'Confirm policy basis'},{value:'INVOICE',label:'Original invoice date'},{value:'DELIVERY',label:'Original customer delivery date'}]}/>
-       {details.eligibilityBasis==='DELIVERY' && <Input label="Verified original customer delivery date" type="date" value={details.deliveryDate} onChange={e=>changeDetails('deliveryDate',e.target.value)}/>}
-       <Select label="Replacement price difference" value={details.priceHandling} onChange={e=>changeDetails('priceHandling',e.target.value)} options={[{value:'',label:'Confirm handling'},{value:'NO_ADJUSTMENT',label:'No payment or refund required'},{value:'HANDLED_SEPARATELY',label:'Handled separately; record reference in notes'}]}/>
+       <p>Replacement eligibility: six months from the original dispatch date{selected.originalDispatchDate ? ` (${selected.originalDispatchDate})` : ''}.</p>
+       {!selected.originalDispatchDate && <Input label="Verified original dispatch date (only if missing from the original sale)" type="date" value={details.originalDispatchDate} onChange={e=>changeDetails('originalDispatchDate',e.target.value)}/>}
+
       </>}
+      {['APPROVE','SET_REPLACEMENT_AMOUNTS'].includes(action) && selected.caseType==='REPLACEMENT' && <>
+       <Input label="Agreed return credit for Product A (₹)" type="number" min="0" step="0.01" value={details.originalCreditAmount} onChange={e=>changeDetails('originalCreditAmount',e.target.value)}/>
+       <Input label="Agreed price of replacement Product B (₹)" type="number" min="0" step="0.01" value={details.replacementPrice} onChange={e=>changeDetails('replacementPrice',e.target.value)}/>
+       {details.originalCreditAmount!=='' && details.replacementPrice!=='' && <p>{Number(details.replacementPrice)>Number(details.originalCreditAmount)?'Customer pays extra':Number(details.replacementPrice)<Number(details.originalCreditAmount)?'Refund due to customer':'No payment or refund due'}: <strong>{currency(Math.abs(Number(details.replacementPrice)-Number(details.originalCreditAmount)))}</strong></p>}
+      </>}
+      {['RECORD_PAYMENT','RECORD_REFUND'].includes(action) && <>
+       <p>Record {action==='RECORD_PAYMENT'?'payment already received':'refund already paid'}. Remaining: {currency(selected.adjustmentBalance)}</p>
+       <Input label={action==='RECORD_PAYMENT'?'Amount received (₹)':'Amount refunded (₹)'} type="number" min="0.01" step="0.01" max={selected.adjustmentBalance} value={details.amount} onChange={e=>changeDetails('amount',e.target.value)}/>
+       <Select label="Payment / refund method" value={details.paymentMethod} onChange={e=>changeDetails('paymentMethod',e.target.value)} options={['CASH','UPI','CARD','BANK'].map(value=>({value,label:label(value)}))}/>
+       <Input label="Transaction reference / receipt number" value={details.transactionReference} onChange={e=>changeDetails('transactionReference',e.target.value)}/>
+      </>}
+      {action==='COMPLETE_REFURBISHMENT' && <Select label="Factory work completed" value={details.refurbishmentMode} onChange={e=>changeDetails('refurbishmentMode',e.target.value)} options={[{value:'',label:'Choose the work completed'},{value:'REPAIR_SAME_BED',label:'Repaired the same bed'},{value:'SUPPLY_NEW_SAME_PRODUCT',label:'Supplied a new bed of the same product'}]}/>}
       <Input label="Notes / handover or delivery acknowledgement" value={details.notes || ''} onChange={e=>changeDetails('notes',e.target.value)}/>
       <Button onClick={submit} disabled={saving || !details.notes?.trim()}>{saving?'Saving…':`Confirm ${label(action)}`}</Button>
     </div>}
