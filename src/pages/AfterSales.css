@@ -1,0 +1,8 @@
+.after-sales,.after-sales-form {display:grid;gap:1rem;min-width:0}
+.after-sales p,.after-sales h3,.after-sales-history {overflow-wrap:anywhere}
+.after-sales-list {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:1rem}
+.after-sales-tag {display:inline-block;padding:.35rem .7rem;border:1px solid var(--color-primary);border-radius:2rem;color:var(--color-primary);font-weight:700}
+.after-sales-actions {display:flex;flex-wrap:wrap;gap:.75rem}
+.after-sales-history {padding-left:1.25rem;display:grid;gap:1rem}
+.after-sales-error {color:#fda4af}
+@media(max-width:640px){.after-sales-actions{display:grid;grid-template-columns:minmax(0,1fr)}.after-sales button{min-height:44px;white-space:normal}}

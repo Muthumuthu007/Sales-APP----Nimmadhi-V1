@@ -1,3 +1,4 @@
+import AfterSales from './pages/AfterSales';
 import {ProductMrpProvider} from './context/ProductMrpContext';
 import {firstAdminPath} from './auth/adminAccess';
 import React, { useContext } from 'react';
@@ -59,6 +60,7 @@ function App() {
             
             {/* MANAGER ROUTES */}
             <Route path="admin-management" element={<ProtectedRoute allowedRoles={['MANAGER']}><ScopedAdminManagement /></ProtectedRoute>} />
+            <Route path="after-sales" element={<ProtectedRoute allowedRoles={['MANAGER']}><AfterSales /></ProtectedRoute>} />
             <Route path="factory-management" element={<ProtectedRoute allowedRoles={['MANAGER']}><FactoryManagement /></ProtectedRoute>} />
             <Route path="dashboard" element={
               <ProtectedRoute allowedRoles={['MANAGER']}>

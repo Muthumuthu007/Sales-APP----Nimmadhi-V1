@@ -1,3 +1,4 @@
+import AfterSales from './AfterSales';
 import ProductMrp from '../components/ProductMrp';
 import {businessDate} from '../utils/businessDate';
 import GodownReports from '../components/GodownReports';
@@ -63,7 +64,7 @@ const OutletView = () => {
     { id: 'DUE_CUSTOMERS', label: 'Pending Payments' },
     { id: 'REPORTS', label: 'Reports' },
   ];
-  const tabs = (['OUTLET', 'EMPLOYEE', 'CASHIER', 'SUPERVISOR'].includes(role) ? employeeTabs : outletTabs).filter(tab => (tab.id !== 'SALES' || isGodown === false)).concat(isGodown ? [{id:'ASSIGNED_DISPATCH',label:'Dispatch Assigned Orders'},{id:'PRODUCT_IN',label:'Temporary Stocks'},{id:'SALES_OUT',label:'Sales Out'}] : []).filter(tab => tab.id !== 'DUE_CUSTOMERS');
+  const tabs = (['OUTLET', 'EMPLOYEE', 'CASHIER', 'SUPERVISOR'].includes(role) ? employeeTabs : outletTabs).filter(tab => (tab.id !== 'SALES' || isGodown === false)).concat(isGodown ? [{id:'ASSIGNED_DISPATCH',label:'Dispatch Assigned Orders'},{id:'PRODUCT_IN',label:'Temporary Stocks'},{id:'SALES_OUT',label:'Sales Out'}] : []).filter(tab => tab.id !== 'DUE_CUSTOMERS').concat([{id:'AFTER_SALES',label:'After-sales'}]);
 
   // --- Create Order State ---
   const [productOptions, setProductOptions] = useState([{ label: 'Loading products...', value: '' }]);
@@ -988,6 +989,7 @@ const OutletView = () => {
       )}
 
       <div>
+        {activeTab === 'AFTER_SALES' && <AfterSales godownMode={Boolean(isGodown)} />}
         {activeTab === 'ASSIGNED_DISPATCH' && isGodown && <DispatchPlans godownMode />}
         {activeTab === 'PRODUCT_IN' && isGodown && <GodownCustody />}
         {activeTab === 'SALES_OUT' && isGodown && <GodownQuantityStock key="out" direction="OUT" />}
