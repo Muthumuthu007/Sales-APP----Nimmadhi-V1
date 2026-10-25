@@ -125,3 +125,6 @@
 }
 .receipt-product-row { display: grid; grid-template-columns: minmax(0,1fr) 150px; gap: 1rem; align-items: end; padding: .85rem; border: 1px solid var(--color-border); border-radius: 8px; }
 @media screen and (max-width: 640px) { .receipt-product-row { grid-template-columns: minmax(0,1fr); } }
+
+/* Keep NIM product pricing before payment and customer fields at every width. */
+.sales-builder-workspace--nim { grid-template-columns: minmax(0, 1fr); }
