@@ -1,3 +1,4 @@
+import OutletDashboard from './pages/OutletDashboard';
 import AfterSales from './pages/AfterSales';
 import {ProductMrpProvider} from './context/ProductMrpContext';
 import {firstAdminPath} from './auth/adminAccess';
@@ -67,6 +68,7 @@ function App() {
                 <Dashboard />
               </ProtectedRoute>
             } />
+            <Route path="outlets/overview" element={<ProtectedRoute allowedRoles={['MANAGER']}><OutletDashboard/></ProtectedRoute>}/>
             <Route path="orders" element={
               <ProtectedRoute allowedRoles={['MANAGER']}>
                 <Orders />

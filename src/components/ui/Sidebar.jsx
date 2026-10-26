@@ -22,6 +22,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     { to: '/dispatch', icon: <Truck size={20} />, label: 'Dispatch' },
     { to: '/salary', icon: <CreditCard size={20} />, label: 'Salary' },
     { to: '/attendance', icon: <ClipboardCheck size={20} />, label: 'Attendance' },
+    { to: '/outlets/overview', icon: <LayoutDashboard size={20} />, label: 'Outlet Dashboard' },
     { to: '/outlets', icon: <Store size={20} />, label: 'Outlets' },
     { to: '/complimentary-products', icon: <Gift size={20} />, label: 'Complimentary Products' },
     { to: '/discounts', icon: <BadgeIndianRupee size={20} />, label: 'Discounts' },
@@ -52,7 +53,7 @@ const Sidebar = ({ isOpen, onClose }) => {
             key={link.to}
             to={link.to}
             className={({ isActive }) => `nav-item ${(link.module ? location.pathname==='/employee' && (new URLSearchParams(location.search).get('module') || 'ATTENDANCE')===link.module : isActive) ? 'active' : ''}`}
-            end={link.to === '/'}
+            end={link.to === '/' || link.to === '/outlets'}
             onClick={onClose}
           >
             {link.icon}
