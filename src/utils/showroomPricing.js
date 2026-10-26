@@ -19,7 +19,9 @@ export function showroomPrice(item) {
 export function showroomBillPrice(grossAmount, cashDiscount = '0') {
   const gross = scaled(grossAmount), discount = scaled(cashDiscount || '0');
   if (gross === null || discount === null || discount >= gross) return null;
-  return {cashDiscount: Number(discount) / 100, netBillAmount: Number(gross - discount) / 100};
+  const net = gross - discount;
+  const rounded = ((net + 50n) / 100n) * 100n;
+  return {cashDiscount: Number(discount) / 100, unroundedBillAmount: Number(net) / 100, roundOff: Number(rounded - net) / 100, netBillAmount: Number(rounded) / 100};
 }
 
 // A sale may override the saved default without changing the product price list.

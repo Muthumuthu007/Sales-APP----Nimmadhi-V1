@@ -24,8 +24,8 @@ test('report export preserves quoted customer text and avoids duplicate invoice 
 
 import { showroomBillPrice } from './showroomPricing.js';
 test('cash discount reduces invoice total after percentage discount with exact paise', () => {
- assert.deepEqual(showroomBillPrice('50020','20'), {cashDiscount:20,netBillAmount:50000});
- assert.equal(showroomBillPrice('50020.25','20.15').netBillAmount,50000.10);
+ assert.deepEqual(showroomBillPrice('50020','20'), {cashDiscount:20,netBillAmount:50000,unroundedBillAmount:50000,roundOff:0});
+ assert.equal(showroomBillPrice('50020.25','20.15').netBillAmount,50000);
  for (const discount of ['-1','50020','50021','1.234']) assert.equal(showroomBillPrice('50020',discount),null);
 });
 
@@ -39,4 +39,14 @@ test('saved product MRP defaults are editable and do not leak into the next prod
  assert.equal(option.mrpSticker,'50020.00');
  assert.equal(showroomItemForProduct(edited,{label:'Another bed'}).mrpSticker,'');
  assert.equal(showroomItemForProduct(edited,option).mrpSticker,'50020.00');
+});
+
+test('round final invoice to nearest rupee after discount, half up', () => {
+ for (const [amount, expected, adjustment] of [['35000.45',35000,-0.45],['35000.50',35001,0.50],['35000.99',35001,0.01]]) {
+  const bill=showroomBillPrice(amount);
+  assert.equal(bill.netBillAmount,expected);
+  assert.equal(bill.roundOff,adjustment);
+  assert.equal(bill.unroundedBillAmount,Number(amount));
+ }
+ assert.equal(showroomBillPrice('35001.45','1').netBillAmount,35000);
 });
