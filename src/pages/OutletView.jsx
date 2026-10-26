@@ -1,3 +1,4 @@
+import {saleProductName} from '../utils/saleProductName';
 import SalesBill from '../components/SalesBill';
 import InvoiceSalesReport from '../components/InvoiceSalesReport';
 import {reportInvoices} from '../utils/reportInvoices';
@@ -315,7 +316,7 @@ const OutletView = () => {
     setSalesSuccess(null);
 
     try {
-      const submittedItems = salesItems.map((item) => ({ ...item, productName: getProductName(item.product_id) }));
+      const submittedItems = salesItems.map((item) => ({ ...item, productName: saleProductName(getProductName(item.product_id),item.size) }));
       const result = await recordSales({
         outletId: outletId,
         date: salesDate,
@@ -1315,7 +1316,7 @@ const OutletView = () => {
                 <section className="sales-builder-date-card" hidden={ownedShowroomSales && salesEntryStep!==1}>
                   <div className="order-builder-section-label"><span>1</span><div><strong>Sales date</strong><small>Choose the date for this entry</small></div></div>
                   <Input type="date" label="Date of sale" value={salesDate} onChange={(e) => setSalesDate(e.target.value)} />
-                  {ownedShowroomSales && <><Input label="Bill number (optional)" value={saleDetails.billNo} onChange={event => setSaleDetails({ ...saleDetails, billNo: event.target.value })} maxLength={80} /><Input label="Dispatch date" type="date" value={saleDetails.dispatchDate} onChange={event => setSaleDetails({ ...saleDetails, dispatchDate: event.target.value })} /><p className="showroom-sale-hint">Work-order number is generated with the factory order.<br />Sales person: <strong>{loggedInEmployeeName || 'Recorded from your login'}</strong></p></>}
+                  {ownedShowroomSales && <><Input label="Bill number (optional)" value={saleDetails.billNo} onChange={event => setSaleDetails({ ...saleDetails, billNo: event.target.value })} maxLength={80} /><Input label="Dispatch date" type="date" value={saleDetails.dispatchDate} onChange={event => setSaleDetails({ ...saleDetails, dispatchDate: event.target.value })} /><p className="showroom-sale-hint">Work-order number is generated automatically when this sale is submitted.<br />Sales person: <strong>{loggedInEmployeeName || 'Recorded from your login'}</strong></p></>}
                 </section>
                 <section className="sales-builder-entry-card" ref={salesProductSelector} tabIndex={-1} hidden={ownedShowroomSales && salesEntryStep!==0} style={{scrollMarginTop:'7rem'}}>
                   <div className="order-builder-section-label"><span>1</span><div><strong>Sold product</strong><small>{ownedShowroomSales ? 'Choose products for outlet or factory delivery' : 'Only products available at this outlet are listed'}</small></div></div>
@@ -1361,7 +1362,7 @@ const OutletView = () => {
                     {salesItems.map((item, idx) => (
                       <div key={idx} className="order-builder-item">
                         <span className="order-builder-item-quantity" style={{width:'auto',minWidth:'4rem',padding:'.5rem',flexDirection:'column'}}>{item.quantity}<small style={{display:'block',fontSize:'.75rem',fontWeight:400,marginTop:'.35rem'}}>Outlet stock: {availableStockLabel(item.product_id)}</small></span>
-                        <span className="order-builder-item-name">{salesProductOptions.find(o => o.value === item.product_id)?.label || item.product_id}<ProductMrp item={item}/>{ownedShowroomSales && <span className="showroom-item-details">{item.brand} · {item.colour} · {item.size}<br />MRP {formatCurrency(Number(item.mrpSticker))} − {item.discountPercent}% · Unit {formatCurrency(showroomPrice(item)?.value || 0)}<br /><strong>Delivery: {item.fulfillmentMode === 'LOCAL_STOCK' ? 'Outlet stock → customer' : 'Factory → customer'}</strong><br /><strong>Total {formatCurrency(showroomPrice(item)?.totalSalesValue || 0)}</strong> · Tax included ({item.taxPercent}%){item.scheme && <><br />Scheme: {item.scheme}</>}</span>}</span>
+                        <span className="order-builder-item-name">{saleProductName(salesProductOptions.find(o => o.value === item.product_id)?.label || item.product_id,item.size)}<ProductMrp item={item}/>{ownedShowroomSales && <span className="showroom-item-details">{item.brand} · {item.colour} · {item.size}<br />MRP {formatCurrency(Number(item.mrpSticker))} − {item.discountPercent}% · Unit {formatCurrency(showroomPrice(item)?.value || 0)}<br /><strong>Delivery: {item.fulfillmentMode === 'LOCAL_STOCK' ? 'Outlet stock → customer' : 'Factory → customer'}</strong><br /><strong>Total {formatCurrency(showroomPrice(item)?.totalSalesValue || 0)}</strong> · Tax included ({item.taxPercent}%){item.scheme && <><br />Scheme: {item.scheme}</>}</span>}</span>
                         <Button variant="secondary" className="order-builder-remove" onClick={() => removeSalesItem(idx)} disabled={isSubmittingSales} aria-label="Remove sales item">
                           <Trash2 size={16} />
                         </Button>

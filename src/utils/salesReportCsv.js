@@ -1,3 +1,4 @@
+import {saleProductName} from './saleProductName.js';
 const cell = value => `"${String(value ?? '').replaceAll('"', '""')}"`;
 const amount = value => value == null ? '' : Number(value).toFixed(2);
 export function showroomReportCsv(rows) {
@@ -9,6 +10,6 @@ export function showroomReportCsv(rows) {
   const grand = invoices.has(key) ? '' : amount(row.billAmount);
   const cash = invoices.has(key) ? '' : amount(row.cashDiscount || 0);
   invoices.add(key);
-  return [row.workOrderNo,row.billNo,row.dispatchDate,row.customerName,row.customerAddress,row.customerPhone,row.brand,row.model || row.productName,row.colour,row.size,row.quantity,amount(row.mrpSticker),row.discountPercent == null ? '' : `${row.discountPercent}%`,amount(row.value ?? row.price),amount(row.totalSalesValue ?? row.totalAmount),cash,grand,row.scheme,row.taxPercent == null ? '' : `${row.taxPercent}%`,row.createdByName,row.paymentMethod,first?amount(row.advanceAmount):'',first?amount(row.balanceDue):''].map(cell).join(',');
+  return [row.workOrderNo,row.billNo,row.dispatchDate,row.customerName,row.customerAddress,row.customerPhone,row.brand,saleProductName(row.model || row.productName,row.size),row.colour,row.size,row.quantity,amount(row.mrpSticker),row.discountPercent == null ? '' : `${row.discountPercent}%`,amount(row.value ?? row.price),amount(row.totalSalesValue ?? row.totalAmount),cash,grand,row.scheme,row.taxPercent == null ? '' : `${row.taxPercent}%`,row.createdByName,row.paymentMethod,first?amount(row.advanceAmount):'',first?amount(row.balanceDue):''].map(cell).join(',');
  })].join('\r\n');
 }

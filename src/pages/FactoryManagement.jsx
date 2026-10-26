@@ -1,3 +1,5 @@
+import {factoryProductName} from '../utils/saleProductName';
+import {factorySchemeDetails} from '../utils/factoryComplimentary';
 import AfterSales from './AfterSales';
 import ProductMrp from '../components/ProductMrp';
 import FactoryPendingPayments from './FactoryPendingPayments';
@@ -12,6 +14,11 @@ import {Table} from '../components/ui/Table';
 import {LoadingState, ErrorState} from '../components/ui/StateContainers';
 import OrderProduct from '../components/OrderProduct';
 import {outletLabel} from '../utils/outlets';
+
+function FactoryOrderProduct({order,item}) {
+ const schemes=factorySchemeDetails(order,item);
+ return <div><OrderProduct item={item} name={factoryProductName(order,item)}/>{schemes.length>0 && <section style={{marginTop:'.5rem',padding:'.65rem',border:'1px solid var(--color-primary)',borderRadius:'.5rem',whiteSpace:'normal'}}><strong style={{color:'var(--color-primary)'}}>Complimentary items / sale scheme</strong>{schemes.map((entry,index)=><div key={index} style={{marginTop:'.35rem'}}>{entry.scheme}{schemes.length>1 && <small style={{display:'block'}}>For sale line quantity: {entry.quantity}</small>}</div>)}</section>}</div>;
+}
 
 export default function FactoryManagement() {
   const [orders,setOrders]=useState([]), [outlets,setOutlets]=useState([]);
@@ -44,7 +51,7 @@ export default function FactoryManagement() {
     {key:'outletId',label:'Own outlet',render:row => outletLabel(row.outletId,outlets)},
     {key:'customerName',label:'Customer',render:row => <><strong>{row.customerName || 'Not recorded'}</strong><br />{row.customerPhone}<br />{row.customerAddress}</>},
     {key:'createdByName',label:'Sales person'},
-    {key:'items',label:'Products / Complimentary',render:row => <div style={{display:'grid',gap:'0.75rem'}}>{(row.items || []).map((item,index) => <div key={index}><OrderProduct item={item} /><small>Dispatched {item.dispatchedQty || 0} / {item.orderedQty}</small></div>)}</div>},
+    {key:'items',label:'Products / Complimentary',render:row => <div style={{display:'grid',gap:'0.75rem'}}>{(row.items || []).map((item,index) => <div key={index}><FactoryOrderProduct order={row} item={item}/><small>Dispatched {item.dispatchedQty || 0} / {item.orderedQty}</small></div>)}</div>},
     {key:'dispatchDate',label:'Dispatch date',render:row => row.dispatchDate || 'Not recorded'},
     {key:'status',label:'Status',render:row => ({PENDING:'Awaiting factory dispatch',PARTIALLY_DISPATCHED:'Partially dispatched',DISPATCHED:'Dispatched to customer'})[row.status] || row.status},
     {key:'actions',label:'Action',render:row => <Button variant="secondary" onClick={() => open(row)}>{row.status === 'DISPATCHED' ? 'View details / history' : 'View / Dispatch to customer'}</Button>},
@@ -61,7 +68,7 @@ export default function FactoryManagement() {
       {selected && <div style={{display:'grid',gap:'1rem'}}>
         <strong>{selected.customerName} · {selected.customerPhone}</strong><p>{selected.customerAddress}</p>
         <p>Outlet: {outletLabel(selected.outletId,outlets)} · Dispatch date: {selected.dispatchDate}</p>
-        {(selected.items || []).map(item => <div key={item.product_id}><OrderProduct item={item} /><p>Ordered {item.orderedQty} · Dispatched {item.dispatchedQty || 0} · Remaining {Number(item.orderedQty)-Number(item.dispatchedQty || 0)}</p>{selected.status !== 'DISPATCHED' && <Input label="Quantity to dispatch to customer now" type="number" min="0" step="1" max={Number(item.orderedQty)-Number(item.dispatchedQty || 0)} value={quantities[item.product_id] || '0'} onChange={e=>setQuantities({...quantities,[item.product_id]:e.target.value})} disabled={saving} />}</div>)}
+        {(selected.items || []).map(item => <div key={item.product_id}><FactoryOrderProduct order={selected} item={item}/><p>Ordered {item.orderedQty} · Dispatched {item.dispatchedQty || 0} · Remaining {Number(item.orderedQty)-Number(item.dispatchedQty || 0)}</p>{selected.status !== 'DISPATCHED' && <Input label="Quantity to dispatch to customer now" type="number" min="0" step="1" max={Number(item.orderedQty)-Number(item.dispatchedQty || 0)} value={quantities[item.product_id] || '0'} onChange={e=>setQuantities({...quantities,[item.product_id]:e.target.value})} disabled={saving} />}</div>)}
         {dispatchError && <p role="alert">{dispatchError}</p>}
         {selected.status !== 'DISPATCHED' && <Button onClick={dispatch} disabled={saving}>{saving ? 'Recording…':'Confirm factory dispatch to customer'}</Button>}
         <h4>Dispatch history</h4>
