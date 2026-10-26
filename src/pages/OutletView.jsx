@@ -1,3 +1,4 @@
+import GroupedStockTable from '../components/GroupedStockTable';
 import AfterSales from './AfterSales';
 import ProductMrp from '../components/ProductMrp';
 import {businessDate} from '../utils/businessDate';
@@ -1212,7 +1213,8 @@ const OutletView = () => {
                   <ErrorState error={stockError} onRetry={() => setStockReload(value => value + 1)} />
                 </div>
               ) : (
-                <Table 
+                <GroupedStockTable
+                  catalogue={productOptions}
                   columns={isGodown && godownStockView === 'CURRENT' ? [
                     {key:'productName',label:'Product',render:row=>row.productName || 'Product name unavailable'},
                     {key:'mappedMrp',label:'MRP',render:row=><ProductMrp item={row} label={false}/>},
