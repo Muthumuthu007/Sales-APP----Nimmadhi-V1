@@ -766,7 +766,7 @@ const OutletView = () => {
              ...list.map(p => ({
                ...productionOption(p),
                mrpSticker: p.mrpSticker ?? null,
-               label: `${p.name || p.product_name || p.productName || p.title || String(p.id || p.product_id)}${response?.ownedShowroom ? ` — max produce: ${p.maxProduce ?? 0}` : ''}`,
+               label: p.name || p.product_name || p.productName || p.title || String(p.id || p.product_id),
                value: String(p.id || p.product_id)
              }))
           ];
@@ -1307,7 +1307,7 @@ const OutletView = () => {
                 </section>
                 <section className="sales-builder-entry-card" ref={salesProductSelector} tabIndex={-1} style={{scrollMarginTop:'7rem'}}>
                   <div className="order-builder-section-label"><span>2</span><div><strong>Sold product</strong><small>{ownedShowroomSales ? 'Choose products for outlet or factory delivery' : 'Only products available at this outlet are listed'}</small></div></div>
-                  <GroupedProductPicker label="Sale product" options={salesProductOptions} value={salesProduct} onChange={val => { setSalesProduct(val); setShowroomItem(current => showroomItemForProduct(current, salesProductOptions.find(option => option.value === val))); }} placeholder={ownedShowroomSales ? 'Search factory products...' : 'Search available products...'} />
+                  <GroupedProductPicker label="Sale product" options={salesProductOptions.map(option=>option.value ? {...option,label:`${option.label} — Outlet stock: ${availableStockLabel(option.value)}`} : option)} value={salesProduct} onChange={val => { setSalesProduct(val); setShowroomItem(current => showroomItemForProduct(current, salesProductOptions.find(option => option.value === val))); }} placeholder="Search products and outlet stock…" />
                   {salesProduct && <div role="status" className="sales-product-mrp" style={{padding:'0.75rem 1rem',marginBottom:'1rem',border:'1px solid var(--color-primary)',borderRadius:'0.75rem'}}><strong>Product MRP</strong><ProductMrp item={salesProductOptions.find(option=>option.value===salesProduct) || {productId:salesProduct}} label={false}/></div>}
                   {ownedShowroomSales && <Select label="Delivery source for this product" value={salesFulfillmentMode} onChange={e => setSalesFulfillmentMode(e.target.value)} options={[{value:'',label:'Choose delivery option'},{value:'LOCAL_STOCK',label:'Needed immediately — deliver from outlet stock'},{value:'FACTORY_DELIVERY',label:'Factory dispatch directly to customer'}]} />}
                   {ownedShowroomSales && <ShowroomSaleFields item={showroomItem} onChange={setShowroomItem} quantity={Number(salesQuantity)} />}
