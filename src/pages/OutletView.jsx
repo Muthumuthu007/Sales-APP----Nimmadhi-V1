@@ -368,6 +368,7 @@ const OutletView = () => {
   const [reportDate, setReportDate] = useState(businessDate());
   const [reportData, setReportData] = useState(null);
   const [reportPaymentMethod,setReportPaymentMethod] = useState('ALL');
+  const [showReportPending,setShowReportPending] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [reportError, setReportError] = useState(null);
@@ -1364,6 +1365,19 @@ const OutletView = () => {
           </Card>
         )}
 
+        <Modal isOpen={showReportPending} onClose={()=>setShowReportPending(false)} title="Pending payments to receive">
+          <p>Outstanding balances on invoices in the selected report period and payment-method filter. Amounts reflect the latest recorded payments.</p>
+          <Table columns={[
+            {key:'customerName',label:'Customer',render:r=><div><strong>{r.customerName || 'Not recorded'}</strong><br/>{r.customerPhone}<br/>{r.customerAddress}</div>},
+            {key:'billNo',label:'Invoice / Work order',render:r=><div>{r.billNo || r.saleReferenceId || r.saleId}<br/>{r.workOrderNo || ''}<br/>{r.saleTimestamp ? new Date(r.saleTimestamp).toLocaleDateString() : ''}</div>},
+            {key:'products',label:'Products',render:r=><div>{(r.products || []).map((p,i)=><div key={i}>{p.productName} × {p.quantity}</div>)}</div>},
+            {key:'paymentMethod',label:'Payment method'},
+            {key:'billAmount',label:'Bill total',render:r=>formatCurrency(Number(r.billAmount || 0))},
+            {key:'amountReceived',label:'Received',render:r=>formatCurrency(Number(r.amountReceived || 0))},
+            {key:'pendingAmount',label:'Pending',render:r=><strong>{formatCurrency(Number(r.pendingAmount || 0))}</strong>},
+          ]} data={reportData?.pendingPayments || []} emptyStateMessage="No pending payments for this report."/>
+        </Modal>
+
         {activeTab === 'DUE_CUSTOMERS' && isGodown === false && (
           <Card>
             <CardHeader title="Pending customer payments" action={<span className="sales-builder-step">Advance payments awaiting balance</span>} />
@@ -1568,6 +1582,10 @@ const OutletView = () => {
                             <p style={{ margin: '0 0 0.5rem 0', color: 'var(--color-text-muted)', fontSize: '0.875rem', fontWeight: '600', textTransform: 'uppercase' }}>Total Revenue Value</p>
                             <small>{reportData.paymentMethod === 'ALL' ? 'All payment methods' : reportData.paymentMethod}</small><p style={{ margin: 0, fontSize: '1.75rem', fontWeight: 'bold', color: 'var(--color-text)' }}>₹{(reportData.totalAmount || reportData.totalRevenue || reportData.revenue || 0).toLocaleString()}</p>
                           </div>
+                        </div>
+                        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:'1rem'}}>
+                          <div style={{padding:'1.25rem',border:'1px solid var(--color-green)',borderRadius:'10px'}}><h4 style={{margin:'0 0 .5rem'}}>Amount received</h4><strong style={{fontSize:'1.75rem'}}>{formatCurrency(Number(reportData.amountReceived || 0))}</strong><p>Money received against invoices in this report. Unpaid amounts excluded.</p></div>
+                          <button type="button" onClick={()=>setShowReportPending(true)} style={{padding:'1.25rem',border:'1px solid var(--color-primary)',borderRadius:'10px',background:'var(--color-secondary)',color:'var(--color-text)',textAlign:'left',cursor:'pointer'}}><h4 style={{margin:'0 0 .5rem'}}>Pending to receive</h4><strong style={{fontSize:'1.75rem'}}>{formatCurrency(Number(reportData.pendingAmount || 0))}</strong><p>{reportData.pendingPayments?.length || 0} outstanding invoices · View pending payments</p></button>
                         </div>
                         {reportData.startDate && reportData.endDate && (
                           <div style={{ marginTop: '0.5rem', padding: '0.75rem 1rem', backgroundColor: 'var(--color-secondary)', borderRadius: '6px', fontSize: '0.875rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', alignSelf: 'flex-start', border: '1px solid var(--color-border)' }}>
