@@ -17,3 +17,10 @@ test('regular outlets can submit without customer fields while NIM outlets still
  const missing=missingSaleFields({...sale,ownedShowroom:true,dispatchDate:'2026-10-18',fulfillmentMode:'LOCAL_STOCK'});
  assert.deepEqual(missing,['Customer name','Customer phone number','Customer address']);
 });
+
+
+test('own-store mixed delivery validates each product rather than a whole-invoice choice',()=>{
+ const sale={ownedShowroom:true,customerName:'Customer',customerPhone:'9000000000',customerAddress:'Address',salesDate:'2026-10-26',dispatchDate:'2026-10-27',items:[{fulfillmentMode:'FACTORY_DELIVERY'},{fulfillmentMode:'LOCAL_STOCK'}]};
+ assert.deepEqual(missingSaleFields(sale),[]);
+ assert.ok(missingSaleFields({...sale,items:[{fulfillmentMode:'FACTORY_DELIVERY'},{}]}).includes('Customer needs / delivery option'));
+});

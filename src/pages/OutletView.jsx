@@ -1,3 +1,4 @@
+import {outletAvailableStock} from '../utils/salesStock';
 import GroupedStockTable from '../components/GroupedStockTable';
 import AfterSales from './AfterSales';
 import ProductMrp from '../components/ProductMrp';
@@ -13,7 +14,7 @@ import {productionOption,groupedProductOptions} from '../utils/productHierarchy'
 import { missingSaleFields } from '../utils/salesValidation';
 import { complimentaryForProduct } from '../utils/orderComplimentary';
 import OrderProduct from '../components/OrderProduct';
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import api from '../api/axios';
 import { Calendar, FileText, Gift, MapPin, PackageSearch, Plus, ShoppingBag, Trash2 } from 'lucide-react';
 import { Card, CardHeader, CardContent } from '../components/ui/Card';
@@ -189,6 +190,23 @@ const OutletView = () => {
   const [salesProductOptions, setSalesProductOptions] = useState([{ label: 'Loading products...', value: '' }]);
   const [ownedShowroomSales, setOwnedShowroomSales] = useState(() => String(outletId || '').toUpperCase().startsWith('NIM'));
   const [salesItems, setSalesItems] = useState([]);
+  const salesProductSelector = useRef(null);
+  const [salesOutletStock,setSalesOutletStock] = useState([]);
+  const [salesStockStatus,setSalesStockStatus] = useState('loading');
+  const [salesStockRefresh,setSalesStockRefresh] = useState(0);
+  useEffect(()=>{
+    if(activeTab !== 'SALES' || !outletId)return;
+    let current=true;
+    setSalesStockStatus('loading');setSalesOutletStock([]);
+    fetchOutletStock(outletId).then(response=>{
+      if(!current)return;
+      setSalesOutletStock(Array.isArray(response)?response:(response?.products || []));
+      setSalesStockStatus('ready');
+    }).catch(()=>{if(current)setSalesStockStatus('error');});
+    return ()=>{current=false;};
+  },[activeTab,outletId,salesStockRefresh]);
+  const availableStockLabel = productId => salesStockStatus==='ready' ? outletAvailableStock(salesOutletStock,productId) : salesStockStatus==='loading' ? 'Loading…' : 'Unavailable — refresh stock';
+
   const [showroomItem, setShowroomItem] = useState({ ...emptyShowroomItem });
   const [salesValidationErrors, setSalesValidationErrors] = useState([]);
   const [salesFulfillmentMode, setSalesFulfillmentMode] = useState('');
@@ -244,19 +262,22 @@ const OutletView = () => {
       setSalesValidationErrors(fields.length ? fields : ['Valid product pricing and quantity']);
       return;
     }
-    const existingIndex = salesItems.findIndex(i => i.product_id === salesProduct && (!ownedShowroomSales || Object.keys(emptyShowroomItem).every(key => i[key] === showroomItem[key])));
+    if (ownedShowroomSales && !salesFulfillmentMode) {setSalesValidationErrors(['Delivery source for this product']);return;}
+    const existingIndex = salesItems.findIndex(i => i.product_id === salesProduct && (!ownedShowroomSales || i.fulfillmentMode === salesFulfillmentMode) && (!ownedShowroomSales || Object.keys(emptyShowroomItem).every(key => i[key] === showroomItem[key])));
     if (existingIndex >= 0) {
       const newItems = [...salesItems];
       newItems[existingIndex].quantity += Number(salesQuantity);
       setSalesItems(newItems);
     } else {
-      setSalesItems([...salesItems, { product_id: salesProduct, quantity: Number(salesQuantity), ...(ownedShowroomSales ? showroomItem : {}) }]);
+      setSalesItems([...salesItems, { product_id: salesProduct, quantity: Number(salesQuantity), ...(ownedShowroomSales ? {...showroomItem,fulfillmentMode:salesFulfillmentMode} : {}) }]);
     }
     setSalesProduct('');
+    setSalesFulfillmentMode('');
     setShowroomItem({ ...emptyShowroomItem });
     setSalesQuantity(1);
     setSalesError(null);
     setSalesSuccess(null);
+    requestAnimationFrame(()=>{salesProductSelector.current?.focus({preventScroll:true});salesProductSelector.current?.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});});
   };
 
   useEffect(() => {
@@ -294,7 +315,7 @@ const OutletView = () => {
         date: salesDate,
         ...(ownedShowroomSales ? {
           customerName: customerName.trim(), customerPhone: customerPhone.trim(), customerAddress: customerAddress.trim(),
-          paymentMethod, billAmount: parsedBillAmount, fulfillmentMode: salesFulfillmentMode, pricingMode: 'MRP_DISCOUNT',
+          paymentMethod, billAmount: parsedBillAmount, pricingMode: 'MRP_DISCOUNT',
           ...saleDetails, dispatchDate: saleDetails.dispatchDate || null, advanceAmount: parsedAdvanceAmount,
           extraDiscountType, cashDiscount: cashDiscount || '0', extraDiscountValue: 0, extraDiscountReason: extraDiscountReason.trim(),
         } : {entryMode: 'QUANTITY_ONLY'}),
@@ -303,6 +324,7 @@ const OutletView = () => {
       if (ownedShowroomSales) setReceipt({ ...result, items: submittedItems.map((item, index) => ({ ...item, ...(result.soldItems?.[index] || {}) })) });
       setSalesSuccess(ownedShowroomSales ? 'Sales invoice created successfully.' : 'Products recorded successfully and outlet stock updated.');
       setSalesItems([]);
+      setSalesStockRefresh(value=>value+1);
       setSaleDetails({ billNo: '', dispatchDate: '' });
       setSalesFulfillmentMode('');
       setShowroomItem({ ...emptyShowroomItem });
@@ -1272,7 +1294,7 @@ const OutletView = () => {
               {ownedShowroomSales && (
                 <div className="order-builder-alert order-builder-alert-info">
                   <strong>NIMMADHI Outlet — Customer delivery choice</strong><br />
-                  Immediate delivery uses available outlet stock. Factory delivery creates a direct customer order in Factory Management and keeps outlet stock unchanged.
+                  Choose delivery for each product before adding it. You can sell a factory-supplied bed and outlet-stock pillows together on one invoice.
                 </div>
               )}
 
@@ -1282,11 +1304,14 @@ const OutletView = () => {
                   <Input type="date" label="Date of sale" value={salesDate} onChange={(e) => setSalesDate(e.target.value)} />
                   {ownedShowroomSales && <><Input label="Bill number (optional)" value={saleDetails.billNo} onChange={event => setSaleDetails({ ...saleDetails, billNo: event.target.value })} maxLength={80} /><Input label="Dispatch date" type="date" value={saleDetails.dispatchDate} onChange={event => setSaleDetails({ ...saleDetails, dispatchDate: event.target.value })} /><p className="showroom-sale-hint">Work-order number is generated with the factory order.<br />Sales person: <strong>{loggedInEmployeeName || 'Recorded from your login'}</strong></p></>}
                 </section>
-                <section className="sales-builder-entry-card">
+                <section className="sales-builder-entry-card" ref={salesProductSelector} tabIndex={-1} style={{scrollMarginTop:'7rem'}}>
                   <div className="order-builder-section-label"><span>2</span><div><strong>Sold product</strong><small>{ownedShowroomSales ? 'Choose products for outlet or factory delivery' : 'Only products available at this outlet are listed'}</small></div></div>
                   <GroupedProductPicker label="Sale product" options={salesProductOptions} value={salesProduct} onChange={val => { setSalesProduct(val); setShowroomItem(current => showroomItemForProduct(current, salesProductOptions.find(option => option.value === val))); }} placeholder={ownedShowroomSales ? 'Search factory products...' : 'Search available products...'} />
                   {salesProduct && <div role="status" className="sales-product-mrp" style={{padding:'0.75rem 1rem',marginBottom:'1rem',border:'1px solid var(--color-primary)',borderRadius:'0.75rem'}}><strong>Product MRP</strong><ProductMrp item={salesProductOptions.find(option=>option.value===salesProduct) || {productId:salesProduct}} label={false}/></div>}
+                  {ownedShowroomSales && <Select label="Delivery source for this product" value={salesFulfillmentMode} onChange={e => setSalesFulfillmentMode(e.target.value)} options={[{value:'',label:'Choose delivery option'},{value:'LOCAL_STOCK',label:'Needed immediately — deliver from outlet stock'},{value:'FACTORY_DELIVERY',label:'Factory dispatch directly to customer'}]} />}
                   {ownedShowroomSales && <ShowroomSaleFields item={showroomItem} onChange={setShowroomItem} quantity={Number(salesQuantity)} />}
+                  {salesProduct && <p role="status"><strong>Available in this outlet: {availableStockLabel(salesProduct)}</strong></p>}
+                  {salesStockStatus==='error' && <Button variant="secondary" onClick={()=>setSalesStockRefresh(value=>value+1)}>Refresh outlet stock</Button>}
                   <div className="sales-builder-add-row">
                     <Input label="Quantity sold" type="number" min="1" value={salesQuantity} onChange={(e) => setSalesQuantity(e.target.value)} />
                     <Button className="order-builder-add-button" onClick={handleAddSalesItem} disabled={isSubmittingSales}><Plus size={18} /> Add sale</Button>
@@ -1306,7 +1331,7 @@ const OutletView = () => {
                   <Input label="Customer name" placeholder="e.g. S. Kumar" value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
                   <Input label="Customer phone number" type="tel" placeholder="e.g. 9876543210" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} />
                   <Input label="Customer address" placeholder="House, street, area, city" value={customerAddress} onChange={(e) => setCustomerAddress(e.target.value)} />
-                  {ownedShowroomSales && <Select label="Customer needs" value={salesFulfillmentMode} onChange={e => setSalesFulfillmentMode(e.target.value)} options={[{value:'',label:'Choose delivery option'},{value:'LOCAL_STOCK',label:'Needed immediately — deliver from outlet stock'},{value:'FACTORY_DELIVERY',label:'Factory dispatch directly to customer'}]} />}
+
                 </section>}
               </div>
 
@@ -1320,8 +1345,8 @@ const OutletView = () => {
                   <div className="order-builder-items">
                     {salesItems.map((item, idx) => (
                       <div key={idx} className="order-builder-item">
-                        <span className="order-builder-item-quantity">{item.quantity}</span>
-                        <span className="order-builder-item-name">{salesProductOptions.find(o => o.value === item.product_id)?.label || item.product_id}<ProductMrp item={item}/>{ownedShowroomSales && <span className="showroom-item-details">{item.brand} · {item.colour} · {item.size}<br />MRP {formatCurrency(Number(item.mrpSticker))} − {item.discountPercent}% · Unit {formatCurrency(showroomPrice(item)?.value || 0)}<br /><strong>Total {formatCurrency(showroomPrice(item)?.totalSalesValue || 0)}</strong> · Tax included ({item.taxPercent}%){item.scheme && <><br />Scheme: {item.scheme}</>}</span>}</span>
+                        <span className="order-builder-item-quantity" style={{width:'auto',minWidth:'4rem',padding:'.5rem',flexDirection:'column'}}>{item.quantity}<small style={{display:'block',fontSize:'.75rem',fontWeight:400,marginTop:'.35rem'}}>Outlet stock: {availableStockLabel(item.product_id)}</small></span>
+                        <span className="order-builder-item-name">{salesProductOptions.find(o => o.value === item.product_id)?.label || item.product_id}<ProductMrp item={item}/>{ownedShowroomSales && <span className="showroom-item-details">{item.brand} · {item.colour} · {item.size}<br />MRP {formatCurrency(Number(item.mrpSticker))} − {item.discountPercent}% · Unit {formatCurrency(showroomPrice(item)?.value || 0)}<br /><strong>Delivery: {item.fulfillmentMode === 'LOCAL_STOCK' ? 'Outlet stock → customer' : 'Factory → customer'}</strong><br /><strong>Total {formatCurrency(showroomPrice(item)?.totalSalesValue || 0)}</strong> · Tax included ({item.taxPercent}%){item.scheme && <><br />Scheme: {item.scheme}</>}</span>}</span>
                         <Button variant="secondary" className="order-builder-remove" onClick={() => removeSalesItem(idx)} disabled={isSubmittingSales} aria-label="Remove sales item">
                           <Trash2 size={16} />
                         </Button>
@@ -1380,7 +1405,7 @@ const OutletView = () => {
             <article className="sales-receipt">
               <header className="sales-receipt-header"><div><p className="sales-receipt-kicker">NIMMADHI</p><h2>MATTRESS</h2><span>Get your sleep</span></div><div className="sales-receipt-invoice"><span>INVOICE</span><strong>{receipt.saleReferenceId || '-'}</strong><small>{receipt.saleDate}</small></div></header>
               <section className="sales-receipt-customer">{receipt.customerName && <div><span>BILLED TO</span><strong>{receipt.customerName}</strong><p>{receipt.customerPhone}<br />{receipt.customerAddress}</p></div>}<div><span>PAYMENT</span><strong>{receipt.paymentMethod}</strong><p>{receipt.paymentStatus === 'PAID' ? 'Paid in full' : 'Advance payment received'}</p></div></section>
-              {receipt.pricingMode === 'MRP_DISCOUNT' ? <><p className="showroom-receipt-meta">Delivery: {receipt.fulfillmentMode === 'LOCAL_STOCK' ? 'Immediate — outlet stock' : 'Factory → customer'} · Work order: {receipt.workOrderNo || receipt.factoryOrderDisplayId || '—'} · Bill: {receipt.billNo || '—'}<br />Sales person: {receipt.createdByName || 'Name unavailable'} · Planned dispatch: {receipt.dispatchDate || '—'}</p><div style={{overflowX:'auto'}}><table className="sales-receipt-items"><thead><tr><th>Brand / Model / Colour / Size</th><th>Qty</th><th>Sticker MRP</th><th>Discount</th><th>Value</th><th>Total</th></tr></thead><tbody>{(receipt.items || []).map((item,index) => <tr key={index}><td>{item.brand} · {item.model}<br />{item.colour} · {item.size}{item.scheme && <><br />Scheme: {item.scheme}</>}<br />Tax included: {item.taxPercent}%</td><td>{item.quantity}</td><td>{formatCurrency(Number(item.mrpSticker))}</td><td>{item.discountPercent}%</td><td>{formatCurrency(Number(item.value))}</td><td>{formatCurrency(Number(item.totalSalesValue))}</td></tr>)}</tbody></table></div></> : <table className="sales-receipt-items"><thead><tr><th>Product</th><th>MRP</th><th>Quantity</th></tr></thead><tbody>{(receipt.items || []).map((item, index) => <tr key={`${item.product_id}-${index}`}><td>{item.productName || item.product_id}</td><td><ProductMrp item={item} label={false}/></td><td>{item.quantity}</td></tr>)}</tbody></table>}
+              {receipt.pricingMode === 'MRP_DISCOUNT' ? <><p className="showroom-receipt-meta">Delivery: {receipt.fulfillmentMode === 'MIXED' ? 'Mixed — see each product' : receipt.fulfillmentMode === 'LOCAL_STOCK' ? 'Immediate — outlet stock' : 'Factory → customer'} · Work order: {receipt.workOrderNo || receipt.factoryOrderDisplayId || '—'} · Bill: {receipt.billNo || '—'}<br />Sales person: {receipt.createdByName || 'Name unavailable'} · Planned dispatch: {receipt.dispatchDate || '—'}</p><div style={{overflowX:'auto'}}><table className="sales-receipt-items"><thead><tr><th>Brand / Model / Colour / Size</th><th>Qty</th><th>Sticker MRP</th><th>Discount</th><th>Value</th><th>Total</th></tr></thead><tbody>{(receipt.items || []).map((item,index) => <tr key={index}><td>{item.brand} · {item.model}<br />{item.colour} · {item.size}<br />Delivery: {(receipt.soldItems?.[index]?.fulfillmentMode || item.fulfillmentMode) === 'LOCAL_STOCK' ? 'Outlet stock → customer' : 'Factory → customer'}{item.scheme && <><br />Scheme: {item.scheme}</>}<br />Tax included: {item.taxPercent}%</td><td>{item.quantity}</td><td>{formatCurrency(Number(item.mrpSticker))}</td><td>{item.discountPercent}%</td><td>{formatCurrency(Number(item.value))}</td><td>{formatCurrency(Number(item.totalSalesValue))}</td></tr>)}</tbody></table></div></> : <table className="sales-receipt-items"><thead><tr><th>Product</th><th>MRP</th><th>Quantity</th></tr></thead><tbody>{(receipt.items || []).map((item, index) => <tr key={`${item.product_id}-${index}`}><td>{item.productName || item.product_id}</td><td><ProductMrp item={item} label={false}/></td><td>{item.quantity}</td></tr>)}</tbody></table>}
               {(receipt.eligibleOffers || []).some((offer) => Number(offer.freeQuantity || 0) > 0) && <section className="sales-receipt-offers"><strong>Complimentary items</strong>{(receipt.eligibleOffers || []).filter((offer) => Number(offer.freeQuantity || 0) > 0).map((offer) => <p key={offer.offerId}>{offerSummary(offer)}</p>)}</section>}
               <section className="sales-receipt-totals">{Number(receipt.extraDiscountAmount || 0) > 0 && <><div><span>Bill before discount</span><strong>{formatCurrency(receipt.grossBillAmount)}</strong></div><div><span>{receipt.pricingMode === 'MRP_DISCOUNT' ? 'Cash discount' : 'Extra discount'}</span><strong>− {formatCurrency(receipt.extraDiscountAmount)}</strong></div></>}<div><span>Total bill</span><strong>{formatCurrency(receipt.billAmount)}</strong></div>{receipt.pricingMode === 'MRP_DISCOUNT' && <div><span>Tax included in total</span><strong>{formatCurrency((receipt.items || []).reduce((total,item) => total + Number(item.taxAmount || 0),0))}</strong></div>}<div><span>Total paid</span><strong>{formatCurrency(receipt.advanceAmount)}</strong></div><div className="sales-receipt-balance"><span>Balance due</span><strong>{formatCurrency(receipt.balanceDue)}</strong></div></section>
               <footer>Thank you for choosing Nimmadhi Mattress. Please retain this invoice for your records.</footer>
