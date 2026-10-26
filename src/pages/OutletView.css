@@ -157,3 +157,4 @@
 .compact-sales-entry .order-builder-section-label{margin-bottom:.5rem}
 .compact-sales-entry .grouped-product-fields{gap:.65rem}
 .compact-sales-entry .showroom-price-preview{margin:0}
+.sales-review-dispatch{display:grid;gap:.35rem;padding:1rem;border:1px solid var(--color-primary);border-radius:.75rem;max-width:32rem}.sales-review-dispatch small{color:var(--color-text-muted)}
