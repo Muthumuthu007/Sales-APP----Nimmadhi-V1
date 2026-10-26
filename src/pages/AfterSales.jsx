@@ -17,6 +17,7 @@ export default function AfterSales({godownMode=false, factoryMode=false}) {
  const [records,setRecords]=useState([]),[godowns,setGodowns]=useState([]),[sales,setSales]=useState([]),[products,setProducts]=useState([]);
  const [error,setError]=useState(''),[loading,setLoading]=useState(true),[saving,setSaving]=useState(false),[search,setSearch]=useState('');
  const [creating,setCreating]=useState(false),[form,setForm]=useState(empty),[selectedId,setSelectedId]=useState(''),[action,setAction]=useState(''),[details,setDetails]=useState({});
+ const [movementNotes,setMovementNotes]=useState('');
  const [requestId,setRequestId]=useState(()=>crypto.randomUUID());
  const load=useCallback(async()=>{setLoading(true);setError('');try {const data=await api.get('/after-sales');setRecords(data.cases || []);setGodowns(data.godowns || []);}catch(err){setError(message(err));}finally{setLoading(false);}},[]);
  useEffect(()=>{load();},[load]);
@@ -31,7 +32,9 @@ export default function AfterSales({godownMode=false, factoryMode=false}) {
    else {await api.post(`/after-sales/${selectedId}/action`,{...details,action,requestId});setAction('');}
    setRequestId(crypto.randomUUID());await load();
  }catch(err){setError(message(err));}finally{setSaving(false);}};
- const openAction=value=>{setAction(value);setDetails({notes:'',refurbishmentMode:'',eligibilityBasis:'DISPATCH',originalDispatchDate:'',replacementProductId:'',originalCreditAmount:'',replacementPrice:'',amount:'',paymentMethod:'CASH',transactionReference:''});setRequestId(crypto.randomUUID());setError('');};
+ const recordMovement=async value=>{setSaving(true);setError('');try{await api.post(`/after-sales/${selectedId}/action`,{action:value,notes:movementNotes,requestId});setMovementNotes('');setAction('');setRequestId(crypto.randomUUID());await load();}catch(err){setError(message(err));}finally{setSaving(false);}};
+ const needsDetails=value=>['APPROVE','SET_REPLACEMENT_AMOUNTS','RECORD_PAYMENT','RECORD_REFUND','COMPLETE_REFURBISHMENT'].includes(value) || (['DISPATCH_REPLACEMENT_FROM_STOCK','ORDER_REPLACEMENT'].includes(value) && !selected?.originalDispatchDate);
+ const openAction=value=>{setAction(value);setDetails({notes:movementNotes,refurbishmentMode:'',eligibilityBasis:'DISPATCH',originalDispatchDate:'',replacementProductId:'',originalCreditAmount:'',replacementPrice:'',amount:'',paymentMethod:'CASH',transactionReference:''});setRequestId(crypto.randomUUID());setError('');};
  return <div className="after-sales">
   <Card><CardHeader title={factoryMode?'After-sales factory work':'After-sales · Refurbishment & Replacement'} action={<Button variant="secondary" onClick={load} disabled={loading || saving}>Refresh</Button>}/><CardContent>
    <p>Refurbishment: Customer → Outlet → Godown → Factory → Godown → Outlet → Customer.</p>
@@ -46,7 +49,7 @@ export default function AfterSales({godownMode=false, factoryMode=false}) {
     {r.replacementProductName && <p><strong>{r.replacementProductName}</strong> replaces <strong>{r.productName}</strong> · Quantity: 1{r.replacementOrderId && <><br/>Order: {r.replacementOrderId}</>}</p>}
     <p>{r.customerName} · {r.customerPhone}</p><p>{label(r.status)} · {r.outletId} → {r.godownId}</p>
     {r.caseType==='REPLACEMENT' && <p>Original bed: {label(r.returnStatus)}</p>}
-    <Button variant="secondary" onClick={()=>{setSelectedId(r.caseId);setAction('');setError('');}}>View case / Record movement</Button>
+    <Button variant="secondary" onClick={()=>{setSelectedId(r.caseId);setAction('');setMovementNotes('');setRequestId(crypto.randomUUID());setError('');}}>View case / Record movement</Button>
   </CardContent></Card>)}</div>}
   <Modal isOpen={creating || Boolean(selected)} onClose={()=>{if(!saving){setCreating(false);setSelectedId('');setAction('');}}} title={creating?'Submit after-sales inspection':`${selected?.label || ''} · Case details`}>
    {error && <p role="alert" className="after-sales-error">{error}</p>}
@@ -83,7 +86,8 @@ export default function AfterSales({godownMode=false, factoryMode=false}) {
       {selected.status==='AT_GODOWN' && <p>Available godown stock for Product B: <strong>{selected.godownAvailableQty ?? 'Refresh to check'}</strong>{selected.replacementApproval!=='APPROVED' && <><br/>Six-month eligibility will be verified from the original dispatch date before supply.</>}</p>}
       {selected.replacementSource && <p>Replacement supplied from: <strong>{label(selected.replacementSource)}</strong></p>}
     </>}
-    <div className="after-sales-actions">{(selected.availableActions || []).map(value=><Button key={value} variant={action===value?'primary':'secondary'} disabled={saving} onClick={()=>openAction(value)}>{label(value)}</Button>)}</div>
+    {(selected.availableActions || []).length>0 && <Input label="Comments (optional)" value={movementNotes} maxLength={2000} onChange={e=>{setMovementNotes(e.target.value);if(action)changeDetails('notes',e.target.value);setRequestId(crypto.randomUUID());}}/>}
+    <div className="after-sales-actions">{(selected.availableActions || []).map(value=><Button key={value} variant={action===value?'primary':'secondary'} disabled={saving} onClick={()=>needsDetails(value)?openAction(value):recordMovement(value)}>{label(value)}</Button>)}</div>
     {action && <div className="after-sales-form"><h4>{label(action)}</h4>
       {action==='APPROVE' && selected.caseType==='REPLACEMENT' && <>
        {!selected.replacementProductId && <Select label="Replacement product" value={details.replacementProductId} onChange={e=>changeDetails('replacementProductId',e.target.value)} options={[{value:'',label:'Choose the requested new bed'},...products.map(p=>({value:p.product_id || p.productId,label:p.product_name || p.productName}))]}/>}
@@ -104,8 +108,7 @@ export default function AfterSales({godownMode=false, factoryMode=false}) {
       </>}
       {['DISPATCH_REPLACEMENT_FROM_STOCK','ORDER_REPLACEMENT'].includes(action) && !selected.originalDispatchDate && <Input label="Verified original dispatch date (only if missing from the original sale)" type="date" value={details.originalDispatchDate} onChange={e=>changeDetails('originalDispatchDate',e.target.value)}/>}
       {action==='COMPLETE_REFURBISHMENT' && <Select label="Factory work completed" value={details.refurbishmentMode} onChange={e=>changeDetails('refurbishmentMode',e.target.value)} options={[{value:'',label:'Choose the work completed'},{value:'REPAIR_SAME_BED',label:'Repaired the same bed'},{value:'SUPPLY_NEW_SAME_PRODUCT',label:'Supplied a new bed of the same product'}]}/>}
-      <Input label="Notes / handover or delivery acknowledgement" value={details.notes || ''} onChange={e=>changeDetails('notes',e.target.value)}/>
-      <Button onClick={submit} disabled={saving || !details.notes?.trim()}>{saving?'Saving…':`Confirm ${label(action)}`}</Button>
+      <Button onClick={submit} disabled={saving}>{saving?'Saving…':`Confirm ${label(action)}`}</Button>
     </div>}
     <h4>Case history</h4><ol className="after-sales-history">{selected.history.map((event,i)=><li key={i}><strong>{label(event.action)}</strong><br/>{new Date(event.at).toLocaleString()} · {event.by}<br/>{event.notes}</li>)}</ol>
    </div>}
