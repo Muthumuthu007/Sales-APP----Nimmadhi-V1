@@ -1,3 +1,4 @@
+import SalesBill from '../components/SalesBill';
 import InvoiceSalesReport from '../components/InvoiceSalesReport';
 import {reportInvoices} from '../utils/reportInvoices';
 import {outletAvailableStock} from '../utils/salesStock';
@@ -192,6 +193,9 @@ const OutletView = () => {
   const [salesProductOptions, setSalesProductOptions] = useState([{ label: 'Loading products...', value: '' }]);
   const [ownedShowroomSales, setOwnedShowroomSales] = useState(() => String(outletId || '').toUpperCase().startsWith('NIM'));
   const [salesItems, setSalesItems] = useState([]);
+  const [salesEntryStep,setSalesEntryStep] = useState(0);
+  const salesStepTop=useRef(null);
+  const goToSalesStep=step=>{setSalesEntryStep(step);requestAnimationFrame(()=>salesStepTop.current?.scrollIntoView({behavior:'smooth',block:'start'}));};
   const salesProductSelector = useRef(null);
   const [salesOutletStock,setSalesOutletStock] = useState([]);
   const [salesStockStatus,setSalesStockStatus] = useState('loading');
@@ -236,7 +240,7 @@ const OutletView = () => {
   const [activeOffers, setActiveOffers] = useState([]);
   const [paymentTarget, setPaymentTarget] = useState(null);
   const [settlementAmount, setSettlementAmount] = useState('');
-  const [settlementMethod, setSettlementMethod] = useState('CASH');
+  const [settlementMethod, setSettlementMethod] = useState('');
   const [settlementError, setSettlementError] = useState('');
   const [settlingPayment, setSettlingPayment] = useState(false);
 
@@ -326,6 +330,7 @@ const OutletView = () => {
       if (ownedShowroomSales) setReceipt({ ...result, items: submittedItems.map((item, index) => ({ ...item, ...(result.soldItems?.[index] || {}) })) });
       setSalesSuccess(ownedShowroomSales ? 'Sales invoice created successfully.' : 'Products recorded successfully and outlet stock updated.');
       setSalesItems([]);
+      setSalesEntryStep(0);
       setSalesStockRefresh(value=>value+1);
       setSaleDetails({ billNo: '', dispatchDate: '' });
       setSalesFulfillmentMode('');
@@ -348,9 +353,11 @@ const OutletView = () => {
   };
 
   const openSettlement = (invoice) => {
-    setPaymentTarget(invoice); setSettlementAmount(String(invoice.balanceDue || '')); setSettlementMethod('CASH'); setSettlementError('');
+    const target={...invoice,balanceDue:invoice.balanceDue ?? invoice.pendingAmount,saleReferenceId:invoice.saleReferenceId || invoice.saleId};
+    setShowReportPending(false);setPaymentTarget(target); setSettlementAmount(String(target.balanceDue || '')); setSettlementMethod(''); setSettlementError('');
   };
   const confirmSettlement = async () => {
+    if (!['CASH','UPI','CARD'].includes(settlementMethod)) {setSettlementError('Choose Cash, UPI, or Card for this payment.');return;}
     const paidAmount = Number(settlementAmount);
     if (!paymentTarget || !Number.isFinite(paidAmount) || paidAmount <= 0 || paidAmount > Number(paymentTarget.balanceDue || 0)) {
       setSettlementError('Enter an amount up to the balance due.'); return;
@@ -360,6 +367,7 @@ const OutletView = () => {
       const result = await settleDuePayment(paymentTarget.saleReferenceId, { outletId, paymentMethod: settlementMethod, paidAmount });
       setReceipt(result); setPaymentTarget(null);
       const response = await fetchDueCustomers(outletId); setDueCustomers(response?.customers || []);
+      if (activeTab==='REPORTS') await handleGenerateReport();
     } catch (error) {
       setSettlementError(error.response?.data?.error || 'Unable to record the payment.');
     } finally { setSettlingPayment(false); }
@@ -1270,7 +1278,7 @@ const OutletView = () => {
         {activeTab === 'SALES' && isGodown === false && (
           <Card className="sales-builder-card">
             <CardHeader title="Record daily sales" action={<span className="sales-builder-step">Sales entry</span>} />
-            <CardContent className="sales-builder-content">
+            <CardContent className={`sales-builder-content${ownedShowroomSales ? ' compact-sales-entry' : ''}`}>
               <div className="sales-builder-intro">
                 <div className="sales-builder-intro-icon"><Calendar size={20} /></div>
                 <div><h3>Capture today’s sales</h3><p>Add each sold product, review the summary, then submit one complete record.</p></div>
@@ -1288,7 +1296,8 @@ const OutletView = () => {
                 </div>
               )}
 
-              {activeOffers.length > 0 && (
+              {ownedShowroomSales && <nav ref={salesStepTop} className="sales-entry-steps" aria-label="Sales entry steps">{['Products','Payment','Customer','Review'].map((title,index)=><button type="button" key={title} aria-current={salesEntryStep===index?'step':undefined} onClick={()=>goToSalesStep(index)}><span>{index+1}</span>{title}</button>)}</nav>}
+              {activeOffers.length > 0 && (!ownedShowroomSales || salesEntryStep===0) && (
                 <section className="sales-builder-offers" aria-label="Current outlet offers">
                   <Gift size={19} />
                   <div><strong>Current outlet offers</strong><span>{activeOffers.map(offerSummary).join(' | ')}</span></div>
@@ -1296,24 +1305,24 @@ const OutletView = () => {
               )}
 
               {ownedShowroomSales && (
-                <div className="order-builder-alert order-builder-alert-info">
+                <div className="order-builder-alert order-builder-alert-info" hidden={salesEntryStep!==0}>
                   <strong>NIMMADHI Outlet — Customer delivery choice</strong><br />
                   Choose delivery for each product before adding it. You can sell a factory-supplied bed and outlet-stock pillows together on one invoice.
                 </div>
               )}
 
-              <div className={`sales-builder-workspace${ownedShowroomSales ? ' sales-builder-workspace--nim' : ''}`}>
-                <section className="sales-builder-date-card">
+              <div className={`sales-builder-workspace${ownedShowroomSales ? ` sales-builder-workspace--nim sales-step-${salesEntryStep}` : ''}`}>
+                <section className="sales-builder-date-card" hidden={ownedShowroomSales && salesEntryStep!==1}>
                   <div className="order-builder-section-label"><span>1</span><div><strong>Sales date</strong><small>Choose the date for this entry</small></div></div>
                   <Input type="date" label="Date of sale" value={salesDate} onChange={(e) => setSalesDate(e.target.value)} />
                   {ownedShowroomSales && <><Input label="Bill number (optional)" value={saleDetails.billNo} onChange={event => setSaleDetails({ ...saleDetails, billNo: event.target.value })} maxLength={80} /><Input label="Dispatch date" type="date" value={saleDetails.dispatchDate} onChange={event => setSaleDetails({ ...saleDetails, dispatchDate: event.target.value })} /><p className="showroom-sale-hint">Work-order number is generated with the factory order.<br />Sales person: <strong>{loggedInEmployeeName || 'Recorded from your login'}</strong></p></>}
                 </section>
-                <section className="sales-builder-entry-card" ref={salesProductSelector} tabIndex={-1} style={{scrollMarginTop:'7rem'}}>
-                  <div className="order-builder-section-label"><span>2</span><div><strong>Sold product</strong><small>{ownedShowroomSales ? 'Choose products for outlet or factory delivery' : 'Only products available at this outlet are listed'}</small></div></div>
+                <section className="sales-builder-entry-card" ref={salesProductSelector} tabIndex={-1} hidden={ownedShowroomSales && salesEntryStep!==0} style={{scrollMarginTop:'7rem'}}>
+                  <div className="order-builder-section-label"><span>1</span><div><strong>Sold product</strong><small>{ownedShowroomSales ? 'Choose products for outlet or factory delivery' : 'Only products available at this outlet are listed'}</small></div></div>
                   <GroupedProductPicker label="Sale product" options={salesProductOptions.map(option=>option.value ? {...option,label:`${option.label} — Outlet stock: ${availableStockLabel(option.value)}`} : option)} value={salesProduct} onChange={val => { setSalesProduct(val); setShowroomItem(current => showroomItemForProduct(current, salesProductOptions.find(option => option.value === val))); }} placeholder="Search products and outlet stock…" />
                   {salesProduct && <div role="status" className="sales-product-mrp" style={{padding:'0.75rem 1rem',marginBottom:'1rem',border:'1px solid var(--color-primary)',borderRadius:'0.75rem'}}><strong>Product MRP</strong><ProductMrp item={salesProductOptions.find(option=>option.value===salesProduct) || {productId:salesProduct}} label={false}/></div>}
-                  {ownedShowroomSales && <Select label="Delivery source for this product" value={salesFulfillmentMode} onChange={e => setSalesFulfillmentMode(e.target.value)} options={[{value:'',label:'Choose delivery option'},{value:'LOCAL_STOCK',label:'Needed immediately — deliver from outlet stock'},{value:'FACTORY_DELIVERY',label:'Factory dispatch directly to customer'}]} />}
-                  {ownedShowroomSales && <ShowroomSaleFields item={showroomItem} onChange={setShowroomItem} quantity={Number(salesQuantity)} />}
+                  {ownedShowroomSales && salesProduct && <Select label="Delivery source for this product" value={salesFulfillmentMode} onChange={e => setSalesFulfillmentMode(e.target.value)} options={[{value:'',label:'Choose delivery option'},{value:'LOCAL_STOCK',label:'Needed immediately — deliver from outlet stock'},{value:'FACTORY_DELIVERY',label:'Factory dispatch directly to customer'}]} />}
+                  {ownedShowroomSales && salesProduct && <ShowroomSaleFields item={showroomItem} onChange={setShowroomItem} quantity={Number(salesQuantity)} />}
                   {salesProduct && <p role="status"><strong>Available in this outlet: {availableStockLabel(salesProduct)}</strong></p>}
                   {salesStockStatus==='error' && <Button variant="secondary" onClick={()=>setSalesStockRefresh(value=>value+1)}>Refresh outlet stock</Button>}
                   <div className="sales-builder-add-row">
@@ -1321,8 +1330,8 @@ const OutletView = () => {
                     <Button className="order-builder-add-button" onClick={handleAddSalesItem} disabled={isSubmittingSales}><Plus size={18} /> Add sale</Button>
                   </div>
                 </section>
-                {ownedShowroomSales && <section className="sales-builder-date-card sales-builder-customer-card">
-                  <div className="order-builder-section-label"><span>3</span><div><strong>Cash and payment details</strong><small>Record the discount, payment, and balance</small></div></div>
+                {ownedShowroomSales && <section className="sales-builder-date-card sales-builder-customer-card" hidden={salesEntryStep!==1}>
+                  <div className="order-builder-section-label"><span>2</span><div><strong>Cash and payment details</strong><small>Record the discount, payment, and balance</small></div></div>
                   <Select label="Payment method" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} options={[
                     { value: 'CASH', label: 'Cash' },
                     { value: 'CARD', label: 'Card' },
@@ -1331,7 +1340,9 @@ const OutletView = () => {
                   {ownedShowroomSales && <><Input label="Cash discount (₹)" type="number" min="0" step="0.01" placeholder="0.00" value={cashDiscount} onChange={e => setCashDiscount(e.target.value)} /><div className="sales-builder-payment-summary">Total after percentage discount: <strong>{formatCurrency(grossAmount)}</strong><br />Cash discount: <strong>− {formatCurrency(enteredDiscount)}</strong><br />Grand total (tax included): <strong>{formatCurrency(netBillAmount)}</strong></div></>}
                   <Input label="Amount paid now (advance)" type="number" min="0" step="0.01" placeholder="0.00" value={advanceAmount} onChange={(e) => setAdvanceAmount(e.target.value)} />
                   {grossAmount > 0 && <div className="sales-builder-payment-summary">Balance due: <strong>{formatCurrency(Math.max(0, netBillAmount - Number(advanceAmount || 0)))}</strong></div>}
-                  <div className="order-builder-section-label"><span>4</span><div><strong>Customer details</strong><small>Customer details are required for NIM sales</small></div></div>
+                </section>}
+                {ownedShowroomSales && <section className="sales-builder-date-card sales-builder-customer-card" hidden={salesEntryStep!==2}>
+                  <div className="order-builder-section-label"><span>3</span><div><strong>Customer details</strong><small>Customer details are required for NIM sales</small></div></div>
                   <Input label="Customer name" placeholder="e.g. S. Kumar" value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
                   <Input label="Customer phone number" type="tel" placeholder="e.g. 9876543210" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} />
                   <Input label="Customer address" placeholder="House, street, area, city" value={customerAddress} onChange={(e) => setCustomerAddress(e.target.value)} />
@@ -1339,7 +1350,7 @@ const OutletView = () => {
                 </section>}
               </div>
 
-              <div className="order-builder-summary">
+              <div className="order-builder-summary" hidden={ownedShowroomSales && salesEntryStep!==3}>
                 <div className="order-builder-summary-heading"><PackageSearch size={19} /><div><h4>Sales summary</h4><span>{salesItems.length} {salesItems.length === 1 ? 'product' : 'products'} added</span></div></div>
                 {salesItems.length === 0 ? (
                   <div className="order-builder-empty">
@@ -1360,7 +1371,9 @@ const OutletView = () => {
                 )}
               </div>
 
-              <Button className="order-builder-submit" onClick={handleRecordSalesSubmit} disabled={isSubmittingSales}>
+              {ownedShowroomSales && salesEntryStep===3 && <div className="sales-review-details"><strong>{customerName || 'Customer name needed'}</strong><span>{customerPhone} · {customerAddress}</span><span>Payment: {paymentMethod} · Received: {formatCurrency(Number(advanceAmount || 0))} · Pending: {formatCurrency(Math.max(0,netBillAmount-Number(advanceAmount || 0)))}</span><Button variant="secondary" onClick={()=>goToSalesStep(1)}>Edit payment</Button><Button variant="secondary" onClick={()=>goToSalesStep(2)}>Edit customer</Button></div>}
+              {ownedShowroomSales && <div className="sales-step-footer"><span><strong>{salesItems.length} products</strong> · Total {formatCurrency(netBillAmount)}</span><div>{salesEntryStep>0 && <Button variant="secondary" onClick={()=>goToSalesStep(salesEntryStep-1)}>Back</Button>}{salesEntryStep<3 && <Button disabled={salesEntryStep===0 && !salesItems.length} onClick={()=>goToSalesStep(salesEntryStep+1)}>Continue to {['Payment','Customer','Review'][salesEntryStep]}</Button>}</div></div>}
+              <Button hidden={ownedShowroomSales && salesEntryStep!==3} className="order-builder-submit" onClick={handleRecordSalesSubmit} disabled={isSubmittingSales}>
                 <ShoppingBag size={18} /> {isSubmittingSales ? 'Recording sales…' : 'Submit sales record'}
               </Button>
             </CardContent>
@@ -1377,6 +1390,7 @@ const OutletView = () => {
             {key:'billAmount',label:'Bill total',render:r=>formatCurrency(Number(r.billAmount || 0))},
             {key:'amountReceived',label:'Received',render:r=>formatCurrency(Number(r.amountReceived || 0))},
             {key:'pendingAmount',label:'Pending',render:r=><strong>{formatCurrency(Number(r.pendingAmount || 0))}</strong>},
+            {key:'actions',label:'Action',render:r=><Button onClick={()=>openSettlement(r)}>Receive payment</Button>},
           ]} data={reportData?.pendingPayments || []} emptyStateMessage="No pending payments for this report."/>
         </Modal>
 
@@ -1419,15 +1433,7 @@ const OutletView = () => {
 
         <Modal className="sales-invoice-dialog" isOpen={Boolean(receipt)} onClose={() => setReceipt(null)} title="Sales invoice">
           {receipt && (
-            <article className="sales-receipt">
-              <header className="sales-receipt-header"><div><p className="sales-receipt-kicker">NIMMADHI</p><h2>MATTRESS</h2><span>Get your sleep</span></div><div className="sales-receipt-invoice"><span>INVOICE</span><strong>{receipt.saleReferenceId || '-'}</strong><small>{receipt.saleDate}</small></div></header>
-              <section className="sales-receipt-customer">{receipt.customerName && <div><span>BILLED TO</span><strong>{receipt.customerName}</strong><p>{receipt.customerPhone}<br />{receipt.customerAddress}</p></div>}<div><span>PAYMENT</span><strong>{receipt.paymentMethod}</strong><p>{receipt.paymentStatus === 'PAID' ? 'Paid in full' : 'Advance payment received'}</p></div></section>
-              {receipt.pricingMode === 'MRP_DISCOUNT' ? <><p className="showroom-receipt-meta">Delivery: {receipt.fulfillmentMode === 'MIXED' ? 'Mixed — see each product' : receipt.fulfillmentMode === 'LOCAL_STOCK' ? 'Immediate — outlet stock' : 'Factory → customer'} · Work order: {receipt.workOrderNo || receipt.factoryOrderDisplayId || '—'} · Bill: {receipt.billNo || '—'}<br />Sales person: {receipt.createdByName || 'Name unavailable'} · Planned dispatch: {receipt.dispatchDate || '—'}</p><div style={{overflowX:'auto'}}><table className="sales-receipt-items"><thead><tr><th>Brand / Model / Colour / Size</th><th>Qty</th><th>Sticker MRP</th><th>Discount</th><th>Value</th><th>Total</th></tr></thead><tbody>{(receipt.items || []).map((item,index) => <tr key={index}><td>{item.brand} · {item.model}<br />{item.colour} · {item.size}<br />Delivery: {(receipt.soldItems?.[index]?.fulfillmentMode || item.fulfillmentMode) === 'LOCAL_STOCK' ? 'Outlet stock → customer' : 'Factory → customer'}{item.scheme && <><br />Scheme: {item.scheme}</>}<br />Tax included: {item.taxPercent}%</td><td>{item.quantity}</td><td>{formatCurrency(Number(item.mrpSticker))}</td><td>{item.discountPercent}%</td><td>{formatCurrency(Number(item.value))}</td><td>{formatCurrency(Number(item.totalSalesValue))}</td></tr>)}</tbody></table></div></> : <table className="sales-receipt-items"><thead><tr><th>Product</th><th>MRP</th><th>Quantity</th></tr></thead><tbody>{(receipt.items || []).map((item, index) => <tr key={`${item.product_id}-${index}`}><td>{item.productName || item.product_id}</td><td><ProductMrp item={item} label={false}/></td><td>{item.quantity}</td></tr>)}</tbody></table>}
-              {(receipt.eligibleOffers || []).some((offer) => Number(offer.freeQuantity || 0) > 0) && <section className="sales-receipt-offers"><strong>Complimentary items</strong>{(receipt.eligibleOffers || []).filter((offer) => Number(offer.freeQuantity || 0) > 0).map((offer) => <p key={offer.offerId}>{offerSummary(offer)}</p>)}</section>}
-              <section className="sales-receipt-totals">{Number(receipt.extraDiscountAmount || 0) > 0 && <><div><span>Bill before discount</span><strong>{formatCurrency(receipt.grossBillAmount)}</strong></div><div><span>{receipt.pricingMode === 'MRP_DISCOUNT' ? 'Cash discount' : 'Extra discount'}</span><strong>− {formatCurrency(receipt.extraDiscountAmount)}</strong></div></>}<div><span>Total bill</span><strong>{formatCurrency(receipt.billAmount)}</strong></div>{receipt.pricingMode === 'MRP_DISCOUNT' && <div><span>Tax included in total</span><strong>{formatCurrency((receipt.items || []).reduce((total,item) => total + Number(item.taxAmount || 0),0))}</strong></div>}<div><span>Total paid</span><strong>{formatCurrency(receipt.advanceAmount)}</strong></div><div className="sales-receipt-balance"><span>Balance due</span><strong>{formatCurrency(receipt.balanceDue)}</strong></div></section>
-              <footer>Thank you for choosing Nimmadhi Mattress. Please retain this invoice for your records.</footer>
-              <div className="sales-receipt-actions"><Button variant="secondary" onClick={() => window.print()}>Print receipt</Button>{receipt.customerPhone && <Button onClick={sendReceiptToCustomer}>Send receipt</Button>}</div>
-            </article>
+            <SalesBill receipt={receipt} onSend={sendReceiptToCustomer} offerSummary={offerSummary}/>
           )}
         </Modal>
 
@@ -1439,10 +1445,10 @@ const OutletView = () => {
       <Modal isOpen={Boolean(paymentTarget)} onClose={() => !settlingPayment && setPaymentTarget(null)} title={`Record pending payment — ${paymentTarget?.customerName || ''}`}>
           {paymentTarget && <div className="sales-builder-content" style={{ display: 'grid', gap: '1rem' }}>
             <p className="text-muted">Invoice <strong>{paymentTarget.saleReferenceId}</strong> · Balance due: <strong>{formatCurrency(paymentTarget.balanceDue)}</strong></p>
-            <Select label="Payment method" value={settlementMethod} onChange={(event) => setSettlementMethod(event.target.value)} options={[{ value: 'CASH', label: 'Cash' }, { value: 'CARD', label: 'Card' }, { value: 'UPI', label: 'UPI' }]} />
+            <Select label="Payment method" value={settlementMethod} onChange={(event) => setSettlementMethod(event.target.value)} disabled={settlingPayment} options={[{value:'',label:'Choose Cash / UPI / Card'},{ value: 'CASH', label: 'Cash' }, { value: 'CARD', label: 'Card' }, { value: 'UPI', label: 'UPI' }]} />
             <Input label="Amount paid now" type="number" min="0.01" max={paymentTarget.balanceDue} step="0.01" value={settlementAmount} onChange={(event) => setSettlementAmount(event.target.value)} />
             {settlementError && <div className="order-builder-alert order-builder-alert-error">{settlementError}</div>}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '.75rem' }}><Button variant="secondary" onClick={() => setPaymentTarget(null)} disabled={settlingPayment}>Cancel</Button><Button onClick={confirmSettlement} disabled={settlingPayment}>{settlingPayment ? 'Saving…' : 'Confirm payment & bill'}</Button></div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '.75rem' }}><Button variant="secondary" onClick={() => setPaymentTarget(null)} disabled={settlingPayment}>Cancel</Button><Button onClick={confirmSettlement} disabled={settlingPayment || !settlementMethod}>{settlingPayment ? 'Saving…' : 'Confirm payment & bill'}</Button></div>
           </div>}
         </Modal>
 

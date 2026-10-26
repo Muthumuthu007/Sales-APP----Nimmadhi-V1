@@ -128,3 +128,32 @@
 
 /* Keep NIM product pricing before payment and customer fields at every width. */
 .sales-builder-workspace--nim { grid-template-columns: minmax(0, 1fr); }
+
+/* Short, focused own-store sales entry steps. */
+.compact-sales-entry [hidden]{display:none!important}
+.sales-entry-steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.5rem;scroll-margin-top:7rem}
+.sales-entry-steps button{display:flex;align-items:center;justify-content:center;gap:.5rem;padding:.65rem;border:1px solid var(--color-border);border-radius:.65rem;background:transparent;color:var(--color-text-muted);cursor:pointer;min-height:44px;font-weight:600}
+.sales-entry-steps button[aria-current=step]{background:var(--color-primary);color:#151525;border-color:var(--color-primary)}
+.sales-entry-steps button span{font-size:.75rem;opacity:.8}
+.compact-sales-entry .sales-builder-workspace{display:block}
+.compact-sales-entry .sales-builder-date-card,.compact-sales-entry .sales-builder-entry-card{padding:1rem;gap:.7rem}
+.compact-sales-entry .showroom-sale-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:.7rem}
+.compact-sales-entry .showroom-sale-hint{font-size:.75rem}
+.compact-sales-entry .grouped-product-path{display:none}
+.compact-sales-entry .showroom-sale-grid input,.compact-sales-entry .sales-builder-entry-card input{min-height:42px;padding:.6rem .75rem}
+.compact-sales-entry .showroom-price-preview{padding:.65rem;margin-top:.5rem}
+.compact-sales-entry .showroom-price-preview p{display:none}
+.sales-optional-accessories{border:1px solid var(--color-border);border-radius:.65rem;padding:.6rem .75rem;margin:.6rem 0}
+.sales-optional-accessories summary{cursor:pointer;min-height:32px;line-height:32px;color:var(--color-primary);font-weight:600}
+.sales-step-footer{position:sticky;bottom:0;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.85rem;background:var(--color-bg,#18172d);border:1px solid var(--color-border);border-radius:.75rem;box-shadow:0 -5px 20px #0002}
+.sales-step-footer>div{display:flex;gap:.5rem}.sales-review-details{display:flex;flex-wrap:wrap;align-items:center;gap:.75rem;padding:1rem;border:1px solid var(--color-border);border-radius:.75rem}
+@media(max-width:800px){.compact-sales-entry .showroom-sale-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.sales-entry-steps button{font-size:.8rem;padding:.5rem .3rem;gap:.25rem}.sales-step-footer{flex-wrap:wrap}.sales-step-footer>div{margin-left:auto}.sales-step-footer>span{font-size:.8rem}}
+.compact-sales-entry .sales-product-mrp{display:none}
+.compact-sales-entry .showroom-sale-fields{gap:.5rem;margin:.6rem 0}
+.compact-sales-entry .sales-optional-accessories{margin:.25rem 0}
+@media(min-width:900px){.compact-sales-entry .sales-builder-workspace.sales-step-1{display:grid;grid-template-columns:1fr 1fr;align-items:start}}
+.compact-sales-entry .sales-builder-intro,.compact-sales-entry .order-builder-alert-info{display:none}
+.compact-sales-entry{gap:.75rem;padding:1rem}
+.compact-sales-entry .order-builder-section-label{margin-bottom:.5rem}
+.compact-sales-entry .grouped-product-fields{gap:.65rem}
+.compact-sales-entry .showroom-price-preview{margin:0}

@@ -39,11 +39,11 @@ export default function ShowroomSaleFields({ item, onChange, quantity }) {
       {field('brand', 'Brand', { maxLength: 80 })}{field('model', 'Model', { maxLength: 200 })}
       {field('colour', 'Colour', { placeholder: 'e.g. Red', maxLength: 80 })}{field('size', 'Size (inches)', { placeholder: 'e.g. 78 × 84 × 6', maxLength: 80 })}
       {field('mrpSticker', 'Sticker MRP per unit (₹)', { type: 'number', min: '0.01', step: '0.01' })}
-      <small className="showroom-sale-hint">Saved product MRP fills automatically. You can edit it for this sale.</small>
       {field('discountPercent', 'Discount (%)', { type: 'number', min: '0', max: '99.99', step: '0.01' })}
       {field('taxPercent', 'Included tax (%)', { type: 'number', min: '0', max: '100', step: '0.01' })}
     </div>
-    <div className="showroom-accessory-picker">
+    <small className="showroom-sale-hint">Saved MRP is editable. Tax is included.</small>
+    <details className="sales-optional-accessories"><summary>Complimentary items / scheme (optional){item.scheme ? ' · Added' : ''}</summary><div className="showroom-accessory-picker">
       <GroupedProductPicker label="Complimentary accessory" options={accessories.map(productionOption)} value={selectedAccessory} onChange={setSelectedAccessory} placeholder={loadingAccessories ? 'Loading Accessories…' : 'Search accessory products…'} />
       <div className="showroom-accessory-actions"><Input label="Accessory quantity" type="number" min="1" step="1" value={accessoryQuantity} onChange={event => setAccessoryQuantity(event.target.value)} /><Button variant="secondary" disabled={loadingAccessories || !selectedAccessory} onClick={addAccessory}>Add to scheme</Button></div>
       {!loadingAccessories && !accessories.length && !accessoryError && <small className="showroom-sale-hint">No products are configured in the Accessories subgroups.</small>}
@@ -51,6 +51,7 @@ export default function ShowroomSaleFields({ item, onChange, quantity }) {
     </div>
     {field('scheme', 'Scheme / complimentary items (optional)', { placeholder: 'e.g. 2 accessories, 2 accessory covers', maxLength: 500 })}
     <small className="showroom-sale-hint">Scheme details are recorded on the invoice. Stock allocation for complimentary products follows the configured outlet offers.</small>
+    </details>
     <div className="showroom-price-preview">
       <div><span>Value per unit</span><strong>{price ? currency(price.value) : '—'}</strong></div>
       <div><span>Total sales value</span><strong>{price ? currency(price.totalSalesValue) : '—'}</strong></div>
