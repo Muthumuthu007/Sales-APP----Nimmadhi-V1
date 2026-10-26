@@ -367,15 +367,16 @@ const OutletView = () => {
   const [reportView, setReportView] = useState('list'); // 'list', 'daily', 'weekly', 'monthly'
   const [reportDate, setReportDate] = useState(businessDate());
   const [reportData, setReportData] = useState(null);
+  const [reportPaymentMethod,setReportPaymentMethod] = useState('ALL');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [reportError, setReportError] = useState(null);
 
-  const handleGenerateReport = async () => {
+  const handleGenerateReport = async (method = reportPaymentMethod) => {
     setIsGenerating(true);
     setReportError(null);
     try {
-      const data = await fetchReportData(reportView, reportDate, outletId);
+      const data = await fetchReportData(reportView, reportDate, outletId, method);
       setReportData(data);
     } catch (err) {
       setReportError(err.response?.data?.message || err.message || 'Failed to generate report.');
@@ -388,7 +389,7 @@ const OutletView = () => {
     setIsDownloading(true);
     setReportError(null);
     try {
-      await downloadSalesReport(reportView, reportDate, outletId);
+      await downloadSalesReport(reportView, reportDate, outletId, reportPaymentMethod);
     } catch (err) {
       setReportError(err.response?.data?.message || err.message || 'Failed to download report.');
     } finally {
@@ -1513,10 +1514,11 @@ const OutletView = () => {
                         style={{ padding: '0.25rem', border: 'none', background: 'transparent', color: 'white', outline: 'none' }}
                       />
                     </div>
+                    <Select label="Payment method" value={reportPaymentMethod} disabled={isGenerating || isDownloading} onChange={event=>{const method=event.target.value;setReportPaymentMethod(method);setReportData(null);handleGenerateReport(method);}} options={[{value:'ALL',label:'All payment methods'},{value:'CASH',label:'Cash'},{value:'UPI',label:'UPI'},{value:'CARD',label:'Card'}]} />
                     <Button variant="secondary" onClick={handleDownloadReport} disabled={isDownloading} style={{ backgroundColor: 'rgba(255,255,255,0.9)', color: '#0f766e', border: 'none' }}>
                       {isDownloading ? 'Downloading...' : 'Download Excel'}
                     </Button>
-                    <Button onClick={handleGenerateReport} disabled={isGenerating} style={{ backgroundColor: 'rgba(255,255,255,0.2)', color: 'white', border: '1px solid rgba(255,255,255,0.3)' }}>
+                    <Button onClick={()=>handleGenerateReport()} disabled={isGenerating} style={{ backgroundColor: 'rgba(255,255,255,0.2)', color: 'white', border: '1px solid rgba(255,255,255,0.3)' }}>
                       {isGenerating ? 'Generating...' : 'Generate Report'}
                     </Button>
                   </div>
@@ -1564,7 +1566,7 @@ const OutletView = () => {
                           </div>
                           <div style={{ backgroundColor: 'var(--color-secondary)', padding: '1.25rem', borderRadius: '10px', borderLeft: '4px solid #f59e0b', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
                             <p style={{ margin: '0 0 0.5rem 0', color: 'var(--color-text-muted)', fontSize: '0.875rem', fontWeight: '600', textTransform: 'uppercase' }}>Total Revenue Value</p>
-                            <p style={{ margin: 0, fontSize: '1.75rem', fontWeight: 'bold', color: 'var(--color-text)' }}>₹{(reportData.totalAmount || reportData.totalRevenue || reportData.revenue || 0).toLocaleString()}</p>
+                            <small>{reportData.paymentMethod === 'ALL' ? 'All payment methods' : reportData.paymentMethod}</small><p style={{ margin: 0, fontSize: '1.75rem', fontWeight: 'bold', color: 'var(--color-text)' }}>₹{(reportData.totalAmount || reportData.totalRevenue || reportData.revenue || 0).toLocaleString()}</p>
                           </div>
                         </div>
                         {reportData.startDate && reportData.endDate && (
@@ -1596,6 +1598,7 @@ const OutletView = () => {
                                   { key: 'taxPercent', label: 'Included tax', render: row => row.taxPercent != null ? `${row.taxPercent}%` : '—' },
                                   { key: 'createdByName', label: 'Sales person', render: row => row.createdByName || 'Not recorded' },
                                 ] : []),
+                                {key:'paymentMethod',label:'Payment method',render:row=>row.paymentMethod || 'Not recorded'},
                                 { key: 'total_qty', label: 'Total Qty', align: 'center', render: (row) => row.totalQty ?? row.total_qty ?? row.quantity ?? 0 },
                                 { key: 'complimentary', label: 'Complimentary', render: (row) => complimentarySummary(row.eligibleOffers) },
                                 { key: 'amount', label: 'Amount', align: 'right', render: (row) => row.amount || row.totalAmount || row.revenue ? `₹${Number(row.amount || row.totalAmount || row.revenue).toLocaleString()}` : '-' },

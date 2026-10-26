@@ -34,12 +34,12 @@ export async function settleDuePayment(saleReferenceId, data) {
   return idempotentPost(api, `/outlet/customers/due/${encodeURIComponent(saleReferenceId)}/payment`, data);
 }
 
-export async function fetchReportData(type, date, outletId) {
-  return api.get(`/reports/sales?type=${type}&date=${date}&outletId=${outletId}`);
+export async function fetchReportData(type, date, outletId, paymentMethod = 'ALL') {
+  return api.get(`/reports/sales?type=${type}&date=${date}&outletId=${outletId}&paymentMethod=${encodeURIComponent(paymentMethod)}`);
 }
 
-export async function downloadSalesReport(type, date, outletId) {
-  const data = await api.get(`/reports/sales?type=${type}&date=${date}&outletId=${outletId}`);
+export async function downloadSalesReport(type, date, outletId, paymentMethod = 'ALL') {
+  const data = await api.get(`/reports/sales?type=${type}&date=${date}&outletId=${outletId}&paymentMethod=${encodeURIComponent(paymentMethod)}`);
   let csvContent = "";
   
   const reportRows = Array.isArray(data) ? data : (data?.sales || data?.items || []);
@@ -82,7 +82,7 @@ export async function downloadSalesReport(type, date, outletId) {
   const link = document.createElement('a');
   link.href = downloadUrl;
   
-  link.setAttribute('download', `sales-report-${type}-${date}.csv`);
+  link.setAttribute('download', `sales-report-${type}-${date}-${paymentMethod.toLowerCase()}.csv`);
   document.body.appendChild(link);
   link.click();
   link.remove();
