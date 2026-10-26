@@ -1,3 +1,5 @@
+import InvoiceSalesReport from '../components/InvoiceSalesReport';
+import {reportInvoices} from '../utils/reportInvoices';
 import {outletAvailableStock} from '../utils/salesStock';
 import GroupedStockTable from '../components/GroupedStockTable';
 import AfterSales from './AfterSales';
@@ -1571,8 +1573,8 @@ const OutletView = () => {
                         <h3 style={{ margin: 0, paddingBottom: '0.5rem', borderBottom: '1px solid var(--color-border)', fontSize: '1.125rem' }}>Report Metrics Summary</h3>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
                           <div style={{ backgroundColor: 'var(--color-secondary)', padding: '1.25rem', borderRadius: '10px', borderLeft: '4px solid var(--color-primary)', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
-                            <p style={{ margin: '0 0 0.5rem 0', color: 'var(--color-text-muted)', fontSize: '0.875rem', fontWeight: '600', textTransform: 'uppercase' }}>Total Sales / Transactions</p>
-                            <p style={{ margin: 0, fontSize: '1.75rem', fontWeight: 'bold', color: 'var(--color-text)' }}>{reportData.totalSales ?? reportData.totalTransactions ?? reportData.totalOrders ?? 0}</p>
+                            <p style={{ margin: '0 0 0.5rem 0', color: 'var(--color-text-muted)', fontSize: '0.875rem', fontWeight: '600', textTransform: 'uppercase' }}>{ownedShowroomSales ? 'Total invoices' : 'Total Sales / Transactions'}</p>
+                            <p style={{ margin: 0, fontSize: '1.75rem', fontWeight: 'bold', color: 'var(--color-text)' }}>{ownedShowroomSales ? reportInvoices(reportData.sales || reportData.items || []).length : (reportData.totalSales ?? reportData.totalTransactions ?? reportData.totalOrders ?? 0)}</p>
                           </div>
                           <div style={{ backgroundColor: 'var(--color-secondary)', padding: '1.25rem', borderRadius: '10px', borderLeft: '4px solid #10b981', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
                             <p style={{ margin: '0 0 0.5rem 0', color: 'var(--color-text-muted)', fontSize: '0.875rem', fontWeight: '600', textTransform: 'uppercase' }}>Units Sold / Processed</p>
@@ -1597,6 +1599,7 @@ const OutletView = () => {
                         {(reportData.items || reportData.sales || reportData.products || reportData.data) && Array.isArray(reportData.items || reportData.sales || reportData.products || reportData.data) && (
                           <div style={{ overflowX: 'auto', marginTop: '1rem', borderTop: '1px solid var(--color-border)', paddingTop: '1.5rem' }}>
                             <h4 style={{ margin: '0 0 1rem 0', fontSize: '1.125rem' }}>Itemized Breakdown</h4>
+                            {ownedShowroomSales ? <InvoiceSalesReport rows={reportData.items || reportData.sales || reportData.products || reportData.data} complimentarySummary={complimentarySummary}/> : (
                             <Table 
                               columns={[
                                 { key: 'id', label: 'S.No', render: (row, i) => (i !== undefined ? i + 1 : '-') },
@@ -1623,7 +1626,7 @@ const OutletView = () => {
                                 { key: 'date', label: 'Date', render: (row) => (row.saleTimestamp || row.saleDate || row.date) ? new Date(row.saleTimestamp || row.saleDate || row.date).toLocaleDateString() : '-' }
                               ]}
                               data={reportData.items || reportData.sales || reportData.products || reportData.data}
-                            />
+                            />)}
                           </div>
                         )}
                       </div>
