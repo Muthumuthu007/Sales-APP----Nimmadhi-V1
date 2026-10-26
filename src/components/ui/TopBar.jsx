@@ -16,7 +16,7 @@ const TopBar = ({ onMenuClick, menuOpen = false }) => {
   return (
     <header className="topbar">
       <div className="topbar-left">
-        {/* Hamburger — visible only on mobile */}
+        {/* Modules remain available without reserving workspace for a sidebar. */}
         <button
           className="hamburger-btn"
           onClick={onMenuClick}
@@ -24,7 +24,7 @@ const TopBar = ({ onMenuClick, menuOpen = false }) => {
           aria-expanded={menuOpen}
           aria-controls="main-navigation"
         >
-          <Menu size={22} />
+          <Menu size={22} /><span className="modules-menu-label">Modules</span>
         </button>
         <h3 className="page-title">Management Dashboard</h3>
       </div>

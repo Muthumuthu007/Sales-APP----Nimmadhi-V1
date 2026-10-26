@@ -1,12 +1,16 @@
+import api from '../../api/axios';
 import {canAccessAdminPath} from '../../auth/adminAccess';
-import React, { useContext } from 'react';
-import { NavLink } from 'react-router-dom';
+import React, { useContext, useEffect, useState } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
 import { LayoutDashboard, ShoppingCart, CalendarDays, X, Truck, CreditCard, Store, UserPlus, UsersRound, Gift, BadgeIndianRupee, ClipboardCheck, QrCode, Factory } from 'lucide-react';
 import { AuthContext } from '../../context/AuthContext';
 import './Sidebar.css';
 
 const Sidebar = ({ isOpen, onClose }) => {
   const { role, adminAccess } = useContext(AuthContext);
+  const location=useLocation();
+  const [godownWorkspace,setGodownWorkspace]=useState(false);
+  useEffect(()=>{if(role==='MANAGER' || role==='GODOWN')return;let alive=true;api.get('/outlet/workspace').then(data=>{if(alive)setGodownWorkspace(data.locationType==='GODOWN');}).catch(()=>{});return()=>{alive=false;};},[role]);
 
   const managerLinks = [
     { to: '/dashboard', icon: <LayoutDashboard size={20} />, label: 'Dashboard' },
@@ -26,14 +30,14 @@ const Sidebar = ({ isOpen, onClose }) => {
     { to: '/create-user', icon: <UserPlus size={20} />, label: 'Create User' },
   ];
 
-  const employeeLinks = [
-    { to: '/employee', icon: <Store size={20} />, label: 'Outlet Operations' },
-  ];
+  const modules=[['ATTENDANCE','Attendance',<ClipboardCheck size={20}/>],['CREATE_ORDER','Create Order',<ShoppingCart size={20}/>],['MY_ORDERS','My Orders',<ShoppingCart size={20}/>],['STOCK','Stock View',<Store size={20}/>],['RECEIVE_STOCK','Receive Stock',<Truck size={20}/>],...(!godownWorkspace?[['SALES','Sales Entry',<CreditCard size={20}/>]]:[]),['REPORTS','Reports',<LayoutDashboard size={20}/>],...(godownWorkspace?[['ASSIGNED_DISPATCH','Dispatch Assigned Orders',<Truck size={20}/>],['PRODUCT_IN','Temporary Stocks',<Store size={20}/>],['SALES_OUT','Sales Out',<ShoppingCart size={20}/>]]:[]),['AFTER_SALES','After-sales',<ClipboardCheck size={20}/>]];
+  const employeeLinks=role==='GODOWN'?[{to:'/godown',icon:<Store size={20}/>,label:'Godown Operations'}]:modules.map(([module,label,icon])=>({to:`/employee?module=${module}`,module,label,icon}));
+
 
   const links = role === 'MANAGER' ? managerLinks.filter(link=>canAccessAdminPath(adminAccess,link.to)) : employeeLinks;
 
   return (
-    <aside id="main-navigation" aria-label="Main navigation" className={`sidebar${isOpen ? ' sidebar--open' : ''}`}>
+    <aside id="main-navigation" role={isOpen ? 'dialog' : undefined} aria-modal={isOpen ? true : undefined} aria-label="Main navigation" className={`sidebar${isOpen ? ' sidebar--open' : ''}`}>
       <div className="sidebar-header">
         <button type="button" className="sidebar-close" onClick={onClose} aria-label="Close navigation menu"><X size={22}/></button>
         <div className="logo-icon">✨</div>
@@ -47,7 +51,7 @@ const Sidebar = ({ isOpen, onClose }) => {
           <NavLink
             key={link.to}
             to={link.to}
-            className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+            className={({ isActive }) => `nav-item ${(link.module ? location.pathname==='/employee' && (new URLSearchParams(location.search).get('module') || 'ATTENDANCE')===link.module : isActive) ? 'active' : ''}`}
             end={link.to === '/'}
             onClick={onClose}
           >

@@ -219,3 +219,5 @@
   .topbar .role-switch { padding: .6rem; min-width: 44px; }
   .topbar .user-profile { display: none; }
 }
+.topbar .hamburger-btn{display:flex;align-items:center;gap:.5rem;width:auto;min-width:44px;padding:.55rem .7rem;font:inherit;font-size:.85rem;color:var(--color-text-main);border:1px solid var(--color-border);border-radius:.6rem}
+@media(max-width:600px){.modules-menu-label{display:none}}

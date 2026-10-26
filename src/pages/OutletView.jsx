@@ -1,3 +1,4 @@
+import {useSearchParams} from 'react-router-dom';
 import {saleProductName} from '../utils/saleProductName';
 import SalesBill from '../components/SalesBill';
 import InvoiceSalesReport from '../components/InvoiceSalesReport';
@@ -42,6 +43,8 @@ import './OutletView.css';
 
 const OutletView = () => {
   const { outletId, role, empName: loggedInEmployeeName } = React.useContext(AuthContext);
+  const [moduleParams]=useSearchParams();
+  const requestedModule=moduleParams.get('module');
   const [isGodown, setIsGodown] = useState(null);
   const [godownStockView, setGodownStockView] = useState('CURRENT');
   useEffect(() => { let alive = true; api.get('/outlet/workspace').then(data => { if (alive) setIsGodown(data.locationType === 'GODOWN'); }).catch(() => {}); return () => { alive = false; }; }, [outletId]);
@@ -71,6 +74,9 @@ const OutletView = () => {
     { id: 'REPORTS', label: 'Reports' },
   ];
   const tabs = (['OUTLET', 'EMPLOYEE', 'CASHIER', 'SUPERVISOR'].includes(role) ? employeeTabs : outletTabs).filter(tab => (tab.id !== 'SALES' || isGodown === false)).concat(isGodown ? [{id:'ASSIGNED_DISPATCH',label:'Dispatch Assigned Orders'},{id:'PRODUCT_IN',label:'Temporary Stocks'},{id:'SALES_OUT',label:'Sales Out'}] : []).filter(tab => tab.id !== 'DUE_CUSTOMERS').concat([{id:'AFTER_SALES',label:'After-sales'}]);
+
+  const availableModuleIds=tabs.map(tab=>tab.id).join(',');
+  useEffect(()=>{if(requestedModule && availableModuleIds.split(',').includes(requestedModule))setActiveTab(requestedModule);},[requestedModule,availableModuleIds]);
 
   // --- Create Order State ---
   const [productOptions, setProductOptions] = useState([{ label: 'Loading products...', value: '' }]);
@@ -1003,26 +1009,7 @@ const OutletView = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      {!(activeTab === 'REPORTS' && reportView !== 'list') && (
-        <div className="outlet-module-navigation">
-        <label className="outlet-mobile-navigation">Go to module
-          <select value={activeTab} onChange={event => setActiveTab(event.target.value)}>
-            {tabs.map(tab => <option key={tab.id} value={tab.id}>{tab.label}</option>)}
-          </select>
-        </label>
-        <div className="outlet-tab-nav" aria-label="Outlet modules">
-          {tabs.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`outlet-tab-btn${activeTab === tab.id ? ' outlet-tab-btn--active' : ''}`}
-              aria-pressed={activeTab === tab.id}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div></div>
-      )}
+      <div className="outlet-current-module"><strong>{tabs.find(tab=>tab.id===activeTab)?.label || 'Outlet Operations'}</strong><small>Switch using the ☰ Modules menu</small></div>
 
       <div>
         {activeTab === 'AFTER_SALES' && <AfterSales godownMode={Boolean(isGodown)} />}

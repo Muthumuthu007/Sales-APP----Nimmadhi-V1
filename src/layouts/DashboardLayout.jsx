@@ -26,14 +26,10 @@ const DashboardLayout = () => {
       if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
       else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
     };
-    const media = window.matchMedia('(min-width: 1025px)');
-    const closeOnDesktop = () => { if (media.matches) setSidebarOpen(false); };
     document.addEventListener('keydown', handleKey);
-    media.addEventListener('change', closeOnDesktop);
     return () => {
       main?.removeAttribute('inert');
       document.removeEventListener('keydown', handleKey);
-      media.removeEventListener('change', closeOnDesktop);
       previousFocus?.focus();
     };
   }, [sidebarOpen]);

@@ -80,3 +80,4 @@
   .layout-content { padding: 1rem; }
 }
 @media (max-width: 480px) { .layout-content { padding: .75rem; padding-bottom: max(1rem, env(safe-area-inset-bottom)); } }
+.sidebar-backdrop{display:block}
