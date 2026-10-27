@@ -1,5 +1,6 @@
 import {factoryProductName} from '../utils/saleProductName';
 import {factorySchemeDetails} from '../utils/factoryComplimentary';
+import OwnSalesRecords from './OwnSalesRecords';
 import AfterSales from './AfterSales';
 import ProductMrp from '../components/ProductMrp';
 import FactoryPendingPayments from './FactoryPendingPayments';
@@ -17,7 +18,9 @@ import {outletLabel} from '../utils/outlets';
 
 function FactoryOrderProduct({order,item}) {
  const schemes=factorySchemeDetails(order,item);
- return <div>{item.isComplimentary && <strong style={{color:'var(--color-primary)'}}>Complimentary · </strong>}<OrderProduct item={item} name={factoryProductName(order,item)}/>{schemes.length>0 && <section style={{marginTop:'.5rem',padding:'.65rem',border:'1px solid var(--color-primary)',borderRadius:'.5rem',whiteSpace:'normal'}}><strong style={{color:'var(--color-primary)'}}>Complimentary items / sale scheme</strong>{schemes.map((entry,index)=><div key={index} style={{marginTop:'.35rem'}}>{entry.scheme}{schemes.length>1 && <small style={{display:'block'}}>For sale line quantity: {entry.quantity}</small>}</div>)}</section>}</div>;
+ const specifications=(order.salesSpecifications || []).filter(spec=>String(spec.productId || spec.product_id || '')===String(item.product_id || item.productId || ''));
+ const colours=specifications.filter(spec=>String(spec.colour || '').trim());
+ return <div>{item.isComplimentary && <strong style={{color:'var(--color-primary)'}}>Complimentary · </strong>}<OrderProduct item={item} name={factoryProductName(order,item)}/>{colours.map((spec,index)=><div key={`colour-${index}`} style={{marginTop:'.25rem',whiteSpace:'normal'}}><strong>Colour:</strong> {spec.colour}{specifications.length>1 && <> · Qty: {spec.quantity}{spec.size && <> · Size: {spec.size}</>}</>}</div>)}{!colours.length && !item.isComplimentary && <div><strong>Colour:</strong> {item.colour || 'Not specified'}</div>}{schemes.length>0 && <section style={{marginTop:'.5rem',padding:'.65rem',border:'1px solid var(--color-primary)',borderRadius:'.5rem',whiteSpace:'normal'}}><strong style={{color:'var(--color-primary)'}}>Complimentary items / sale scheme</strong>{schemes.map((entry,index)=><div key={index} style={{marginTop:'.35rem'}}>{entry.scheme}{schemes.length>1 && <small style={{display:'block'}}>For sale line quantity: {entry.quantity}</small>}</div>)}</section>}</div>;
 }
 
 export default function FactoryManagement() {
@@ -62,8 +65,8 @@ export default function FactoryManagement() {
       <p>NIM factory-delivery sales appear here for direct customer dispatch. Outlet stock stays unchanged.</p>
       <Select label="Own outlet" value={outletId} onChange={event => setOutletId(event.target.value)} options={[{value:'',label:'All own outlets'},...outlets.map(outlet => ({value:outlet.outletId,label:outletLabel(outlet.outletId,outlets)}))]} />
     </CardContent></Card>
-    <div style={{display:'flex',gap:'0.75rem',flexWrap:'wrap'}}>{[['PENDING','Awaiting dispatch'],['PARTIALLY_DISPATCHED','Partial dispatch'],['DISPATCHED','Dispatched to customer'],['PAYMENTS','Pending Payments'],['AFTER_SALES','After-sales factory work']].map(([id,label]) => <Button key={id} variant={tab===id ? 'primary':'secondary'} onClick={() => setTab(id)}>{label}{!['PAYMENTS','AFTER_SALES'].includes(id) && ` (${orders.filter(order=>order.status===id).length})`}</Button>)}</div>
-    {tab==='AFTER_SALES' ? <AfterSales factoryMode /> : tab==='PAYMENTS' ? <FactoryPendingPayments readOnly /> : loading ? <LoadingState message="Loading direct customer orders…" /> : error ? <ErrorState error={error} onRetry={load} /> : <Card><CardContent><Table columns={columns} data={orders.filter(order=>order.status===tab)} emptyStateMessage="No direct customer orders in this stage." /></CardContent></Card>}
+    <div style={{display:'flex',gap:'0.75rem',flexWrap:'wrap'}}>{[['PENDING','Awaiting dispatch'],['PARTIALLY_DISPATCHED','Partial dispatch'],['DISPATCHED','Dispatched to customer'],['SALES_RECORDS','Sales Records'],['PAYMENTS','Pending Payments'],['AFTER_SALES','After-sales factory work']].map(([id,label]) => <Button key={id} variant={tab===id ? 'primary':'secondary'} onClick={() => setTab(id)}>{label}{!['PAYMENTS','AFTER_SALES','SALES_RECORDS'].includes(id) && ` (${orders.filter(order=>order.status===id).length})`}</Button>)}</div>
+    {tab==='SALES_RECORDS' ? <OwnSalesRecords readOnly outletId={outletId} outlets={outlets}/> : tab==='AFTER_SALES' ? <AfterSales factoryMode /> : tab==='PAYMENTS' ? <FactoryPendingPayments readOnly /> : loading ? <LoadingState message="Loading direct customer orders…" /> : error ? <ErrorState error={error} onRetry={load} /> : <Card><CardContent><Table columns={columns} data={orders.filter(order=>order.status===tab)} emptyStateMessage="No direct customer orders in this stage." /></CardContent></Card>}
     <Modal isOpen={Boolean(selected)} onClose={() => !saving && setSelected(null)} title={`Factory → Customer · ${selected?.displayId || ''}`}>
       {selected && <div style={{display:'grid',gap:'1rem'}}>
         <strong>{selected.customerName} · {selected.customerPhone}</strong><p>{selected.customerAddress}</p>
