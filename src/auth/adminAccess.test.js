@@ -22,3 +22,20 @@ test('admin management is exclusive to the main admin even when all modules are 
  assert.equal(canAccessAdminPath(null,'/admin-management'),true);
  assert.equal(canAccessAdminPath({restricted:true,modules:adminModules.map(item=>item[0])},'/admin-management'),false);
 });
+
+test('Outlet Dashboard can be granted independently of outlet management',()=>{
+ const dashboard={restricted:true,modules:['OUTLET_DASHBOARD']};
+ assert.equal(firstAdminPath(dashboard),'/outlets/overview');
+ assert.equal(canAccessAdminPath(dashboard,'/outlets/overview'),true);
+ assert.equal(canAccessAdminPath(dashboard,'/outlets'),false);
+ assert.equal(canAccessAdminPath({restricted:true,modules:['OUTLETS']},'/outlets/overview'),false);
+ assert.ok(adminModules.some(([id,label])=>id==='OUTLET_DASHBOARD' && label==='Outlet Dashboard'));
+});
+
+test('every assignable manager menu destination has its own permission option',async()=>{
+ const {readFile}=await import('node:fs/promises');
+ const sidebar=await readFile(new URL('../components/ui/Sidebar.jsx',import.meta.url),'utf8');
+ const menu=sidebar.match(/const managerLinks = \[([\s\S]*?)\n  \];/)[1];
+ const routes=[...menu.matchAll(/to: '([^']+)'/g)].map(match=>match[1]).filter(route=>route!=='/admin-management');
+ assert.deepEqual(new Set(adminModules.map(([, ,route])=>route)),new Set(routes));
+});
