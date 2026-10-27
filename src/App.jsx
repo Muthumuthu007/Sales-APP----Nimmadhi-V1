@@ -42,7 +42,7 @@ const RootRedirect = () => {
     return <Navigate to={firstAdminPath(adminAccess)} replace />;
   } else if (role === 'GODOWN') {
     return <Navigate to="/godown" replace />;
-  } else if (['OUTLET', 'EMPLOYEE', 'CASHIER', 'SUPERVISOR'].includes(role)) {
+  } else if (['OUTLET', 'EMPLOYEE', 'CASHIER', 'SUPERVISOR','STALL'].includes(role)) {
     return <Navigate to="/employee" replace />;
   }
   
@@ -134,14 +134,14 @@ function App() {
 
             {/* OUTLET ROUTES */}
             <Route path="outlet" element={
-              <ProtectedRoute allowedRoles={['OUTLET', 'EMPLOYEE', 'CASHIER', 'SUPERVISOR']}>
+              <ProtectedRoute allowedRoles={['OUTLET', 'EMPLOYEE', 'CASHIER', 'SUPERVISOR','STALL']}>
                 <OutletView />
               </ProtectedRoute>
             } />
 
             {/* EMPLOYEE ROUTES */}
             <Route path="employee" element={
-              <ProtectedRoute allowedRoles={['OUTLET', 'EMPLOYEE', 'CASHIER', 'SUPERVISOR']}>
+              <ProtectedRoute allowedRoles={['OUTLET', 'EMPLOYEE', 'CASHIER', 'SUPERVISOR','STALL']}>
                 <OutletView />
               </ProtectedRoute>
             } />

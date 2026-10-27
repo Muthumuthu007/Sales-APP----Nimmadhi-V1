@@ -1,3 +1,4 @@
+import CreateStall from './CreateStall';
 import React, { useEffect, useState } from 'react';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Input, Select } from '../../components/ui/Input';
@@ -41,6 +42,7 @@ const CreateUser = () => {
   };
 
   return <main className="create-user-page">
+    <CreateStall/>
     <section className="create-user-intro"><div className="create-user-intro-icon"><UsersRound size={22} /></div><div><p className="create-user-eyebrow">Team management</p><h2>Add an employee</h2><p>Create one staff login and link it to the outlet where the employee works.</p></div></section>
     <div className="create-user-layout"><Card className="create-user-card"><CardHeader title="Employee details" /><CardContent>
       {error && <div className="create-user-alert create-user-alert-error" role="alert">{error}</div>}

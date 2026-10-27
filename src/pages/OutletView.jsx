@@ -1,3 +1,4 @@
+import StallStockIn from './StallStockIn';
 import OwnSalesRecords from './OwnSalesRecords';
 import PaymentBreakdown from '../components/PaymentBreakdown';
 import PaymentSplitInput from '../components/PaymentSplitInput';
@@ -54,7 +55,11 @@ const OutletView = () => {
   const [isGodown, setIsGodown] = useState(null);
   const [godownStockView, setGodownStockView] = useState('CURRENT');
   useEffect(() => { let alive = true; api.get('/outlet/workspace').then(data => { if (alive) setIsGodown(data.locationType === 'GODOWN'); }).catch(() => {}); return () => { alive = false; }; }, [outletId]);
+  const isStall=role==='STALL';
+  const [stallStock,setStallStock]=useState(null);
+  useEffect(()=>{if(isStall)api.get('/stall/stock').then(setStallStock).catch(()=>{});},[isStall]);
   const [activeTab, setActiveTab] = useState(() => (
+    role==='STALL'?'STOCK_IN':
     ['OUTLET', 'EMPLOYEE', 'CASHIER', 'SUPERVISOR'].includes(role) ? 'ATTENDANCE' : 'CREATE_ORDER'
   ));
 
@@ -79,7 +84,7 @@ const OutletView = () => {
     { id: 'DUE_CUSTOMERS', label: 'Pending Payments' },
     { id: 'REPORTS', label: 'Reports' },
   ];
-  const tabs = (['OUTLET', 'EMPLOYEE', 'CASHIER', 'SUPERVISOR'].includes(role) ? employeeTabs : outletTabs).filter(tab => (tab.id !== 'SALES' || isGodown === false)).concat(isGodown ? [{id:'ASSIGNED_DISPATCH',label:'Dispatch Assigned Orders'},{id:'PRODUCT_IN',label:'Temporary Stocks'},{id:'SALES_OUT',label:'Sales Out'}] : []).filter(tab => tab.id !== 'DUE_CUSTOMERS').concat(!isGodown && String(outletId).toUpperCase().startsWith('NIM')?[{id:'SALES_RECORDS',label:'Sales Records'}]:[]).concat([{id:'AFTER_SALES',label:'After-sales'}]);
+  const tabs = isStall?[{id:'STOCK_IN',label:'Stock In / Return'},{id:'SALES',label:'Sales Entry'},{id:'STOCK',label:'Stock View'}]:(['OUTLET', 'EMPLOYEE', 'CASHIER', 'SUPERVISOR'].includes(role) ? employeeTabs : outletTabs).filter(tab => (tab.id !== 'SALES' || isGodown === false)).concat(isGodown ? [{id:'ASSIGNED_DISPATCH',label:'Dispatch Assigned Orders'},{id:'PRODUCT_IN',label:'Temporary Stocks'},{id:'SALES_OUT',label:'Sales Out'}] : []).filter(tab => tab.id !== 'DUE_CUSTOMERS').concat(!isGodown && String(outletId).toUpperCase().startsWith('NIM')?[{id:'SALES_RECORDS',label:'Sales Records'}]:[]).concat([{id:'AFTER_SALES',label:'After-sales'}]);
 
   const availableModuleIds=tabs.map(tab=>tab.id).join(',');
   useEffect(()=>{if(requestedModule && availableModuleIds.split(',').includes(requestedModule))setActiveTab(requestedModule);},[requestedModule,availableModuleIds]);
@@ -221,10 +226,11 @@ const OutletView = () => {
       if(!current)return;
       setSalesOutletStock(Array.isArray(response)?response:(response?.products || []));
       setSalesStockStatus('ready');
+      if(isStall)api.get('/stall/stock').then(setStallStock).catch(()=>{});
     }).catch(()=>{if(current)setSalesStockStatus('error');});
     return ()=>{current=false;};
-  },[activeTab,outletId,salesStockRefresh]);
-  const availableStockLabel = productId => salesStockStatus==='ready' ? outletAvailableStock(salesOutletStock,productId) : salesStockStatus==='loading' ? 'Loading…' : 'Unavailable — refresh stock';
+  },[activeTab,outletId,salesStockRefresh,isStall]);
+  const availableStockLabel = (productId,mode=salesFulfillmentMode) => isStall && mode==='LINKED_OUTLET_STOCK' && !stallStock?'Loading linked outlet stock…':salesStockStatus==='ready' ? outletAvailableStock(isStall && mode==='LINKED_OUTLET_STOCK'?(stallStock?.outletStock || []):salesOutletStock,productId) : salesStockStatus==='loading' ? 'Loading…' : 'Unavailable — refresh stock';
 
   const [showroomItem, setShowroomItem] = useState({ ...emptyShowroomItem });
   const [salesValidationErrors, setSalesValidationErrors] = useState([]);
@@ -1251,6 +1257,7 @@ const OutletView = () => {
 
         {activeTab === 'STOCK' && isGodown && <GodownCustody stockView />}
 
+        {activeTab === 'STOCK_IN' && isStall && <StallStockIn/>}
         {activeTab === 'SALES' && isGodown === false && (
           <Card className="sales-builder-card">
             <CardHeader title="Record daily sales" action={<span className="sales-builder-step">Sales entry</span>} />
@@ -1294,12 +1301,12 @@ const OutletView = () => {
                   {ownedShowroomSales && <><Input label="Bill number (optional)" value={saleDetails.billNo} onChange={event => setSaleDetails({ ...saleDetails, billNo: event.target.value })} maxLength={80} /><Input label="Dispatch date" type="date" value={saleDetails.dispatchDate} onChange={event => setSaleDetails({ ...saleDetails, dispatchDate: event.target.value })} /><p className="showroom-sale-hint">Work-order number is generated automatically when this sale is submitted.<br />Sales person: <strong>{loggedInEmployeeName || 'Recorded from your login'}</strong></p></>}
                 </section>
                 <section className="sales-builder-entry-card" ref={salesProductSelector} tabIndex={-1} hidden={ownedShowroomSales && salesEntryStep!==0} style={{scrollMarginTop:'7rem'}}>
-                  <div className="order-builder-section-label"><span>1</span><div><strong>Sold product</strong><small>{ownedShowroomSales ? 'Choose products for outlet or factory delivery' : 'Only products available at this outlet are listed'}</small></div></div>
-                  <GroupedProductPicker label="Sale product" options={salesProductOptions.map(option=>option.value ? {...option,label:`${option.label} — Outlet stock: ${availableStockLabel(option.value)}`} : option)} value={salesProduct} onChange={val => { setSalesProduct(val); setShowroomItem(current => showroomItemForProduct(current, salesProductOptions.find(option => option.value === val))); }} placeholder="Search products and outlet stock…" />
+                  <div className="order-builder-section-label"><span>1</span><div><strong>Sold product</strong><small>{ownedShowroomSales ? 'Choose products and their delivery source' : 'Only products available at this outlet are listed'}</small></div></div>
+                  <GroupedProductPicker label="Sale product" options={salesProductOptions.map(option=>option.value ? {...option,label:`${option.label} — ${isStall?(salesFulfillmentMode==='LINKED_OUTLET_STOCK'?'Linked outlet stock':'Stall stock'):'Outlet stock'}: ${availableStockLabel(option.value)}`} : option)} value={salesProduct} onChange={val => { setSalesProduct(val); setShowroomItem(current => showroomItemForProduct(current, salesProductOptions.find(option => option.value === val))); }} placeholder={isStall?'Search products and stock…':'Search products and outlet stock…'} />
                   {salesProduct && <div role="status" className="sales-product-mrp" style={{padding:'0.75rem 1rem',marginBottom:'1rem',border:'1px solid var(--color-primary)',borderRadius:'0.75rem'}}><strong>Product MRP</strong><ProductMrp item={salesProductOptions.find(option=>option.value===salesProduct) || {productId:salesProduct}} label={false}/></div>}
-                  {ownedShowroomSales && salesProduct && <Select label="Delivery source for this product" value={salesFulfillmentMode} onChange={e => setSalesFulfillmentMode(e.target.value)} options={[{value:'',label:'Choose delivery option'},{value:'LOCAL_STOCK',label:'Needed immediately — deliver from outlet stock'},{value:'FACTORY_DELIVERY',label:'Factory dispatch directly to customer'}]} />}
+                  {ownedShowroomSales && salesProduct && <Select label="Delivery source for this product" value={salesFulfillmentMode} onChange={e => setSalesFulfillmentMode(e.target.value)} options={[{value:'',label:'Choose delivery option'},{value:'LOCAL_STOCK',label:isStall?'Move from stall stock':'Needed immediately — deliver from outlet stock'},...(isStall?[{value:'LINKED_OUTLET_STOCK',label:'Move from linked outlet stock'}]:[]),{value:'FACTORY_DELIVERY',label:'Factory dispatch directly to customer'}]} />}
                   {ownedShowroomSales && salesProduct && <ShowroomSaleFields isAccessory={Boolean(salesProductOptions.find(option=>option.value===salesProduct)?.isAccessory)} item={showroomItem} onChange={setShowroomItem} quantity={Number(salesQuantity)} />}
-                  {salesProduct && <p role="status"><strong>Available in this outlet: {availableStockLabel(salesProduct)}</strong></p>}
+                  {salesProduct && <p role="status"><strong>{isStall && salesFulfillmentMode==='FACTORY_DELIVERY'?'Factory delivery — stall and linked outlet stock stay unchanged.':<>{isStall?(salesFulfillmentMode==='LINKED_OUTLET_STOCK'?'Available at linked outlet':'Available at stall'):'Available in this outlet'}: {availableStockLabel(salesProduct)}</>}</strong></p>}
                   {salesStockStatus==='error' && <Button variant="secondary" onClick={()=>setSalesStockRefresh(value=>value+1)}>Refresh outlet stock</Button>}
                   <div className="sales-builder-add-row">
                     <Input label="Quantity sold" type="number" min="1" value={salesQuantity} onChange={(e) => setSalesQuantity(e.target.value)} />
@@ -1337,8 +1344,8 @@ const OutletView = () => {
                   <div className="order-builder-items">
                     {salesItems.map((item, idx) => (
                       <div key={idx} className="order-builder-item">
-                        <span className="order-builder-item-quantity" style={{width:'auto',minWidth:'4rem',padding:'.5rem',flexDirection:'column'}}>{item.quantity}<small style={{display:'block',fontSize:'.75rem',fontWeight:400,marginTop:'.35rem'}}>Outlet stock: {availableStockLabel(item.product_id)}</small></span>
-                        <span className="order-builder-item-name">{saleProductName(salesProductOptions.find(o => o.value === item.product_id)?.label || item.product_id,item.size)}<ProductMrp item={item}/>{ownedShowroomSales && <span className="showroom-item-details">{item.brand} · {item.colour} · {item.size}<br />MRP {formatCurrency(Number(item.mrpSticker))} − {item.discountPercent}% · Unit {formatCurrency(showroomPrice(item)?.value || 0)}<br /><strong>Delivery: {item.fulfillmentMode === 'LOCAL_STOCK' ? 'Outlet stock → customer' : 'Factory → customer'}</strong><br /><strong>Total {formatCurrency(showroomPrice(item)?.totalSalesValue || 0)}</strong> · Tax included ({item.taxPercent}%){item.scheme && <><br />Scheme: {item.scheme}</>}</span>}</span>
+                        <span className="order-builder-item-quantity" style={{width:'auto',minWidth:'4rem',padding:'.5rem',flexDirection:'column'}}>{item.quantity}<small style={{display:'block',fontSize:'.75rem',fontWeight:400,marginTop:'.35rem'}}>{isStall?(item.fulfillmentMode==='LINKED_OUTLET_STOCK'?'Linked outlet stock':'Stall stock'):'Outlet stock'}: {availableStockLabel(item.product_id,item.fulfillmentMode)}</small></span>
+                        <span className="order-builder-item-name">{saleProductName(salesProductOptions.find(o => o.value === item.product_id)?.label || item.product_id,item.size)}<ProductMrp item={item}/>{ownedShowroomSales && <span className="showroom-item-details">{item.brand} · {item.colour} · {item.size}<br />MRP {formatCurrency(Number(item.mrpSticker))} − {item.discountPercent}% · Unit {formatCurrency(showroomPrice(item)?.value || 0)}<br /><strong>Delivery: {item.fulfillmentMode === 'LOCAL_STOCK' ? (isStall?'Stall stock → customer':'Outlet stock → customer') : item.fulfillmentMode==='LINKED_OUTLET_STOCK'?'Linked outlet → customer':'Factory → customer'}</strong><br /><strong>Total {formatCurrency(showroomPrice(item)?.totalSalesValue || 0)}</strong> · Tax included ({item.taxPercent}%){item.scheme && <><br />Scheme: {item.scheme}</>}</span>}</span>
                         <Button variant="secondary" className="order-builder-remove" onClick={() => removeSalesItem(idx)} disabled={isSubmittingSales} aria-label="Remove sales item">
                           <Trash2 size={16} />
                         </Button>

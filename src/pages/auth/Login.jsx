@@ -50,7 +50,7 @@ const Login = () => {
         navigate(firstAdminPath(response.adminAccess), { replace: true });
       } else if (role === 'GODOWN') {
         navigate('/godown', { replace: true });
-      } else if (role === 'OUTLET') {
+      } else if (['OUTLET','STALL'].includes(role)) {
         navigate('/outlet', { replace: true });
       } else if (['EMPLOYEE', 'CASHIER', 'SUPERVISOR'].includes(role)) {
         navigate('/employee/attendance', { replace: true });

@@ -1,3 +1,4 @@
+import EmployeeBankEditor from '../components/EmployeeBankEditor';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader } from '../components/ui/Card';
 import { Table } from '../components/ui/Table';
@@ -8,6 +9,7 @@ import { fetchManagerEmployees, fetchOutlets, reassignEmployee } from '../api/em
 import { LoadingState, ErrorState } from '../components/ui/StateContainers';
 
 const Employees = () => {
+  const [bankEmployee,setBankEmployee]=useState(null);
   const [outlets, setOutlets] = useState([]);
   const [outletId, setOutletId] = useState('');
   const [employees, setEmployees] = useState([]);
@@ -60,7 +62,7 @@ const Employees = () => {
     { key: 'workType', label: 'Work type', render: (row) => row.workType === 'FIELD' ? 'Field work' : 'Demonstrative employee' },
     { key: 'salaryModel', label: 'Salary model', render: (row) => row.salary?.salaryModel || row.salaryModel || '-' },
     { key: 'status', label: 'Status', render: (row) => row.isActive === false ? 'Inactive' : 'Active' },
-    { key: 'actions', label: 'Actions', render: (row) => <Button variant="secondary" onClick={() => { setTransferError(''); setDestination(''); setTransferEmployee(row); }}>Reassign outlet</Button> },
+    { key: 'actions', label: 'Actions', render: (row) => <div style={{display:'flex',gap:'.5rem',flexWrap:'wrap'}}><Button variant="secondary" onClick={()=>setBankEmployee({...row,outletId})}>Edit bank details</Button><Button variant="secondary" onClick={() => { setTransferError(''); setDestination(''); setTransferEmployee(row); }}>Reassign outlet</Button></div> },
     { key: 'createdAt', label: 'Created', render: (row) => row.createdAt ? new Date(row.createdAt).toLocaleDateString() : '-' },
   ];
   return <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -70,6 +72,7 @@ const Employees = () => {
       <div style={{ display: 'flex', gap: '1rem', alignItems: 'end', flexWrap: 'wrap', marginBottom: '1.25rem' }}><div style={{ minWidth: '280px' }}><Select label="Outlet" value={outletId} onChange={(event) => setOutletId(event.target.value)} options={outletOptions} /></div><Button onClick={() => load()} disabled={!outletId || loading}>{loading ? 'Loading…' : 'Refresh'}</Button></div>
       {loading ? <LoadingState message="Loading employees…" /> : error ? <ErrorState error={error} onRetry={() => load()} /> : <Table columns={columns} data={employees} emptyStateMessage="No employees have been created for this outlet." />}
     </CardContent></Card>
+    <EmployeeBankEditor employee={bankEmployee} onClose={()=>setBankEmployee(null)} onSaved={message=>{setSuccess(message);setBankEmployee(null);load();}}/>
     <Modal isOpen={Boolean(transferEmployee)} onClose={() => !transferring && setTransferEmployee(null)} title="Reassign employee">
       <p>Move <strong>{transferEmployee?.name}</strong> from <strong>{outletOptions.find((option) => option.value === outletId)?.label}</strong> to another outlet.</p>
       <Select label="Destination outlet" value={destination} onChange={(event) => setDestination(event.target.value)} disabled={transferring} options={outletOptions.filter((option) => option.value !== outletId)} />
