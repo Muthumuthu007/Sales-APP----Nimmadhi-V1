@@ -16,11 +16,11 @@ import {LoadingState, ErrorState} from '../components/ui/StateContainers';
 import OrderProduct from '../components/OrderProduct';
 import {outletLabel} from '../utils/outlets';
 
-function FactoryOrderProduct({order,item}) {
+function FactoryOrderProduct({order,item,compact=false}) {
  const schemes=factorySchemeDetails(order,item);
  const specifications=(order.salesSpecifications || []).filter(spec=>String(spec.productId || spec.product_id || '')===String(item.product_id || item.productId || ''));
  const colours=specifications.filter(spec=>String(spec.colour || '').trim());
- return <div>{item.isComplimentary && <strong style={{color:'var(--color-primary)'}}>Complimentary · </strong>}<OrderProduct item={item} name={factoryProductName(order,item)}/>{colours.map((spec,index)=><div key={`colour-${index}`} style={{marginTop:'.25rem',whiteSpace:'normal'}}><strong>Colour:</strong> {spec.colour}{specifications.length>1 && <> · Qty: {spec.quantity}{spec.size && <> · Size: {spec.size}</>}</>}</div>)}{!colours.length && !item.isComplimentary && <div><strong>Colour:</strong> {item.colour || 'Not specified'}</div>}{schemes.length>0 && <section style={{marginTop:'.5rem',padding:'.65rem',border:'1px solid var(--color-primary)',borderRadius:'.5rem',whiteSpace:'normal'}}><strong style={{color:'var(--color-primary)'}}>Complimentary items / sale scheme</strong>{schemes.map((entry,index)=><div key={index} style={{marginTop:'.35rem'}}>{entry.scheme}{schemes.length>1 && <small style={{display:'block'}}>For sale line quantity: {entry.quantity}</small>}</div>)}</section>}</div>;
+ return <div>{item.isComplimentary && <strong style={{color:'var(--color-primary)'}}>Complimentary · </strong>}<OrderProduct item={compact?{...item,freeItems:[],complimentaryOffers:[]}:item} name={factoryProductName(order,item)}/>{!compact && <>{colours.map((spec,index)=><div key={`colour-${index}`} style={{marginTop:'.25rem',whiteSpace:'normal'}}><strong>Colour:</strong> {spec.colour}{specifications.length>1 && <> · Qty: {spec.quantity}{spec.size && <> · Size: {spec.size}</>}</>}</div>)}{!colours.length && !item.isComplimentary && <div><strong>Colour:</strong> {item.colour || 'Not specified'}</div>}{schemes.length>0 && <section style={{marginTop:'.5rem',padding:'.65rem',border:'1px solid var(--color-primary)',borderRadius:'.5rem',whiteSpace:'normal'}}><strong style={{color:'var(--color-primary)'}}>Complimentary items / sale scheme</strong>{schemes.map((entry,index)=><div key={index} style={{marginTop:'.35rem'}}>{entry.scheme}{schemes.length>1 && <small style={{display:'block'}}>For sale line quantity: {entry.quantity}</small>}</div>)}</section>}</>}</div>;
 }
 
 export default function FactoryManagement() {
@@ -54,7 +54,17 @@ export default function FactoryManagement() {
     {key:'outletId',label:'Own outlet',render:row => outletLabel(row.outletId,outlets)},
     {key:'customerName',label:'Customer',render:row => <><strong>{row.customerName || 'Not recorded'}</strong><br />{row.customerPhone}<br />{row.customerAddress}</>},
     {key:'createdByName',label:'Sales person'},
-    {key:'items',label:'Products / Complimentary',render:row => <div style={{display:'grid',gap:'0.75rem'}}>{(row.dispatchItems || row.items || []).map((item,index) => <div key={index}><FactoryOrderProduct order={row} item={item}/><small>Dispatched {item.dispatchedQty || 0} / {item.orderedQty} · Pending {Number(item.orderedQty)-Number(item.dispatchedQty || 0)}</small></div>)}</div>},
+    {key:'items',label:'Products',render:row => <div style={{display:'grid',gap:'0.75rem'}}>{(row.dispatchItems || row.items || []).filter(item=>!item.isComplimentary).map((item,index) => <div key={index}><FactoryOrderProduct order={row} item={item} compact/><small>Dispatched {item.dispatchedQty || 0} / {item.orderedQty} · Pending {Number(item.orderedQty)-Number(item.dispatchedQty || 0)}</small></div>)}</div>},
+    {key:'colours',label:'Colour',render:row => <div style={{display:'grid',gap:'.75rem',minWidth:140}}>{(row.dispatchItems || row.items || []).filter(item=>!item.isComplimentary).map((item,index)=>{
+      const specs=(row.salesSpecifications || []).filter(spec=>String(spec.productId || spec.product_id || '')===String(item.product_id || item.productId || ''));
+      return <div key={index}><small>{factoryProductName(row,item)}</small>{specs.length?specs.map((spec,i)=><div key={i}><strong>{String(spec.colour || '').trim() || 'Not specified'}</strong>{specs.length>1 && <> · Qty: {spec.quantity}{spec.size && <> · {spec.size}</>}</>}</div>):<div>{item.colour || 'Not specified'}</div>}</div>;
+    })}</div>},
+    {key:'complimentary',label:'Complimentary Items',render:row=>{
+      const items=(row.dispatchItems || []).filter(item=>item.isComplimentary);
+      const notes=row.unresolvedComplimentary || [];
+      const schemes=items.length || notes.length?[]:(row.items || []).flatMap(item=>factorySchemeDetails(row,item));
+      return <div style={{display:'grid',gap:'.75rem',minWidth:180}}>{items.map((item,index)=><div key={index}><strong>{item.productName || item.product_id}</strong><div>Qty: {item.orderedQty}</div><small>Dispatched {item.dispatchedQty || 0} · Pending {Number(item.orderedQty)-Number(item.dispatchedQty || 0)}</small></div>)}{notes.map((note,index)=><div key={`note-${index}`}>{note}<br/><small>Quantity needs confirmation</small></div>)}{schemes.map((entry,index)=><div key={`scheme-${index}`}>{entry.scheme}</div>)}{!items.length && !notes.length && !schemes.length && 'None'}</div>;
+    }},
     {key:'dispatchDate',label:'Dispatch date',render:row => row.dispatchDate || 'Not recorded'},
     {key:'status',label:'Status',render:row => ({PENDING:'Awaiting factory dispatch',PARTIALLY_DISPATCHED:'Partially dispatched',DISPATCHED:'Dispatched to customer'})[row.status] || row.status},
     {key:'actions',label:'Action',render:row => <Button variant="secondary" onClick={() => open(row)}>{row.status === 'DISPATCHED' ? 'View details / history' : 'View / Dispatch to customer'}</Button>},
