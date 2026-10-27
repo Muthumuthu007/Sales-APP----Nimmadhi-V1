@@ -12,3 +12,17 @@ test('unclassified groups remain separate and placeholders do not create groups'
  const groups=groupedProductOptions([{value:'',label:'Select product'},{value:'p',label:'Product',groupId:'unknown',group:'OTHERS'}]);
  assert.equal(groups.length,1);assert.equal(groups[0].name,'Needs classification');assert.equal(groups[0].groups[0].options.length,1);
 });
+
+test('order groups nest every level while preserving IDs and products at parent levels',async()=>{
+ const {orderGroupTree}=await import('./productHierarchy.js');
+ const tree=orderGroupTree([{name:'Mattress',groups:[
+  {id:'parent-id',label:'Mattress → 100D',options:[{value:'p'}]},
+  {id:'leaf-id',label:'Mattress → 100D → NIM 100D → Premium',options:[{value:'a'},{value:'b'}]},
+  {id:'other-id',label:'Mattress → Latex → Premium',options:[{value:'c'}]}
+ ]}]);
+ assert.equal(tree[0].count,4);
+ const density=tree[0].children.find(n=>n.label==='100D');
+ assert.equal(density.groups[0].id,'parent-id');
+ assert.equal(density.children[0].children[0].groups[0].id,'leaf-id');
+ assert.equal(tree[0].children.find(n=>n.label==='Latex').children[0].groups[0].id,'other-id');
+});

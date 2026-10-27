@@ -1,3 +1,4 @@
+import OrderGroupTree from '../components/OrderGroupTree';
 import {useSearchParams} from 'react-router-dom';
 import {saleProductName} from '../utils/saleProductName';
 import SalesBill from '../components/SalesBill';
@@ -1050,7 +1051,7 @@ const OutletView = () => {
                   <div className="order-builder-section-label"><span>1</span><div><strong>Production group</strong><small>Start with a collection</small></div></div>
                   <Input label="Search production groups" type="search" value={groupSearch} onChange={event=>setGroupSearch(event.target.value)} placeholder="Search group or subgroup name…" />
                   <div className="order-builder-categories">
-                    {matchingGroupCategories.map(main=><section className="order-builder-category" key={main.name}><strong>{main.name}</strong><div className="order-builder-group-grid">{main.groups.map(group=><button type="button" key={group.id} className={`order-builder-group ${selectedProductGroup===group.id?'selected':''}`} onClick={()=>{setSelectedProductGroup(group.id);setSelectedProduct('');}}><span>{group.label}</span><small>{group.options.length}</small></button>)}</div></section>)}
+                    <OrderGroupTree categories={matchingGroupCategories} selectedId={selectedProductGroup} search={groupSearch} onSelect={id=>{setSelectedProductGroup(id);setSelectedProduct('');}} />
                   </div>
                   {!matchingGroupCategories.length && <p role="status">No production groups match your search.</p>}
                 </section>

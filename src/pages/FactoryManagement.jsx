@@ -17,7 +17,7 @@ import {outletLabel} from '../utils/outlets';
 
 function FactoryOrderProduct({order,item}) {
  const schemes=factorySchemeDetails(order,item);
- return <div><OrderProduct item={item} name={factoryProductName(order,item)}/>{schemes.length>0 && <section style={{marginTop:'.5rem',padding:'.65rem',border:'1px solid var(--color-primary)',borderRadius:'.5rem',whiteSpace:'normal'}}><strong style={{color:'var(--color-primary)'}}>Complimentary items / sale scheme</strong>{schemes.map((entry,index)=><div key={index} style={{marginTop:'.35rem'}}>{entry.scheme}{schemes.length>1 && <small style={{display:'block'}}>For sale line quantity: {entry.quantity}</small>}</div>)}</section>}</div>;
+ return <div>{item.isComplimentary && <strong style={{color:'var(--color-primary)'}}>Complimentary · </strong>}<OrderProduct item={item} name={factoryProductName(order,item)}/>{schemes.length>0 && <section style={{marginTop:'.5rem',padding:'.65rem',border:'1px solid var(--color-primary)',borderRadius:'.5rem',whiteSpace:'normal'}}><strong style={{color:'var(--color-primary)'}}>Complimentary items / sale scheme</strong>{schemes.map((entry,index)=><div key={index} style={{marginTop:'.35rem'}}>{entry.scheme}{schemes.length>1 && <small style={{display:'block'}}>For sale line quantity: {entry.quantity}</small>}</div>)}</section>}</div>;
 }
 
 export default function FactoryManagement() {
@@ -36,10 +36,10 @@ export default function FactoryManagement() {
   useEffect(() => {fetchOutlets().then(data => setOutlets((data.outlets || []).filter(outlet => String(outlet.outletId).toUpperCase().startsWith('NIM')))).catch(() => setOutlets([]));},[]);
   const open = order => {
     setSelected(order);setDispatchError('');setDispatchId(crypto.randomUUID());
-    setQuantities(Object.fromEntries((order.items || []).map(item => [item.product_id, String(Number(item.orderedQty)-Number(item.dispatchedQty || 0))])));
+    setQuantities(Object.fromEntries((order.dispatchItems || order.items || []).map(item => [item.product_id, '0'])));
   };
   const dispatch = async () => {
-    const items = (selected.items || []).map(item => ({productId:item.product_id,quantity:Number(quantities[item.product_id] || 0)}));
+    const items = (selected.dispatchItems || selected.items || []).map(item => ({productId:item.product_id,quantity:Number(quantities[item.product_id] || 0)}));
     if (items.some(item => !Number.isInteger(item.quantity) || item.quantity < 0) || !items.some(item => item.quantity > 0)) {setDispatchError('Enter at least one positive whole dispatch quantity.');return;}
     setSaving(true);setDispatchError('');
     try {await dispatchFactoryCustomer(selected.orderId,{outletId:selected.outletId,dispatchId,items:items.filter(item => item.quantity>0)});setSelected(null);await load();}
@@ -51,7 +51,7 @@ export default function FactoryManagement() {
     {key:'outletId',label:'Own outlet',render:row => outletLabel(row.outletId,outlets)},
     {key:'customerName',label:'Customer',render:row => <><strong>{row.customerName || 'Not recorded'}</strong><br />{row.customerPhone}<br />{row.customerAddress}</>},
     {key:'createdByName',label:'Sales person'},
-    {key:'items',label:'Products / Complimentary',render:row => <div style={{display:'grid',gap:'0.75rem'}}>{(row.items || []).map((item,index) => <div key={index}><FactoryOrderProduct order={row} item={item}/><small>Dispatched {item.dispatchedQty || 0} / {item.orderedQty}</small></div>)}</div>},
+    {key:'items',label:'Products / Complimentary',render:row => <div style={{display:'grid',gap:'0.75rem'}}>{(row.dispatchItems || row.items || []).map((item,index) => <div key={index}><FactoryOrderProduct order={row} item={item}/><small>Dispatched {item.dispatchedQty || 0} / {item.orderedQty} · Pending {Number(item.orderedQty)-Number(item.dispatchedQty || 0)}</small></div>)}</div>},
     {key:'dispatchDate',label:'Dispatch date',render:row => row.dispatchDate || 'Not recorded'},
     {key:'status',label:'Status',render:row => ({PENDING:'Awaiting factory dispatch',PARTIALLY_DISPATCHED:'Partially dispatched',DISPATCHED:'Dispatched to customer'})[row.status] || row.status},
     {key:'actions',label:'Action',render:row => <Button variant="secondary" onClick={() => open(row)}>{row.status === 'DISPATCHED' ? 'View details / history' : 'View / Dispatch to customer'}</Button>},
@@ -68,11 +68,13 @@ export default function FactoryManagement() {
       {selected && <div style={{display:'grid',gap:'1rem'}}>
         <strong>{selected.customerName} · {selected.customerPhone}</strong><p>{selected.customerAddress}</p>
         <p>Outlet: {outletLabel(selected.outletId,outlets)} · Dispatch date: {selected.dispatchDate}</p>
-        {(selected.items || []).map(item => <div key={item.product_id}><FactoryOrderProduct order={selected} item={item}/><p>Ordered {item.orderedQty} · Dispatched {item.dispatchedQty || 0} · Remaining {Number(item.orderedQty)-Number(item.dispatchedQty || 0)}</p>{selected.status !== 'DISPATCHED' && <Input label="Quantity to dispatch to customer now" type="number" min="0" step="1" max={Number(item.orderedQty)-Number(item.dispatchedQty || 0)} value={quantities[item.product_id] || '0'} onChange={e=>setQuantities({...quantities,[item.product_id]:e.target.value})} disabled={saving} />}</div>)}
+        <p>Enter only the quantities leaving now. Leave other items at zero; they remain pending.</p>
+        {selected.unresolvedComplimentary?.length>0 && <p role="alert">Some saved scheme notes do not specify item quantities: {selected.unresolvedComplimentary.join('; ')}. These need confirmation before this order can be marked complete.</p>}
+        {(selected.dispatchItems || selected.items || []).map(item => <div key={item.product_id}><FactoryOrderProduct order={selected} item={item}/><p>Ordered {item.orderedQty} · Dispatched {item.dispatchedQty || 0} · Remaining {Number(item.orderedQty)-Number(item.dispatchedQty || 0)}</p>{selected.status !== 'DISPATCHED' && Number(item.orderedQty)>Number(item.dispatchedQty || 0) && <Input label="Quantity to dispatch to customer now" type="number" min="0" step="1" max={Number(item.orderedQty)-Number(item.dispatchedQty || 0)} value={quantities[item.product_id] || '0'} onChange={e=>setQuantities({...quantities,[item.product_id]:e.target.value})} disabled={saving} />}</div>)}
         {dispatchError && <p role="alert">{dispatchError}</p>}
         {selected.status !== 'DISPATCHED' && <Button onClick={dispatch} disabled={saving}>{saving ? 'Recording…':'Confirm factory dispatch to customer'}</Button>}
         <h4>Dispatch history</h4>
-        {(selected.dispatchHistory || []).map(event=><div key={event.dispatchId}><strong>{event.dispatchId}</strong><br />{event.dispatchedAt} · {event.dispatchedBy}<br />{event.items.map((item,index)=><div key={index}>{factoryProductName(selected,(selected.items || []).find(product=>product.product_id===item.productId) || {productId:item.productId,productName:item.productId})}: {item.quantity}<ProductMrp item={item}/></div>)}</div>)}
+        {(selected.dispatchHistory || []).map(event=><div key={event.dispatchId}><strong>{event.dispatchId}</strong><br />{event.dispatchedAt} · {event.dispatchedBy}<br />{(event.itemDetails || event.items).map((item,index)=><div key={index}>{item.isComplimentary?'Complimentary · ':''}{item.productName || factoryProductName(selected,(selected.dispatchItems || selected.items || []).find(product=>product.product_id===item.productId) || {productId:item.productId,productName:item.productId})}: {item.quantity}<ProductMrp item={item}/></div>)}</div>)}
       </div>}
     </Modal>
   </div>;
