@@ -1,3 +1,4 @@
+import StockMovementReport from './StockMovementReport';
 import StallStockIn from './StallStockIn';
 import OwnSalesRecords from './OwnSalesRecords';
 import PaymentBreakdown from '../components/PaymentBreakdown';
@@ -84,7 +85,7 @@ const OutletView = () => {
     { id: 'DUE_CUSTOMERS', label: 'Pending Payments' },
     { id: 'REPORTS', label: 'Reports' },
   ];
-  const tabs = isStall?[{id:'STOCK_IN',label:'Stock In / Return'},{id:'SALES',label:'Sales Entry'},{id:'STOCK',label:'Stock View'}]:(['OUTLET', 'EMPLOYEE', 'CASHIER', 'SUPERVISOR'].includes(role) ? employeeTabs : outletTabs).filter(tab => (tab.id !== 'SALES' || isGodown === false)).concat(isGodown ? [{id:'ASSIGNED_DISPATCH',label:'Dispatch Assigned Orders'},{id:'PRODUCT_IN',label:'Temporary Stocks'},{id:'SALES_OUT',label:'Sales Out'}] : []).filter(tab => tab.id !== 'DUE_CUSTOMERS').concat(!isGodown && String(outletId).toUpperCase().startsWith('NIM')?[{id:'SALES_RECORDS',label:'Sales Records'}]:[]).concat([{id:'AFTER_SALES',label:'After-sales'}]);
+  const tabs = isStall?[{id:'STOCK_IN',label:'Stock In / Return'},{id:'SALES',label:'Sales Entry'},{id:'STOCK',label:'Stock View'},{id:'REPORTS',label:'Reports'}]:(['OUTLET', 'EMPLOYEE', 'CASHIER', 'SUPERVISOR'].includes(role) ? employeeTabs : outletTabs).filter(tab => (tab.id !== 'SALES' || isGodown === false)).concat(isGodown ? [{id:'ASSIGNED_DISPATCH',label:'Dispatch Assigned Orders'},{id:'PRODUCT_IN',label:'Temporary Stocks'},{id:'SALES_OUT',label:'Sales Out'}] : []).filter(tab => tab.id !== 'DUE_CUSTOMERS').concat(!isGodown && String(outletId).toUpperCase().startsWith('NIM')?[{id:'SALES_RECORDS',label:'Sales Records'}]:[]).concat([{id:'AFTER_SALES',label:'After-sales'}]);
 
   const availableModuleIds=tabs.map(tab=>tab.id).join(',');
   useEffect(()=>{if(requestedModule && availableModuleIds.split(',').includes(requestedModule))setActiveTab(requestedModule);},[requestedModule,availableModuleIds]);
@@ -203,6 +204,13 @@ const OutletView = () => {
 
   // --- Stock View State ---
   const [stockItems, setStockItems] = useState([]);
+  const [stockDay,setStockDay]=useState(businessDate);
+  useEffect(()=>{
+    const updateDay=()=>setStockDay(businessDate());
+    const timer=setInterval(updateDay,60000);
+    window.addEventListener('focus',updateDay);
+    return ()=>{clearInterval(timer);window.removeEventListener('focus',updateDay);};
+  },[]);
   const [stockReload, setStockReload] = useState(0);
   const [stockLoading, setStockLoading] = useState(false);
   const [stockError, setStockError] = useState(null);
@@ -847,7 +855,7 @@ const OutletView = () => {
     }
     
     return () => { isMounted = false; };
-  }, [activeTab, outletId, productNameById, isGodown, stockReload]);
+  }, [activeTab, outletId, productNameById, isGodown, stockReload,stockDay]);
 
   const openManualReceipt = (order) => {
     setReceiptTarget(order);
@@ -1217,7 +1225,7 @@ const OutletView = () => {
 
         {activeTab === 'STOCK' && (
           <Card>
-            <CardHeader title={isGodown ? "Current godown stock" : "Current Inventory & Stock Flow"} action={isGodown ? <Button variant="secondary" disabled={stockLoading} onClick={() => setStockReload(value => value + 1)}>Refresh current stock</Button> : undefined} />
+            <CardHeader title={isGodown ? "Current godown stock" : `Available Stock · ${stockDay}`} action={isGodown ? <Button variant="secondary" disabled={stockLoading} onClick={() => setStockReload(value => value + 1)}>Refresh current stock</Button> : <Button variant="secondary" disabled={stockLoading} onClick={()=>setStockReload(value=>value+1)}>Refresh today’s stock</Button>} />
             {isGodown && <div style={{padding:'1rem 1.5rem'}}><Select label="Stock display" value={godownStockView} onChange={event => setGodownStockView(event.target.value)} options={[{value:'CURRENT',label:'Current stock'},{value:'FLOW',label:'Stock flow details'}]} /><p>Current stock is the quantity physically remaining after dispatches. Available quantity excludes stock reserved for assigned orders. Temporary outlet goods are listed separately below.</p></div>}
             <CardContent style={{ padding: 0 }}>
               {stockLoading ? (
@@ -1231,7 +1239,11 @@ const OutletView = () => {
               ) : (
                 <GroupedStockTable
                   catalogue={productOptions}
-                  columns={isGodown && godownStockView === 'CURRENT' ? [
+                  columns={!isGodown ? [
+                    {key:'productName',label:'Product'},
+                    {key:'mappedMrp',label:'MRP',render:row=><ProductMrp item={row} label={false}/>},
+                    {key:'availableQty',label:'Available Quantity',render:row=>Math.max(0,Number(row.closingQty || 0)-Number(row.reservedQty || 0))},
+                  ] : godownStockView === 'CURRENT' ? [
                     {key:'productName',label:'Product',render:row=>row.productName || 'Product name unavailable'},
                     {key:'mappedMrp',label:'MRP',render:row=><ProductMrp item={row} label={false}/>},
                     {key:'closingQty',label:'Current Stock',align:'center',render:row=>Number(row.closingQty || 0)},
@@ -1244,10 +1256,11 @@ const OutletView = () => {
                     { key: 'openingQty', label: 'Opening', align: 'center', render: (row) => row.openingQty || 0 },
                     { key: 'receivedQty', label: 'Received', align: 'center', render: (row) => row.receivedQty || 0 },
                     { key: 'soldQty', label: 'Sold', align: 'center', render: (row) => row.soldQty || 0 },
+                    { key: 'transferOutQty', label: 'Transferred Out', align: 'center', render: row => row.transferOutQty || 0 },
                     { key: 'closingQty', label: 'Closing', align: 'center', render: (row) => row.closingQty || 0 },
-                    { key: 'lastUpdated', label: 'Last Updated', render: (row) => row.lastUpdated ? new Date(row.lastUpdated).toLocaleDateString() : '-' }
+                    { key: 'lastUpdated', label: isGodown?'Last Updated':'Stock Date', render: (row) => row.lastUpdated ? new Date(row.lastUpdated).toLocaleDateString() : '-' }
                   ]} 
-                  data={stockItems}
+                  data={isGodown?stockItems:stockItems.filter(row=>Number(row.closingQty || 0)-Number(row.reservedQty || 0)>0)}
                   emptyStateMessage="No tracked operational inventory found."
                 />
               )}
@@ -1441,8 +1454,9 @@ const OutletView = () => {
         {activeTab === 'REPORTS' && isGodown && <GodownReports />}
         {activeTab === 'REPORTS' && isGodown === false && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%' }}>
-            {reportView === 'list' ? (
+            {isStall || reportView==='stock' ? <StockMovementReport outletId={outletId} catalogue={productOptions} onBack={isStall?undefined:()=>setReportView('list')}/> : reportView === 'list' ? (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
+                <Card><CardContent><h3>Stock Movement Report</h3><p>Date-wise opening, received, sold, transferred-out and closing stock.</p><Button onClick={()=>setReportView('stock')}>Open stock report</Button></CardContent></Card>
                 <Card 
                   style={{ cursor: 'pointer', backgroundColor: 'var(--color-bg)' }} 
                   onClick={() => { setReportView('daily'); setReportData(null); setReportError(null); }}
