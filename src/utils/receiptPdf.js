@@ -1,6 +1,7 @@
 export function receiptPdfName(receipt) {
  const reference=String(receipt.billNo || receipt.workOrderNo || receipt.saleReferenceId || 'receipt').replace(/[^a-zA-Z0-9_-]/g,'-').slice(0,90);
- return `Nimmadhi-${reference}.pdf`;
+ const collection=receipt.paymentId?`-payment-${String(receipt.paymentId).replace(/[^a-zA-Z0-9_-]/g,'-').slice(0,45)}`:'';
+ return `Nimmadhi-${reference}${collection}.pdf`;
 }
 export function pageSlices(height,pageHeight,boundaries=[]) {
  const pages=[];let top=0;
