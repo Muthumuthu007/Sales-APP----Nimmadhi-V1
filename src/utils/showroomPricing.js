@@ -31,3 +31,7 @@ export function showroomItemForProduct(current, option) {
   return {...current, model: name, size: size ? size[0].replace(/[xX]/g, ' × ') : '',
     mrpSticker: option?.mrpSticker == null ? '' : String(option.mrpSticker)};
 }
+
+export function requiredShowroomFields(option) {
+ return option?.isAccessory ? ['brand','model'] : ['brand','model','colour','size'];
+}

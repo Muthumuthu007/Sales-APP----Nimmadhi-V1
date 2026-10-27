@@ -50,3 +50,10 @@ test('round final invoice to nearest rupee after discount, half up', () => {
  }
  assert.equal(showroomBillPrice('35001.45','1').netBillAmount,35000);
 });
+
+test('only catalogue-classified accessories allow missing size and colour',async()=>{
+ const {requiredShowroomFields}=await import('./showroomPricing.js');
+ assert.deepEqual(requiredShowroomFields({isAccessory:true}),['brand','model']);
+ assert.ok(requiredShowroomFields({isAccessory:false}).includes('size'));
+ assert.ok(requiredShowroomFields({label:'Accessory named mattress'}).includes('colour'));
+});

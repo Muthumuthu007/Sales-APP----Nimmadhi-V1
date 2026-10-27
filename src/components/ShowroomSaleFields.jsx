@@ -6,7 +6,7 @@ import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { showroomPrice } from '../utils/showroomPricing';
 import './ShowroomSaleFields.css';
-export default function ShowroomSaleFields({ item, onChange, quantity }) {
+export default function ShowroomSaleFields({ item, onChange, quantity, isAccessory=false }) {
   const [accessories, setAccessories] = useState([]);
   const [selectedAccessory, setSelectedAccessory] = useState('');
   const [accessoryQuantity, setAccessoryQuantity] = useState('1');
@@ -37,7 +37,7 @@ export default function ShowroomSaleFields({ item, onChange, quantity }) {
   return <div className="showroom-sale-fields">
     <div className="showroom-sale-grid">
       {field('brand', 'Brand', { maxLength: 80 })}{field('model', 'Model', { maxLength: 200 })}
-      {field('colour', 'Colour', { placeholder: 'e.g. Red', maxLength: 80 })}{field('size', 'Size (inches)', { placeholder: 'e.g. 78 × 84 × 6', maxLength: 80 })}
+      {field('colour', isAccessory?'Colour (optional)':'Colour', { placeholder: 'e.g. Red', maxLength: 80 })}{field('size', isAccessory?'Size (optional)':'Size (inches)', { placeholder: 'e.g. 78 × 84 × 6', maxLength: 80 })}
       {field('mrpSticker', 'Sticker MRP per unit (₹)', { type: 'number', min: '0.01', step: '0.01' })}
       {field('discountPercent', 'Discount (%)', { type: 'number', min: '0', max: '99.99', step: '0.01' })}
       {field('taxPercent', 'Included tax (%)', { type: 'number', min: '0', max: '100', step: '0.01' })}

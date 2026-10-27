@@ -1,6 +1,7 @@
 import PaymentBreakdown from '../components/PaymentBreakdown';
 import PaymentSplitInput from '../components/PaymentSplitInput';
 import {splitPayments,paymentDescription} from '../utils/paymentSplits';
+import {requiredShowroomFields} from '../utils/showroomPricing';
 import OrderGroupTree from '../components/OrderGroupTree';
 import {useSearchParams} from 'react-router-dom';
 import {saleProductName} from '../utils/saleProductName';
@@ -273,8 +274,8 @@ const OutletView = () => {
       setSalesValidationErrors(['Quantity must be greater than zero']);
       return;
     }
-    if (ownedShowroomSales && (!['brand', 'model', 'colour', 'size'].every(key => showroomItem[key].trim()) || !showroomPrice({ ...showroomItem, quantity: Number(salesQuantity) })?.value)) {
-      const fields = ['brand','model','colour','size'].filter(key => !showroomItem[key].trim()).map(key => ({brand:'Brand',model:'Model',colour:'Colour',size:'Size'})[key]);
+    if (ownedShowroomSales && (!requiredShowroomFields(salesProductOptions.find(option=>option.value===salesProduct)).every(key => showroomItem[key].trim()) || !showroomPrice({ ...showroomItem, quantity: Number(salesQuantity) })?.value)) {
+      const fields = requiredShowroomFields(salesProductOptions.find(option=>option.value===salesProduct)).filter(key => !showroomItem[key].trim()).map(key => ({brand:'Brand',model:'Model',colour:'Colour',size:'Size'})[key]);
       if (!showroomItem.mrpSticker || Number(showroomItem.mrpSticker) <= 0) fields.push('Sticker MRP');
       if (showroomItem.discountPercent === '' || Number(showroomItem.discountPercent) < 0 || Number(showroomItem.discountPercent) > 99.99) fields.push('Discount percentage');
       if (showroomItem.taxPercent === '' || Number(showroomItem.taxPercent) < 0 || Number(showroomItem.taxPercent) > 100) fields.push('Tax percentage');
@@ -991,29 +992,6 @@ const OutletView = () => {
     .map(offerSummary)
     .join(' | ') || '-';
 
-  const sendReceiptToCustomer = async () => {
-    if (!receipt) return;
-    const text = [
-      'NIMMADHI MATTRESS',
-      `Invoice: ${receipt.saleReferenceId || '-'}`,
-      `Customer: ${receipt.customerName}`,
-      `Cash discount: ${formatCurrency(receipt.cashDiscount || 0)}`,
-      `Bill amount: ${formatCurrency(receipt.billAmount)}`,
-      `Paid now: ${formatCurrency(receipt.advanceAmount)}`,
-      `Balance due: ${formatCurrency(receipt.balanceDue)}`,
-      `Payment method: ${receipt.paymentMethod}${receipt.paymentBreakdown ? " · "+paymentDescription(Object.entries(receipt.paymentBreakdown).map(([paymentMethod,amount])=>({paymentMethod,amount}))) : ""}`,
-      'Thank you for choosing Nimmadhi Mattress.',
-    ].join('\n');
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: 'Nimmadhi Mattress invoice', text });
-        return;
-      } catch (error) {
-        if (error?.name === 'AbortError') return;
-      }
-    }
-    window.location.href = `sms:${receipt.customerPhone}?body=${encodeURIComponent(text)}`;
-  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -1318,7 +1296,7 @@ const OutletView = () => {
                   <GroupedProductPicker label="Sale product" options={salesProductOptions.map(option=>option.value ? {...option,label:`${option.label} — Outlet stock: ${availableStockLabel(option.value)}`} : option)} value={salesProduct} onChange={val => { setSalesProduct(val); setShowroomItem(current => showroomItemForProduct(current, salesProductOptions.find(option => option.value === val))); }} placeholder="Search products and outlet stock…" />
                   {salesProduct && <div role="status" className="sales-product-mrp" style={{padding:'0.75rem 1rem',marginBottom:'1rem',border:'1px solid var(--color-primary)',borderRadius:'0.75rem'}}><strong>Product MRP</strong><ProductMrp item={salesProductOptions.find(option=>option.value===salesProduct) || {productId:salesProduct}} label={false}/></div>}
                   {ownedShowroomSales && salesProduct && <Select label="Delivery source for this product" value={salesFulfillmentMode} onChange={e => setSalesFulfillmentMode(e.target.value)} options={[{value:'',label:'Choose delivery option'},{value:'LOCAL_STOCK',label:'Needed immediately — deliver from outlet stock'},{value:'FACTORY_DELIVERY',label:'Factory dispatch directly to customer'}]} />}
-                  {ownedShowroomSales && salesProduct && <ShowroomSaleFields item={showroomItem} onChange={setShowroomItem} quantity={Number(salesQuantity)} />}
+                  {ownedShowroomSales && salesProduct && <ShowroomSaleFields isAccessory={Boolean(salesProductOptions.find(option=>option.value===salesProduct)?.isAccessory)} item={showroomItem} onChange={setShowroomItem} quantity={Number(salesQuantity)} />}
                   {salesProduct && <p role="status"><strong>Available in this outlet: {availableStockLabel(salesProduct)}</strong></p>}
                   {salesStockStatus==='error' && <Button variant="secondary" onClick={()=>setSalesStockRefresh(value=>value+1)}>Refresh outlet stock</Button>}
                   <div className="sales-builder-add-row">
@@ -1431,7 +1409,7 @@ const OutletView = () => {
 
         <Modal className="sales-invoice-dialog" isOpen={Boolean(receipt)} onClose={() => setReceipt(null)} title="Sales invoice">
           {receipt && (
-            <SalesBill receipt={receipt} onSend={sendReceiptToCustomer} offerSummary={offerSummary}/>
+            <SalesBill receipt={receipt} offerSummary={offerSummary}/>
           )}
         </Modal>
 
