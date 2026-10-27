@@ -1,3 +1,4 @@
+import OwnSalesRecords from './OwnSalesRecords';
 import PaymentBreakdown from '../components/PaymentBreakdown';
 import PaymentSplitInput from '../components/PaymentSplitInput';
 import {splitPayments,paymentDescription} from '../utils/paymentSplits';
@@ -78,7 +79,7 @@ const OutletView = () => {
     { id: 'DUE_CUSTOMERS', label: 'Pending Payments' },
     { id: 'REPORTS', label: 'Reports' },
   ];
-  const tabs = (['OUTLET', 'EMPLOYEE', 'CASHIER', 'SUPERVISOR'].includes(role) ? employeeTabs : outletTabs).filter(tab => (tab.id !== 'SALES' || isGodown === false)).concat(isGodown ? [{id:'ASSIGNED_DISPATCH',label:'Dispatch Assigned Orders'},{id:'PRODUCT_IN',label:'Temporary Stocks'},{id:'SALES_OUT',label:'Sales Out'}] : []).filter(tab => tab.id !== 'DUE_CUSTOMERS').concat([{id:'AFTER_SALES',label:'After-sales'}]);
+  const tabs = (['OUTLET', 'EMPLOYEE', 'CASHIER', 'SUPERVISOR'].includes(role) ? employeeTabs : outletTabs).filter(tab => (tab.id !== 'SALES' || isGodown === false)).concat(isGodown ? [{id:'ASSIGNED_DISPATCH',label:'Dispatch Assigned Orders'},{id:'PRODUCT_IN',label:'Temporary Stocks'},{id:'SALES_OUT',label:'Sales Out'}] : []).filter(tab => tab.id !== 'DUE_CUSTOMERS').concat(!isGodown && String(outletId).toUpperCase().startsWith('NIM')?[{id:'SALES_RECORDS',label:'Sales Records'}]:[]).concat([{id:'AFTER_SALES',label:'After-sales'}]);
 
   const availableModuleIds=tabs.map(tab=>tab.id).join(',');
   useEffect(()=>{if(requestedModule && availableModuleIds.split(',').includes(requestedModule))setActiveTab(requestedModule);},[requestedModule,availableModuleIds]);
@@ -998,6 +999,7 @@ const OutletView = () => {
       <div className="outlet-current-module"><strong>{tabs.find(tab=>tab.id===activeTab)?.label || 'Outlet Operations'}</strong><small>Switch using the ☰ Modules menu</small></div>
 
       <div>
+        {activeTab === 'SALES_RECORDS' && <OwnSalesRecords outletId={outletId}/>}
         {activeTab === 'AFTER_SALES' && <AfterSales godownMode={Boolean(isGodown)} />}
         {activeTab === 'ASSIGNED_DISPATCH' && isGodown && <DispatchPlans godownMode />}
         {activeTab === 'PRODUCT_IN' && isGodown && <GodownCustody />}
