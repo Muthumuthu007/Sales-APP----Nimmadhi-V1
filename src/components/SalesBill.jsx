@@ -11,7 +11,7 @@ export default function SalesBill({receipt,offerSummary}) {
  const [pdf,setPdf]=useState(null),[pdfError,setPdfError]=useState(''),[pdfStatus,setPdfStatus]=useState(''),[sending,setSending]=useState(false),[retry,setRetry]=useState(0);
  useEffect(()=>{
   let active=true;setPdf(null);setPdfError('');setPdfStatus('');
-  createReceiptPdf(billRef.current,receipt).then(file=>{if(active)setPdf(file);}).catch(()=>{if(active)setPdfError('Unable to prepare the PDF. Please retry, or use Print bill / Save PDF.');});
+  createReceiptPdf(billRef.current,receipt).then(file=>{if(active)setPdf(file);}).catch(()=>{if(active)setPdfError('Unable to prepare the PDF. Please retry, or use Print receipt.');});
   return ()=>{active=false;};
  },[receipt,retry]);
  const sendPdf=async()=>{
@@ -25,7 +25,16 @@ export default function SalesBill({receipt,offerSummary}) {
  const mrp=priced?items.reduce((sum,item)=>sum+Number(item.mrpSticker || 0)*Number(item.quantity || 0),0):null;
  const gross=Number(receipt.grossBillAmount ?? receipt.billAmount ?? 0);
  const productDiscount=mrp==null?null:Math.max(0,mrp-gross);
- return <article ref={billRef} className="paper-sales-bill">
+ return <div className="sales-receipt-view">
+  <div className="paper-bill-actions" role="toolbar" aria-label="Receipt actions">
+   <Button disabled={!pdf || sending} onClick={()=>{downloadReceiptPdf(pdf);setPdfStatus('Receipt PDF downloaded.');}}>Download receipt PDF</Button>
+   <Button variant="secondary" onClick={()=>window.print()}>Print receipt</Button>
+   <Button variant="secondary" disabled={!pdf || sending} onClick={sendPdf}>{sending?'Sharing…':'Send receipt PDF'}</Button>
+   {!pdf && !pdfError && <p role="status">Preparing receipt PDF… You can print now.</p>}
+   {pdfError && <><p role="alert">{pdfError}</p><Button variant="secondary" onClick={()=>setRetry(value=>value+1)}>Retry PDF</Button></>}
+   {pdfStatus && <p role="status">{pdfStatus}</p>}
+  </div>
+  <article ref={billRef} className="paper-sales-bill">
   <header className="paper-bill-header"><div><h2>NIMMADHI MATTRESS</h2><p>Customer order &amp; payment receipt</p></div><div>No. <strong>{receipt.billNo || receipt.workOrderNo || receipt.factoryOrderDisplayId || receipt.saleReferenceId || '—'}</strong></div></header>
   <div className="paper-bill-top">
    <section><h3>Order details</h3><dl><dt>Date of order</dt><dd>{date(receipt.saleDate)}</dd><dt>Expected delivery</dt><dd>{date(receipt.dispatchDate)}</dd><dt>Work order</dt><dd>{receipt.workOrderNo || receipt.factoryOrderDisplayId || '—'}</dd><dt>Sales person</dt><dd>{receipt.createdByName || '—'}</dd></dl></section>
@@ -37,6 +46,6 @@ export default function SalesBill({receipt,offerSummary}) {
   <section><h3>Compliments &amp; freebies</h3>{items.some(item=>item.scheme) && <p>{items.filter(item=>item.scheme).map(item=>item.scheme).join('; ')}</p>}{(receipt.eligibleOffers || []).filter(offer=>Number(offer.freeQuantity)>0).map((offer,i)=><p key={i}>{offerSummary(offer)}</p>)}{!items.some(item=>item.scheme) && !(receipt.eligibleOffers || []).some(offer=>Number(offer.freeQuantity)>0) && <p>None</p>}</section>
   <section><h3>Authorization</h3><p>Special instructions: {receipt.specialInstructions || '—'}</p><div className="paper-bill-signatures"><span>Showroom staff signature</span><span>Customer signature</span></div></section>
   <footer>Please ensure all details are correct. Retain this receipt for your records.<br/>Reference: {receipt.saleReferenceId || '—'}</footer>
-  <div className="paper-bill-actions"><Button variant="secondary" onClick={()=>window.print()}>Print bill / Save PDF</Button><Button variant="secondary" disabled={!pdf || sending} onClick={()=>downloadReceiptPdf(pdf)}>Download PDF</Button><Button disabled={!pdf || sending} onClick={sendPdf}>{sending?'Sharing…':pdf?'Send receipt PDF':'Preparing PDF…'}</Button>{pdfError && <><p role="alert">{pdfError}</p><Button variant="secondary" onClick={()=>setRetry(value=>value+1)}>Retry PDF</Button></>}{pdfStatus && <p role="status">{pdfStatus}</p>}</div>
- </article>;
+ </article>
+ </div>;
 }
