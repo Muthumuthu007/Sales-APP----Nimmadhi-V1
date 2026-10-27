@@ -15,6 +15,7 @@ const Sidebar = ({ isOpen, onClose }) => {
   const managerLinks = [
     { to: '/dashboard', icon: <LayoutDashboard size={20} />, label: 'Dashboard' },
     { to: '/factory-management', icon: <Factory size={20} />, label: 'Factory Management' },
+    { to: '/pending-payments', icon: <CreditCard size={20} />, label: 'Pending Payments' },
     { to: '/after-sales', icon: <ClipboardCheck size={20} />, label: 'After-sales' },
     { to: '/orders', icon: <ShoppingCart size={20} />, label: 'Orders' },
     { to: '/load-plans', icon: <CalendarDays size={20} />, label: 'Load Plans' },

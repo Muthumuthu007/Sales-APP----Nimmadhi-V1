@@ -35,7 +35,15 @@ test('Outlet Dashboard can be granted independently of outlet management',()=>{
 test('every assignable manager menu destination has its own permission option',async()=>{
  const {readFile}=await import('node:fs/promises');
  const sidebar=await readFile(new URL('../components/ui/Sidebar.jsx',import.meta.url),'utf8');
- const menu=sidebar.match(/const managerLinks = \[([\s\S]*?)\n  \];/)[1];
+ const menu=sidebar.match(/const managerLinks = \[([\s\S]*?)\n {2}\];/)[1];
  const routes=[...menu.matchAll(/to: '([^']+)'/g)].map(match=>match[1]).filter(route=>route!=='/admin-management');
  assert.deepEqual(new Set(adminModules.map(([, ,route])=>route)),new Set(routes));
+});
+
+test('payment-only admin sees payment module without factory dispatch access',()=>{
+ const access={restricted:true,modules:['PENDING_PAYMENTS']};
+ assert.equal(firstAdminPath(access),'/pending-payments');
+ assert.equal(canAccessAdminPath(access,'/pending-payments'),true);
+ assert.equal(canAccessAdminPath(access,'/factory-management'),false);
+ assert.equal(canAccessAdminPath({restricted:true,modules:['FACTORY_MANAGEMENT']},'/pending-payments'),false);
 });

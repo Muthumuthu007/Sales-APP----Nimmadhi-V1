@@ -1,3 +1,4 @@
+import FactoryPendingPayments from './pages/FactoryPendingPayments';
 import OutletDashboard from './pages/OutletDashboard';
 import AfterSales from './pages/AfterSales';
 import {ProductMrpProvider} from './context/ProductMrpContext';
@@ -60,6 +61,7 @@ function App() {
             <Route index element={<RootRedirect />} />
             
             {/* MANAGER ROUTES */}
+            <Route path="pending-payments" element={<ProtectedRoute allowedRoles={['MANAGER']}><FactoryPendingPayments /></ProtectedRoute>} />
             <Route path="admin-management" element={<ProtectedRoute allowedRoles={['MANAGER']}><ScopedAdminManagement /></ProtectedRoute>} />
             <Route path="after-sales" element={<ProtectedRoute allowedRoles={['MANAGER']}><AfterSales /></ProtectedRoute>} />
             <Route path="factory-management" element={<ProtectedRoute allowedRoles={['MANAGER']}><FactoryManagement /></ProtectedRoute>} />

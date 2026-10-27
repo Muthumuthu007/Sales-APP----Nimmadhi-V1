@@ -63,7 +63,7 @@ export default function FactoryManagement() {
       <Select label="Own outlet" value={outletId} onChange={event => setOutletId(event.target.value)} options={[{value:'',label:'All own outlets'},...outlets.map(outlet => ({value:outlet.outletId,label:outletLabel(outlet.outletId,outlets)}))]} />
     </CardContent></Card>
     <div style={{display:'flex',gap:'0.75rem',flexWrap:'wrap'}}>{[['PENDING','Awaiting dispatch'],['PARTIALLY_DISPATCHED','Partial dispatch'],['DISPATCHED','Dispatched to customer'],['PAYMENTS','Pending Payments'],['AFTER_SALES','After-sales factory work']].map(([id,label]) => <Button key={id} variant={tab===id ? 'primary':'secondary'} onClick={() => setTab(id)}>{label}{!['PAYMENTS','AFTER_SALES'].includes(id) && ` (${orders.filter(order=>order.status===id).length})`}</Button>)}</div>
-    {tab==='AFTER_SALES' ? <AfterSales factoryMode /> : tab==='PAYMENTS' ? <FactoryPendingPayments /> : loading ? <LoadingState message="Loading direct customer orders…" /> : error ? <ErrorState error={error} onRetry={load} /> : <Card><CardContent><Table columns={columns} data={orders.filter(order=>order.status===tab)} emptyStateMessage="No direct customer orders in this stage." /></CardContent></Card>}
+    {tab==='AFTER_SALES' ? <AfterSales factoryMode /> : tab==='PAYMENTS' ? <FactoryPendingPayments readOnly /> : loading ? <LoadingState message="Loading direct customer orders…" /> : error ? <ErrorState error={error} onRetry={load} /> : <Card><CardContent><Table columns={columns} data={orders.filter(order=>order.status===tab)} emptyStateMessage="No direct customer orders in this stage." /></CardContent></Card>}
     <Modal isOpen={Boolean(selected)} onClose={() => !saving && setSelected(null)} title={`Factory → Customer · ${selected?.displayId || ''}`}>
       {selected && <div style={{display:'grid',gap:'1rem'}}>
         <strong>{selected.customerName} · {selected.customerPhone}</strong><p>{selected.customerAddress}</p>
@@ -72,7 +72,7 @@ export default function FactoryManagement() {
         {dispatchError && <p role="alert">{dispatchError}</p>}
         {selected.status !== 'DISPATCHED' && <Button onClick={dispatch} disabled={saving}>{saving ? 'Recording…':'Confirm factory dispatch to customer'}</Button>}
         <h4>Dispatch history</h4>
-        {(selected.dispatchHistory || []).map(event=><div key={event.dispatchId}><strong>{event.dispatchId}</strong><br />{event.dispatchedAt} · {event.dispatchedBy}<br />{event.items.map((item,index)=><div key={index}>{(selected.items || []).find(product=>product.product_id===item.productId)?.productName || item.productId}: {item.quantity}<ProductMrp item={item}/></div>)}</div>)}
+        {(selected.dispatchHistory || []).map(event=><div key={event.dispatchId}><strong>{event.dispatchId}</strong><br />{event.dispatchedAt} · {event.dispatchedBy}<br />{event.items.map((item,index)=><div key={index}>{factoryProductName(selected,(selected.items || []).find(product=>product.product_id===item.productId) || {productId:item.productId,productName:item.productId})}: {item.quantity}<ProductMrp item={item}/></div>)}</div>)}
       </div>}
     </Modal>
   </div>;
