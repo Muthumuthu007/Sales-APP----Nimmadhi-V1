@@ -1,3 +1,4 @@
+import PaymentBreakdown from './PaymentBreakdown';
 import {saleProductName} from '../utils/saleProductName';
 import React,{useMemo} from 'react';
 import {Table} from './ui/Table';
@@ -22,7 +23,7 @@ export default function InvoiceSalesReport({rows,complimentarySummary}) {
    {key:'scheme',label:'Scheme',render:item=>item.scheme || complimentarySummary(item.eligibleOffers)},
    {key:'taxPercent',label:'Included tax',render:item=>item.taxPercent==null?'—':`${item.taxPercent}%`},
   ]} data={r.items}/></details>},
-  {key:'paymentMethod',label:'Payment method'},
+  {key:'paymentMethod',label:'Payment method',render:r=><>{r.paymentMethod}<PaymentBreakdown amounts={r.paymentBreakdown}/></>},
   {key:'billAmount',label:'Invoice total',render:r=>money(r.billAmount)},
   {key:'advanceAmount',label:'Received',render:r=>money(r.advanceAmount)},
   {key:'balanceDue',label:'Pending',render:r=>money(r.balanceDue)},

@@ -1,3 +1,6 @@
+import PaymentBreakdown from '../components/PaymentBreakdown';
+import PaymentSplitInput from '../components/PaymentSplitInput';
+import {splitPayments,paymentDescription} from '../utils/paymentSplits';
 import OrderGroupTree from '../components/OrderGroupTree';
 import {useSearchParams} from 'react-router-dom';
 import {saleProductName} from '../utils/saleProductName';
@@ -232,6 +235,8 @@ const OutletView = () => {
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('CASH');
+  const [advanceSplit,setAdvanceSplit]=useState({});
+  const [settlementSplit,setSettlementSplit]=useState({});
   const [billAmount, setBillAmount] = useState('');
   const [advanceAmount, setAdvanceAmount] = useState('');
   const [cashDiscount, setCashDiscount] = useState('');
@@ -310,6 +315,7 @@ const OutletView = () => {
     if (missing.length) { setSalesValidationErrors(missing); return; }
     const parsedBillAmount = grossAmount;
     const parsedAdvanceAmount = Number(advanceAmount || 0);
+    if(paymentMethod==='SPLIT' && (!splitPayments(advanceSplit)?.payments.length || splitPayments(advanceSplit).total!==parsedAdvanceAmount)){setSalesError('Enter valid split amounts equal to the advance received.');return;}
     if (ownedShowroomSales && (!Number.isFinite(parsedBillAmount) || parsedBillAmount <= 0 || !Number.isFinite(enteredDiscount) || enteredDiscount < 0 || calculatedExtraDiscount >= parsedBillAmount || !Number.isFinite(parsedAdvanceAmount) || parsedAdvanceAmount < 0 || parsedAdvanceAmount > netBillAmount)) {
       const errors = [];
       if (!Number.isFinite(parsedBillAmount) || parsedBillAmount <= 0) errors.push('Bill amount must be greater than zero');
@@ -329,7 +335,7 @@ const OutletView = () => {
         date: salesDate,
         ...(ownedShowroomSales ? {
           customerName: customerName.trim(), customerPhone: customerPhone.trim(), customerAddress: customerAddress.trim(),
-          paymentMethod, billAmount: parsedBillAmount, pricingMode: 'MRP_DISCOUNT',
+          paymentMethod, ...(paymentMethod==='SPLIT'?{payments:splitPayments(advanceSplit)?.payments || []}:{}), billAmount: parsedBillAmount, pricingMode: 'MRP_DISCOUNT',
           ...saleDetails, dispatchDate: saleDetails.dispatchDate || null, advanceAmount: parsedAdvanceAmount,
           extraDiscountType, cashDiscount: cashDiscount || '0', extraDiscountValue: 0, extraDiscountReason: extraDiscountReason.trim(),
         } : {entryMode: 'QUANTITY_ONLY'}),
@@ -348,7 +354,7 @@ const OutletView = () => {
       setCustomerAddress('');
       setPaymentMethod('CASH');
       setBillAmount('');
-      setAdvanceAmount('');
+      setAdvanceAmount('');setAdvanceSplit({});setPaymentMethod('CASH');
       setExtraDiscountType('PERCENT');
       setExtraDiscountValue('');
       setCashDiscount('');
@@ -362,17 +368,18 @@ const OutletView = () => {
 
   const openSettlement = (invoice) => {
     const target={...invoice,balanceDue:invoice.balanceDue ?? invoice.pendingAmount,saleReferenceId:invoice.saleReferenceId || invoice.saleId};
-    setShowReportPending(false);setPaymentTarget(target); setSettlementAmount(String(target.balanceDue || '')); setSettlementMethod(''); setSettlementError('');
+    setShowReportPending(false);setPaymentTarget(target); setSettlementAmount(String(target.balanceDue || '')); setSettlementMethod(''); setSettlementSplit({}); setSettlementError('');
   };
   const confirmSettlement = async () => {
-    if (!['CASH','UPI','CARD'].includes(settlementMethod)) {setSettlementError('Choose Cash, UPI, or Card for this payment.');return;}
+    if (!['CASH','UPI','CARD','SPLIT'].includes(settlementMethod)) {setSettlementError('Choose Cash, UPI, or Card for this payment.');return;}
     const paidAmount = Number(settlementAmount);
+    if(settlementMethod==='SPLIT' && (!splitPayments(settlementSplit)?.payments.length || splitPayments(settlementSplit).total!==paidAmount)){setSettlementError('Enter valid split amounts equal to the payment received.');return;}
     if (!paymentTarget || !Number.isFinite(paidAmount) || paidAmount <= 0 || paidAmount > Number(paymentTarget.balanceDue || 0)) {
       setSettlementError('Enter an amount up to the balance due.'); return;
     }
     setSettlingPayment(true); setSettlementError('');
     try {
-      const result = await settleDuePayment(paymentTarget.saleReferenceId, { outletId, paymentMethod: settlementMethod, paidAmount });
+      const result = await settleDuePayment(paymentTarget.saleReferenceId, { outletId, paymentMethod: settlementMethod, paidAmount, ...(settlementMethod==='SPLIT'?{payments:splitPayments(settlementSplit).payments}:{}) });
       setReceipt(result); setPaymentTarget(null);
       const response = await fetchDueCustomers(outletId); setDueCustomers(response?.customers || []);
       if (activeTab==='REPORTS') await handleGenerateReport();
@@ -994,7 +1001,7 @@ const OutletView = () => {
       `Bill amount: ${formatCurrency(receipt.billAmount)}`,
       `Paid now: ${formatCurrency(receipt.advanceAmount)}`,
       `Balance due: ${formatCurrency(receipt.balanceDue)}`,
-      `Payment method: ${receipt.paymentMethod}`,
+      `Payment method: ${receipt.paymentMethod}${receipt.paymentBreakdown ? " · "+paymentDescription(Object.entries(receipt.paymentBreakdown).map(([paymentMethod,amount])=>({paymentMethod,amount}))) : ""}`,
       'Thank you for choosing Nimmadhi Mattress.',
     ].join('\n');
     if (navigator.share) {
@@ -1324,10 +1331,11 @@ const OutletView = () => {
                   <Select label="Payment method" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} options={[
                     { value: 'CASH', label: 'Cash' },
                     { value: 'CARD', label: 'Card' },
-                    { value: 'UPI', label: 'UPI' },
+                    { value: 'UPI', label: 'UPI' },{value:'SPLIT',label:'Split payment (Cash / UPI / Card)'},
                   ]} />
                   {ownedShowroomSales && <><Input label="Cash discount (₹)" type="number" min="0" step="0.01" placeholder="0.00" value={cashDiscount} onChange={e => setCashDiscount(e.target.value)} /><div className="sales-builder-payment-summary">Total after percentage discount: <strong>{formatCurrency(grossAmount)}</strong><br />Cash discount: <strong>− {formatCurrency(enteredDiscount)}</strong><br />Round-off: <strong>{formatCurrency(showroomBillPrice(grossAmount.toFixed(2), cashDiscount)?.roundOff ?? 0)}</strong><br />Grand total (tax included): <strong>{formatCurrency(netBillAmount)}</strong></div></>}
-                  <Input label="Amount paid now (advance)" type="number" min="0" step="0.01" placeholder="0.00" value={advanceAmount} onChange={(e) => setAdvanceAmount(e.target.value)} />
+                  {paymentMethod==='SPLIT' && <PaymentSplitInput values={advanceSplit} onChange={setAdvanceSplit} onTotalChange={setAdvanceAmount} disabled={isSubmittingSales}/>}
+                  <Input readOnly={paymentMethod==='SPLIT'} label="Amount paid now (advance)" type="number" min="0" step="0.01" placeholder="0.00" value={advanceAmount} onChange={(e) => setAdvanceAmount(e.target.value)} />
                   {grossAmount > 0 && <div className="sales-builder-payment-summary">Balance due: <strong>{formatCurrency(Math.max(0, netBillAmount - Number(advanceAmount || 0)))}</strong></div>}
                 </section>}
                 {ownedShowroomSales && <section className="sales-builder-date-card sales-builder-customer-card" hidden={salesEntryStep!==2}>
@@ -1361,7 +1369,7 @@ const OutletView = () => {
               </div>
 
               {ownedShowroomSales && salesEntryStep===3 && <section className="sales-review-dispatch"><Input label="Dispatch date (required)" type="date" value={saleDetails.dispatchDate} onChange={event=>setSaleDetails(current=>({...current,dispatchDate:event.target.value}))}/><small>Enter the planned dispatch / delivery date before submitting this sale.</small></section>}
-              {ownedShowroomSales && salesEntryStep===3 && <div className="sales-review-details"><strong>{customerName || 'Customer name needed'}</strong><span>{customerPhone} · {customerAddress}</span><span>Payment: {paymentMethod} · Received: {formatCurrency(Number(advanceAmount || 0))} · Pending: {formatCurrency(Math.max(0,netBillAmount-Number(advanceAmount || 0)))}</span><Button variant="secondary" onClick={()=>goToSalesStep(1)}>Edit payment</Button><Button variant="secondary" onClick={()=>goToSalesStep(2)}>Edit customer</Button></div>}
+              {ownedShowroomSales && salesEntryStep===3 && <div className="sales-review-details"><strong>{customerName || 'Customer name needed'}</strong><span>{customerPhone} · {customerAddress}</span><span>Payment: {paymentMethod==='SPLIT'?paymentDescription(splitPayments(advanceSplit)?.payments):paymentMethod} · Received: {formatCurrency(Number(advanceAmount || 0))} · Pending: {formatCurrency(Math.max(0,netBillAmount-Number(advanceAmount || 0)))}</span><Button variant="secondary" onClick={()=>goToSalesStep(1)}>Edit payment</Button><Button variant="secondary" onClick={()=>goToSalesStep(2)}>Edit customer</Button></div>}
               {ownedShowroomSales && <div className="sales-step-footer"><span><strong>{salesItems.length} products</strong> · Total {formatCurrency(netBillAmount)}</span><div>{salesEntryStep>0 && <Button variant="secondary" onClick={()=>goToSalesStep(salesEntryStep-1)}>Back</Button>}{salesEntryStep<3 && <Button disabled={salesEntryStep===0 && !salesItems.length} onClick={()=>goToSalesStep(salesEntryStep+1)}>Continue to {['Payment','Customer','Review'][salesEntryStep]}</Button>}</div></div>}
               <Button hidden={ownedShowroomSales && salesEntryStep!==3} className="order-builder-submit" onClick={handleRecordSalesSubmit} disabled={isSubmittingSales}>
                 <ShoppingBag size={18} /> {isSubmittingSales ? 'Recording sales…' : 'Submit sales record'}
@@ -1435,8 +1443,9 @@ const OutletView = () => {
       <Modal isOpen={Boolean(paymentTarget)} onClose={() => !settlingPayment && setPaymentTarget(null)} title={`Record pending payment — ${paymentTarget?.customerName || ''}`}>
           {paymentTarget && <div className="sales-builder-content" style={{ display: 'grid', gap: '1rem' }}>
             <p className="text-muted">Invoice <strong>{paymentTarget.saleReferenceId}</strong> · Balance due: <strong>{formatCurrency(paymentTarget.balanceDue)}</strong></p>
-            <Select label="Payment method" value={settlementMethod} onChange={(event) => setSettlementMethod(event.target.value)} disabled={settlingPayment} options={[{value:'',label:'Choose Cash / UPI / Card'},{ value: 'CASH', label: 'Cash' }, { value: 'CARD', label: 'Card' }, { value: 'UPI', label: 'UPI' }]} />
-            <Input label="Amount paid now" type="number" min="0.01" max={paymentTarget.balanceDue} step="0.01" value={settlementAmount} onChange={(event) => setSettlementAmount(event.target.value)} />
+            <Select label="Payment method" value={settlementMethod} onChange={(event) => setSettlementMethod(event.target.value)} disabled={settlingPayment} options={[{value:'',label:'Choose Cash / UPI / Card'},{ value: 'CASH', label: 'Cash' }, { value: 'CARD', label: 'Card' }, { value: 'UPI', label: 'UPI' },{value:'SPLIT',label:'Split payment'}]} />
+            {settlementMethod==='SPLIT' && <PaymentSplitInput values={settlementSplit} onChange={setSettlementSplit} onTotalChange={setSettlementAmount} disabled={settlingPayment}/>}
+            <Input readOnly={settlementMethod==='SPLIT'} label="Amount paid now" type="number" min="0.01" max={paymentTarget.balanceDue} step="0.01" value={settlementAmount} onChange={(event) => setSettlementAmount(event.target.value)} />
             {settlementError && <div className="order-builder-alert order-builder-alert-error">{settlementError}</div>}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '.75rem' }}><Button variant="secondary" onClick={() => setPaymentTarget(null)} disabled={settlingPayment}>Cancel</Button><Button onClick={confirmSettlement} disabled={settlingPayment || !settlementMethod}>{settlingPayment ? 'Saving…' : 'Confirm payment & bill'}</Button></div>
           </div>}
@@ -1582,7 +1591,7 @@ const OutletView = () => {
                           </div>
                         </div>
                         <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:'1rem'}}>
-                          <div style={{padding:'1.25rem',border:'1px solid var(--color-green)',borderRadius:'10px'}}><h4 style={{margin:'0 0 .5rem'}}>Amount received</h4><strong style={{fontSize:'1.75rem'}}>{formatCurrency(Number(reportData.amountReceived || 0))}</strong><p>Money received against invoices in this report. Unpaid amounts excluded.</p></div>
+                          <div style={{padding:'1.25rem',border:'1px solid var(--color-green)',borderRadius:'10px'}}><h4 style={{margin:'0 0 .5rem'}}>Amount received</h4><strong style={{fontSize:'1.75rem'}}>{formatCurrency(Number(reportData.amountReceived || 0))}</strong><p>Money received against invoices in this report. Unpaid amounts excluded.</p><PaymentBreakdown amounts={reportData.receivedByMethod}/>{reportData.paymentMethod!=='ALL' && <small>Received total includes only the selected method. Invoice values and outstanding balances remain whole invoice amounts.</small>}</div>
                           <button type="button" onClick={()=>setShowReportPending(true)} style={{padding:'1.25rem',border:'1px solid var(--color-primary)',borderRadius:'10px',background:'var(--color-secondary)',color:'var(--color-text)',textAlign:'left',cursor:'pointer'}}><h4 style={{margin:'0 0 .5rem'}}>Pending to receive</h4><strong style={{fontSize:'1.75rem'}}>{formatCurrency(Number(reportData.pendingAmount || 0))}</strong><p>{reportData.pendingPayments?.length || 0} outstanding invoices · View pending payments</p></button>
                         </div>
                         {reportData.startDate && reportData.endDate && (
