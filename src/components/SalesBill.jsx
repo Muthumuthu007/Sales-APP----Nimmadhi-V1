@@ -35,6 +35,7 @@ export default function SalesBill({receipt,offerSummary}) {
    {pdfStatus && <p role="status">{pdfStatus}</p>}
   </div>
   <article ref={billRef} className="paper-sales-bill">
+  {receipt.recordStatus==='DELETED'&&<section style={{border:'2px solid #991b1b',padding:'12px',color:'#991b1b'}}><strong>DELETED SALE — EXCLUDED FROM REPORT TOTALS</strong><p>{receipt.deletionReason}</p><p>{receipt.deletedBy} · {receipt.deletedAt}</p><small>Archived original bill. Displayed amounts are historical; no refund is issued by deleting this record.</small></section>}
   <header className="paper-bill-header"><div><h2>NIMMADHI MATTRESS</h2><p>Customer order &amp; payment receipt</p></div><div>No. <strong>{receipt.billNo || receipt.workOrderNo || receipt.factoryOrderDisplayId || receipt.saleReferenceId || '—'}</strong></div></header>
   <div className="paper-bill-top">
    <section><h3>Order details</h3><dl><dt>Date of order</dt><dd>{date(receipt.saleDate)}</dd><dt>Expected delivery</dt><dd>{date(receipt.dispatchDate)}</dd><dt>Work order</dt><dd>{receipt.workOrderNo || receipt.factoryOrderDisplayId || '—'}</dd><dt>Sales person</dt><dd>{receipt.createdByName || '—'}</dd></dl></section>

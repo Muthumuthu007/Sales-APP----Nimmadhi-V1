@@ -219,6 +219,7 @@ const OutletView = () => {
   const [salesProductOptions, setSalesProductOptions] = useState([{ label: 'Loading products...', value: '' }]);
   const [ownedShowroomSales, setOwnedShowroomSales] = useState(() => String(outletId || '').toUpperCase().startsWith('NIM'));
   const [salesItems, setSalesItems] = useState([]);
+  const [editingSalesIndex,setEditingSalesIndex]=useState(null);
   const [salesEntryStep,setSalesEntryStep] = useState(0);
   const salesStepTop=useRef(null);
   const goToSalesStep=step=>{setSalesEntryStep(step);requestAnimationFrame(()=>salesStepTop.current?.scrollIntoView({behavior:'smooth',block:'start'}));};
@@ -299,19 +300,23 @@ const OutletView = () => {
     }
     if (ownedShowroomSales && !salesFulfillmentMode) {setSalesValidationErrors(['Delivery source for this product']);return;}
     const existingIndex = salesItems.findIndex(i => i.product_id === salesProduct && (!ownedShowroomSales || i.fulfillmentMode === salesFulfillmentMode) && (!ownedShowroomSales || Object.keys(emptyShowroomItem).every(key => i[key] === showroomItem[key])));
-    if (existingIndex >= 0) {
+    if(editingSalesIndex!==null){
+      setSalesItems(current=>current.map((item,index)=>index===editingSalesIndex?{product_id:salesProduct,quantity:Number(salesQuantity),...(ownedShowroomSales?{...showroomItem,fulfillmentMode:salesFulfillmentMode}:{})}:item));
+    } else if (existingIndex >= 0) {
       const newItems = [...salesItems];
       newItems[existingIndex].quantity += Number(salesQuantity);
       setSalesItems(newItems);
     } else {
       setSalesItems([...salesItems, { product_id: salesProduct, quantity: Number(salesQuantity), ...(ownedShowroomSales ? {...showroomItem,fulfillmentMode:salesFulfillmentMode} : {}) }]);
     }
+    setEditingSalesIndex(null);
     setSalesProduct('');
     setSalesFulfillmentMode('');
     setShowroomItem({ ...emptyShowroomItem });
     setSalesQuantity(1);
     setSalesError(null);
     setSalesSuccess(null);
+    if(editingSalesIndex!==null && ownedShowroomSales){goToSalesStep(3);return;}
     requestAnimationFrame(()=>{salesProductSelector.current?.focus({preventScroll:true});salesProductSelector.current?.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});});
   };
 
@@ -320,12 +325,23 @@ const OutletView = () => {
     fetchActiveOutletOffers().then((response) => setActiveOffers(response?.offers || [])).catch(() => setActiveOffers([]));
   }, [activeTab]);
 
+  const cancelSalesEdit=()=>{
+    setEditingSalesIndex(null);setSalesProduct('');setSalesQuantity(1);setSalesFulfillmentMode('');setShowroomItem({...emptyShowroomItem});if(ownedShowroomSales)goToSalesStep(3);
+  };
+  const editSalesItem=index=>{
+    const item=salesItems[index];
+    setEditingSalesIndex(index);setSalesProduct(item.product_id);setSalesQuantity(item.quantity);setSalesFulfillmentMode(item.fulfillmentMode || '');
+    setShowroomItem(Object.fromEntries(Object.entries(emptyShowroomItem).map(([key,value])=>[key,String(item[key] ?? value)])));
+    setSalesError(null);setSalesSuccess(null);goToSalesStep(0);
+    requestAnimationFrame(()=>salesProductSelector.current?.scrollIntoView({behavior:'smooth',block:'start'}));
+  };
   const removeSalesItem = (idxToRemove) => {
     setSalesItems(salesItems.filter((_, idx) => idx !== idxToRemove));
     setSalesError(null);
   };
 
   const handleRecordSalesSubmit = async () => {
+    if(editingSalesIndex!==null){setSalesValidationErrors(['Update the product being edited, or cancel the edit.']);return;}
     const missing = missingSaleFields({items:salesItems, customerName, customerPhone, customerAddress, salesDate,
       ownedShowroom:ownedShowroomSales, dispatchDate:saleDetails.dispatchDate, fulfillmentMode:salesFulfillmentMode});
     if (missing.length) { setSalesValidationErrors(missing); return; }
@@ -1292,6 +1308,7 @@ const OutletView = () => {
                 </div>
               )}
 
+              {editingSalesIndex!==null && <p role="status">Editing product {editingSalesIndex+1}. Update the product or cancel the edit before submitting.</p>}
               {ownedShowroomSales && <nav ref={salesStepTop} className="sales-entry-steps" aria-label="Sales entry steps">{['Products','Payment','Customer','Review'].map((title,index)=><button type="button" key={title} aria-current={salesEntryStep===index?'step':undefined} onClick={()=>goToSalesStep(index)}><span>{index+1}</span>{title}</button>)}</nav>}
               {activeOffers.length > 0 && (!ownedShowroomSales || salesEntryStep===0) && (
                 <section className="sales-builder-offers" aria-label="Current outlet offers">
@@ -1323,7 +1340,8 @@ const OutletView = () => {
                   {salesStockStatus==='error' && <Button variant="secondary" onClick={()=>setSalesStockRefresh(value=>value+1)}>Refresh outlet stock</Button>}
                   <div className="sales-builder-add-row">
                     <Input label="Quantity sold" type="number" min="1" value={salesQuantity} onChange={(e) => setSalesQuantity(e.target.value)} />
-                    <Button className="order-builder-add-button" onClick={handleAddSalesItem} disabled={isSubmittingSales}><Plus size={18} /> Add sale</Button>
+                    <Button className="order-builder-add-button" onClick={handleAddSalesItem} disabled={isSubmittingSales}><Plus size={18} /> {editingSalesIndex!==null?'Update product':'Add sale'}</Button>
+                    {editingSalesIndex!==null && <Button variant="secondary" onClick={cancelSalesEdit} disabled={isSubmittingSales}>Cancel edit</Button>}
                   </div>
                 </section>
                 {ownedShowroomSales && <section className="sales-builder-date-card sales-builder-customer-card" hidden={salesEntryStep!==1}>
@@ -1356,12 +1374,13 @@ const OutletView = () => {
                 ) : (
                   <div className="order-builder-items">
                     {salesItems.map((item, idx) => (
-                      <div key={idx} className="order-builder-item">
+                      <div key={idx} className="order-builder-item sales-summary-item">
                         <span className="order-builder-item-quantity" style={{width:'auto',minWidth:'4rem',padding:'.5rem',flexDirection:'column'}}>{item.quantity}<small style={{display:'block',fontSize:'.75rem',fontWeight:400,marginTop:'.35rem'}}>{isStall?(item.fulfillmentMode==='LINKED_OUTLET_STOCK'?'Linked outlet stock':'Stall stock'):'Outlet stock'}: {availableStockLabel(item.product_id,item.fulfillmentMode)}</small></span>
                         <span className="order-builder-item-name">{saleProductName(salesProductOptions.find(o => o.value === item.product_id)?.label || item.product_id,item.size)}<ProductMrp item={item}/>{ownedShowroomSales && <span className="showroom-item-details">{item.brand} · {item.colour} · {item.size}<br />MRP {formatCurrency(Number(item.mrpSticker))} − {item.discountPercent}% · Unit {formatCurrency(showroomPrice(item)?.value || 0)}<br /><strong>Delivery: {item.fulfillmentMode === 'LOCAL_STOCK' ? (isStall?'Stall stock → customer':'Outlet stock → customer') : item.fulfillmentMode==='LINKED_OUTLET_STOCK'?'Linked outlet → customer':'Factory → customer'}</strong><br /><strong>Total {formatCurrency(showroomPrice(item)?.totalSalesValue || 0)}</strong> · Tax included ({item.taxPercent}%){item.scheme && <><br />Scheme: {item.scheme}</>}</span>}</span>
-                        <Button variant="secondary" className="order-builder-remove" onClick={() => removeSalesItem(idx)} disabled={isSubmittingSales} aria-label="Remove sales item">
+                        <div className="sales-summary-actions"><Button variant="secondary" onClick={()=>editSalesItem(idx)} disabled={isSubmittingSales || editingSalesIndex!==null} aria-label={`Edit sales product ${idx+1}`}>Edit product</Button>
+                        <Button variant="secondary" className="order-builder-remove" onClick={() => removeSalesItem(idx)} disabled={isSubmittingSales || editingSalesIndex!==null} aria-label="Remove sales item">
                           <Trash2 size={16} />
-                        </Button>
+                        </Button></div>
                       </div>
                     ))}
                   </div>
@@ -1370,8 +1389,8 @@ const OutletView = () => {
 
               {ownedShowroomSales && salesEntryStep===3 && <section className="sales-review-dispatch"><Input label="Dispatch date (required)" type="date" value={saleDetails.dispatchDate} onChange={event=>setSaleDetails(current=>({...current,dispatchDate:event.target.value}))}/><small>Enter the planned dispatch / delivery date before submitting this sale.</small></section>}
               {ownedShowroomSales && salesEntryStep===3 && <div className="sales-review-details"><strong>{customerName || 'Customer name needed'}</strong><span>{customerPhone} · {customerAddress}</span><span>Payment: {paymentMethod==='SPLIT'?paymentDescription(splitPayments(advanceSplit)?.payments):paymentMethod} · Received: {formatCurrency(Number(advanceAmount || 0))} · Pending: {formatCurrency(Math.max(0,netBillAmount-Number(advanceAmount || 0)))}</span><Button variant="secondary" onClick={()=>goToSalesStep(1)}>Edit payment</Button><Button variant="secondary" onClick={()=>goToSalesStep(2)}>Edit customer</Button></div>}
-              {ownedShowroomSales && <div className="sales-step-footer"><span><strong>{salesItems.length} products</strong> · Total {formatCurrency(netBillAmount)}</span><div>{salesEntryStep>0 && <Button variant="secondary" onClick={()=>goToSalesStep(salesEntryStep-1)}>Back</Button>}{salesEntryStep<3 && <Button disabled={salesEntryStep===0 && !salesItems.length} onClick={()=>goToSalesStep(salesEntryStep+1)}>Continue to {['Payment','Customer','Review'][salesEntryStep]}</Button>}</div></div>}
-              <Button hidden={ownedShowroomSales && salesEntryStep!==3} className="order-builder-submit" onClick={handleRecordSalesSubmit} disabled={isSubmittingSales}>
+              {ownedShowroomSales && <div className="sales-step-footer"><span><strong>{salesItems.length} products</strong> · Total {formatCurrency(netBillAmount)}</span><div>{salesEntryStep>0 && <Button variant="secondary" onClick={()=>goToSalesStep(salesEntryStep-1)}>Back</Button>}{salesEntryStep<3 && <Button disabled={editingSalesIndex!==null || (salesEntryStep===0 && !salesItems.length)} onClick={()=>goToSalesStep(salesEntryStep+1)}>Continue to {['Payment','Customer','Review'][salesEntryStep]}</Button>}</div></div>}
+              <Button hidden={ownedShowroomSales && salesEntryStep!==3} className="order-builder-submit" onClick={handleRecordSalesSubmit} disabled={isSubmittingSales || editingSalesIndex!==null}>
                 <ShoppingBag size={18} /> {isSubmittingSales ? 'Recording sales…' : 'Submit sales record'}
               </Button>
             </CardContent>
