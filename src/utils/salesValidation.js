@@ -9,3 +9,8 @@ export function missingSaleFields({items = [], customerName, customerPhone, cust
   if (!items.length) missing.push('Product and quantity — add at least one item');
   return missing;
 }
+
+// Persisted factory sales use the dispatch state name; entry forms use the delivery choice.
+export function editableDeliveryMode(mode) {
+ return mode==='FACTORY_CUSTOMER'?'FACTORY_DELIVERY':mode;
+}

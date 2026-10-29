@@ -58,7 +58,7 @@ const Login = () => {
         setError('Unauthorized role detected.');
       }
     } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Login failed. Please verify credentials.');
+      setError(err.response?.data?.message || err.response?.data?.detail || err.message || 'Login failed. Please verify credentials.');
     } finally {
       setIsLoading(false);
     }
@@ -114,7 +114,7 @@ const Login = () => {
             </div>
 
             {error && (
-              <div className="error-alert">
+              <div className="error-alert" role="alert">
                 <ShieldAlert size={20} className="error-icon" />
                 <span>{error}</span>
               </div>
@@ -122,10 +122,16 @@ const Login = () => {
 
             <form onSubmit={handleLogin} className="premium-form">
               <div className="premium-input-group">
-                <label className="premium-label">Username / Mobile</label>
+                <label className="premium-label" htmlFor="login-username">Username / Mobile</label>
                 <div className="input-with-icon">
                   <input 
-                    type="text" 
+                    type="text"
+                    id="login-username"
+                    autoComplete="username"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    enterKeyHint="next"
                     placeholder="Username or mobile number"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
@@ -137,10 +143,13 @@ const Login = () => {
               </div>
 
               <div className="premium-input-group">
-                <label className="premium-label">Password</label>
+                <label className="premium-label" htmlFor="login-password">Password</label>
                 <div className="input-with-icon">
                   <input 
-                    type="password" 
+                    type="password"
+                    id="login-password"
+                    autoComplete="current-password"
+                    enterKeyHint="go"
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}

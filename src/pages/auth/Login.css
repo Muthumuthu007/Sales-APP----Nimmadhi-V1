@@ -6,6 +6,8 @@
   justify-content: center;
   align-items: center;
   min-height: 100vh;
+  min-height: 100svh;
+  isolation: isolate;
   background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #311042 100%);
   padding: 1.5rem;
   overflow: hidden;
@@ -331,7 +333,7 @@
 }
 
 .premium-input::placeholder {
-  color: #475569;
+  color: #a5b4c8;
 }
 
 .premium-input:disabled {
@@ -393,9 +395,10 @@
 }
 
 .form-footer {
+  margin-top: 1.5rem;
   text-align: center;
   font-size: 0.75rem;
-  color: #475569;
+  color: #a5b4c8;
   letter-spacing: 0.02em;
 }
 
@@ -441,4 +444,28 @@
   .role-tab.active {
     box-shadow: 0 2px 8px rgba(251, 191, 36, 0.2);
   }
+}
+
+/* Keep the login form within the visible phone viewport, with room to scroll
+   when browser controls or the keyboard reduce the available height. */
+@media (max-width: 900px) {
+  .login-wrapper {
+    align-items: flex-start;
+    padding: clamp(20px, 5svh, 40px) max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  }
+  .login-wrapper .decor-circle { display: none; }
+  .login-container { max-width: 440px; border-radius: 20px; background: #171a30; backdrop-filter: none; -webkit-backdrop-filter: none; }
+  .login-form-panel { min-width: 0; padding: 28px 24px; background: transparent; }
+  .login-form-panel .form-header { margin-bottom: 24px; }
+  .login-form-panel .form-header h2 { font-size: clamp(20px, 5.5vw, 26px); line-height: 1.25; }
+  .login-form-panel .form-header p { color: #b5c0d3; }
+  .login-form-panel .premium-label { color: #c4cddd; }
+  .login-form-panel .premium-input { min-height: 50px; font-size: 16px; background: #22263e; border-color: #515970; }
+  .login-form-panel .premium-input::placeholder { color: #a5b4c8; opacity: 1; }
+  .login-form-panel .premium-submit-btn { min-height: 50px; font-size: 16px; margin-top: 4px; }
+  .login-form-panel .form-footer { margin-top: 24px; color: #a5b4c8; line-height: 1.5; }
+}
+@media (max-width: 360px), (max-height: 500px) and (max-width: 900px) {
+  .login-wrapper { padding-top: 16px; }
+  .login-form-panel { padding: 22px 18px; }
 }

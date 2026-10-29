@@ -51,7 +51,7 @@ export default function FactoryManagement() {
   };
   const columns=[
     {key:'displayId',label:'Factory customer order',render:row => row.displayId || row.orderId},
-    {key:'outletId',label:'Own outlet',render:row => outletLabel(row.outletId,outlets)},
+    {key:'outletId',label:'Own outlet / Order source',render:row => <>{outletLabel(row.outletId,outlets)}{row.stallId&&<><br/><strong>Order from stall: {row.stallName || row.stallId}</strong></>}</>},
     {key:'customerName',label:'Customer',render:row => <><strong>{row.customerName || 'Not recorded'}</strong><br />{row.customerPhone}<br />{row.customerAddress}</>},
     {key:'createdByName',label:'Sales person'},
     {key:'items',label:'Products',render:row => <div style={{display:'grid',gap:'0.75rem'}}>{(row.dispatchItems || row.items || []).filter(item=>!item.isComplimentary).map((item,index) => <div key={index}><FactoryOrderProduct order={row} item={item} compact/><small>Dispatched {item.dispatchedQty || 0} / {item.orderedQty} · Pending {Number(item.orderedQty)-Number(item.dispatchedQty || 0)}</small></div>)}</div>},
@@ -80,6 +80,7 @@ export default function FactoryManagement() {
     <Modal isOpen={Boolean(selected)} onClose={() => !saving && setSelected(null)} title={`Factory → Customer · ${selected?.displayId || ''}`}>
       {selected && <div style={{display:'grid',gap:'1rem'}}>
         <strong>{selected.customerName} · {selected.customerPhone}</strong><p>{selected.customerAddress}</p>
+        {selected.stallId&&<p><strong>Order from stall: {selected.stallName || selected.stallId}</strong></p>}
         <p>Outlet: {outletLabel(selected.outletId,outlets)} · Dispatch date: {selected.dispatchDate}</p>
         <p>Enter only the quantities leaving now. Leave other items at zero; they remain pending.</p>
         {selected.unresolvedComplimentary?.length>0 && <p role="alert">Some saved scheme notes do not specify item quantities: {selected.unresolvedComplimentary.join('; ')}. These need confirmation before this order can be marked complete.</p>}

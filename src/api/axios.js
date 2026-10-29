@@ -12,6 +12,11 @@ const api = axios.create({
 // Request Interceptor
 api.interceptors.request.use(
   (config) => {
+    if (config.url?.replace(/\/$/, '') === '/login') {
+      if (config.headers.delete) config.headers.delete('Authorization');
+      else { delete config.headers.Authorization; delete config.headers.authorization; }
+      return config;
+    }
     const token = sessionStorage.getItem('token');
     const location = sessionStorage.getItem('managerLocationFilter');
     if (!config.ignoreLocationScope && sessionStorage.getItem('role') === 'MANAGER' && location && (config.method === 'get' || config.url?.endsWith('/list'))) {

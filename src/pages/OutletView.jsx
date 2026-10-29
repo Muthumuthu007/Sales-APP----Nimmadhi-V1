@@ -1,3 +1,4 @@
+import StallCustomerDispatch from './StallCustomerDispatch';
 import StockMovementReport from './StockMovementReport';
 import StallStockIn from './StallStockIn';
 import OwnSalesRecords from './OwnSalesRecords';
@@ -85,7 +86,7 @@ const OutletView = () => {
     { id: 'DUE_CUSTOMERS', label: 'Pending Payments' },
     { id: 'REPORTS', label: 'Reports' },
   ];
-  const tabs = isStall?[{id:'STOCK_IN',label:'Stock In / Return'},{id:'SALES',label:'Sales Entry'},{id:'STOCK',label:'Stock View'},{id:'REPORTS',label:'Reports'}]:(['OUTLET', 'EMPLOYEE', 'CASHIER', 'SUPERVISOR'].includes(role) ? employeeTabs : outletTabs).filter(tab => (tab.id !== 'SALES' || isGodown === false)).concat(isGodown ? [{id:'ASSIGNED_DISPATCH',label:'Dispatch Assigned Orders'},{id:'PRODUCT_IN',label:'Temporary Stocks'},{id:'SALES_OUT',label:'Sales Out'}] : []).filter(tab => tab.id !== 'DUE_CUSTOMERS').concat(!isGodown && String(outletId).toUpperCase().startsWith('NIM')?[{id:'SALES_RECORDS',label:'Sales Records'}]:[]).concat([{id:'AFTER_SALES',label:'After-sales'}]);
+  const tabs = isStall?[{id:'STOCK_IN',label:'Stock In / Return'},{id:'SALES',label:'Sales Entry'},{id:'CUSTOMER_DISPATCH',label:'Dispatch'},{id:'STOCK',label:'Stock View'},{id:'REPORTS',label:'Reports'}]:(['OUTLET', 'EMPLOYEE', 'CASHIER', 'SUPERVISOR'].includes(role) ? employeeTabs : outletTabs).filter(tab => (tab.id !== 'SALES' || isGodown === false)).concat(isGodown ? [{id:'ASSIGNED_DISPATCH',label:'Dispatch Assigned Orders'},{id:'PRODUCT_IN',label:'Temporary Stocks'},{id:'SALES_OUT',label:'Sales Out'}] : []).filter(tab => tab.id !== 'DUE_CUSTOMERS').concat(!isGodown && String(outletId).toUpperCase().startsWith('NIM')?[{id:'SALES_RECORDS',label:'Sales Records'}]:[]).concat(!isGodown && String(outletId).toUpperCase().startsWith('NIM')?[{id:'CUSTOMER_DISPATCH',label:'Dispatch'}]:[]).concat([{id:'AFTER_SALES',label:'After-sales'}]);
 
   const availableModuleIds=tabs.map(tab=>tab.id).join(',');
   useEffect(()=>{if(requestedModule && availableModuleIds.split(',').includes(requestedModule))setActiveTab(requestedModule);},[requestedModule,availableModuleIds]);
@@ -1029,6 +1030,7 @@ const OutletView = () => {
       <div className="outlet-current-module"><strong>{tabs.find(tab=>tab.id===activeTab)?.label || 'Outlet Operations'}</strong><small>Switch using the ☰ Modules menu</small></div>
 
       <div>
+        {activeTab === 'CUSTOMER_DISPATCH' && <StallCustomerDispatch/>}
         {activeTab === 'SALES_RECORDS' && <OwnSalesRecords outletId={outletId}/>}
         {activeTab === 'AFTER_SALES' && <AfterSales godownMode={Boolean(isGodown)} />}
         {activeTab === 'ASSIGNED_DISPATCH' && isGodown && <DispatchPlans godownMode />}
