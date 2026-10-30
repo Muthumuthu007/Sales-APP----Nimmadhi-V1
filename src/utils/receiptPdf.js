@@ -32,12 +32,15 @@ export async function createReceiptPdf(element,receipt) {
  const host=document.createElement('div');host.setAttribute('aria-hidden','true');
  host.style.cssText='position:absolute;left:-12000px;top:0;width:794px;pointer-events:none;';
  const clone=element.cloneNode(true);clone.querySelectorAll('.paper-bill-actions,[data-pdf-ignore]').forEach(node=>node.remove());
- clone.style.cssText='width:794px;box-sizing:border-box;padding:28px;font-size:12px;border-radius:0;background:white;color:#252a23;overflow:visible;';
+ clone.style.cssText='width:794px;box-sizing:border-box;padding:28px;font-size:12px;border-radius:0;background:white;color:#111;overflow:visible;min-height:1080px;';
  clone.querySelectorAll('.paper-bill-top,.paper-bill-summary').forEach(node=>{node.style.gridTemplateColumns='1fr 1fr';node.style.gap='25px';});
- const header=clone.querySelector('.paper-bill-header');header.style.flexDirection='row';
- header.lastElementChild.style.cssText='max-width:45%;text-align:right;';
+ const header=clone.querySelector('.paper-bill-header');header.style.flexDirection='column';
+ clone.querySelector('.paper-bill-contact')?.style.setProperty('flex-direction','row');
+ clone.querySelector('.paper-bill-contact')?.style.setProperty('font-size','10px');
+ clone.querySelector('.paper-bill-contact>span:first-child')?.style.setProperty('max-width','38%');
  host.appendChild(clone);document.body.appendChild(host);
  try {
+  await Promise.all([...clone.querySelectorAll('img')].map(img=>img.decode()));
   const origin=clone.getBoundingClientRect().top;
   const boundaries=[...clone.querySelectorAll('header,section,tbody tr,footer')].map(node=>Math.ceil(node.getBoundingClientRect().bottom-origin));
   const canvas=await html2canvas(clone,{scale:2,backgroundColor:'#ffffff',logging:false,windowWidth:1000,scrollX:0,scrollY:0});
