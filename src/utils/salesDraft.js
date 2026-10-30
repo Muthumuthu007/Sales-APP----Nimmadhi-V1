@@ -24,6 +24,7 @@ export function uncertainSale(error) {
 export function saleSubmissionIssues(form, owned) {
   const issues=[];
   if(!owned)return issues;
+  if(!['CASH','UPI','CARD','SPLIT'].includes(form.paymentMethod))issues.push('Select a payment method.');
   const limits={customerName:150,customerPhone:30,customerAddress:500,extraDiscountReason:300};
   for(const [key,max] of Object.entries(limits))if(String(form[key] || '').trim().length>max)issues.push(`${labels[key] || key}: use at most ${max} characters.`);
   if(String(form.advanceAmount ?? '').trim()==='')issues.push('Enter the amount received, or enter 0 if no payment was received.');

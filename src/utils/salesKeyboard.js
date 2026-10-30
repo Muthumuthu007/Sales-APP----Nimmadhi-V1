@@ -14,6 +14,7 @@ export function salesEnterKey(event) {
 }
 export function salesIssueTarget(message) {
  const text=message.toLowerCase();
+ if(text.includes('payment method'))return {step:1,id:'sale-payment-method'};
  if(text.includes('customer name'))return {step:2,id:'sale-customer-name'};
  if(text.includes('customer phone'))return {step:2,id:'sale-customer-phone'};
  if(text.includes('customer address'))return {step:2,id:'sale-customer-address'};

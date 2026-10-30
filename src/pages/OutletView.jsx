@@ -266,7 +266,7 @@ const OutletView = () => {
   const [customerName, setCustomerName] = useState(draft.customerName ?? '');
   const [customerPhone, setCustomerPhone] = useState(draft.customerPhone ?? '');
   const [customerAddress, setCustomerAddress] = useState(draft.customerAddress ?? '');
-  const [paymentMethod, setPaymentMethod] = useState(draft.paymentMethod ?? 'CASH');
+  const [paymentMethod, setPaymentMethod] = useState(draft.paymentMethod ?? '');
   const [advanceSplit,setAdvanceSplit]=useState(draft.advanceSplit ?? {});
   const [settlementSplit,setSettlementSplit]=useState({});
   const [billAmount, setBillAmount] = useState(draft.billAmount ?? '');
@@ -472,9 +472,9 @@ const OutletView = () => {
       setCustomerName('');
       setCustomerPhone('');
       setCustomerAddress('');
-      setPaymentMethod('CASH');
+      setPaymentMethod('');
       setBillAmount('');
-      setAdvanceAmount('');setAdvanceSplit({});setPaymentMethod('CASH');
+      setAdvanceAmount('');setAdvanceSplit({});setPaymentMethod('');
       setExtraDiscountType('PERCENT');
       setExtraDiscountValue('');
       setCashDiscount('');
@@ -1452,7 +1452,8 @@ const OutletView = () => {
                 </section>
                 {ownedShowroomSales && <section className="sales-builder-date-card sales-builder-customer-card" hidden={salesEntryStep!==1}>
                   <div className="order-builder-section-label"><span>2</span><div><strong>Cash and payment details</strong><small>Record the discount, payment, and balance</small></div></div>
-                  <Select id="sale-payment-method" error={salesFieldError('sale-payment-method')} label="Payment method" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} options={[
+                  <Select required id="sale-payment-method" error={salesFieldError('sale-payment-method')} label="Payment method" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} options={[
+                    {value:'',label:'Select a payment method'},
                     { value: 'CASH', label: 'Cash' },
                     { value: 'CARD', label: 'Card' },
                     { value: 'UPI', label: 'UPI' },{value:'SPLIT',label:'Split payment (Cash / UPI / Card)'},

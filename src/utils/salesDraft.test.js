@@ -20,7 +20,12 @@ test('validation errors identify product number and field instead of raw JSON',(
  assert.equal(uncertainSale({}),true);assert.equal(uncertainSale({response:{status:503}}),true);assert.equal(uncertainSale({response:{status:400}}),false);
 });
 test('blank received amount requires an explicit zero and oversized input is caught before submission',()=>{
- assert.equal(saleSubmissionIssues({advanceAmount:'',salesItems:[]},true).length,1);
- assert.deepEqual(saleSubmissionIssues({advanceAmount:'0',salesItems:[]},true),[]);
- assert.equal(saleSubmissionIssues({advanceAmount:'100',customerName:'a'.repeat(151),salesItems:[{quantity:1.5}]},true).length,2);
+ assert.equal(saleSubmissionIssues({paymentMethod:'CASH',advanceAmount:'',salesItems:[]},true).length,1);
+ assert.deepEqual(saleSubmissionIssues({paymentMethod:'CASH',advanceAmount:'0',salesItems:[]},true),[]);
+ assert.equal(saleSubmissionIssues({paymentMethod:'CASH',advanceAmount:'100',customerName:'a'.repeat(151),salesItems:[{quantity:1.5}]},true).length,2);
+});
+
+test('an invoice requires an explicit payment method, including zero-advance bills',()=>{
+ assert.deepEqual(saleSubmissionIssues({advanceAmount:'0',salesItems:[]},true),['Select a payment method.']);
+ for(const paymentMethod of ['CASH','UPI','CARD','SPLIT'])assert.deepEqual(saleSubmissionIssues({paymentMethod,advanceAmount:'0',salesItems:[]},true),[]);
 });
