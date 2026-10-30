@@ -1,3 +1,5 @@
+import {salesEnterKey,salesIssueTarget} from '../utils/salesKeyboard';
+import {salesDraftKey,readSalesDraft,writeSalesDraft,saleErrorDetails,uncertainSale,saleSubmissionIssues} from '../utils/salesDraft';
 import StallCustomerDispatch from './StallCustomerDispatch';
 import StockMovementReport from './StockMovementReport';
 import StallStockIn from './StallStockIn';
@@ -217,14 +219,26 @@ const OutletView = () => {
   const [stockError, setStockError] = useState(null);
 
   // --- Sales Entry State ---
+  const draftKey=salesDraftKey(sessionStorage.getItem('username'),outletId);
+  const [savedSalesDraft]=useState(()=>readSalesDraft(localStorage,draftKey));
+  const draft=savedSalesDraft?.form || {};
+  const [pendingSale,setPendingSale]=useState(savedSalesDraft?.pending || null);
+  const pendingSaleRef=useRef(savedSalesDraft?.pending || null);
+  const salesSubmitLock=useRef(false);
+  const [draftStorageError,setDraftStorageError]=useState(false);
+  const [draftRecovered,setDraftRecovered]=useState(Boolean(savedSalesDraft));
+
+  const [salesCatalogueStatus,setSalesCatalogueStatus]=useState('loading');
   const [salesProductOptions, setSalesProductOptions] = useState([{ label: 'Loading products...', value: '' }]);
   const [ownedShowroomSales, setOwnedShowroomSales] = useState(() => String(outletId || '').toUpperCase().startsWith('NIM'));
-  const [salesItems, setSalesItems] = useState([]);
-  const [editingSalesIndex,setEditingSalesIndex]=useState(null);
-  const [salesEntryStep,setSalesEntryStep] = useState(0);
+  const [salesItems, setSalesItems] = useState(draft.salesItems ?? []);
+  const [editingSalesIndex,setEditingSalesIndex]=useState(draft.editingSalesIndex ?? null);
+  const [salesEntryStep,setSalesEntryStep] = useState(draft.salesEntryStep ?? 0);
   const salesStepTop=useRef(null);
   const goToSalesStep=step=>{setSalesEntryStep(step);requestAnimationFrame(()=>salesStepTop.current?.scrollIntoView({behavior:'smooth',block:'start'}));};
   const salesProductSelector = useRef(null);
+  const salesFormRef=useRef(null);
+  const salesNoticeRef=useRef(null);
   const [salesOutletStock,setSalesOutletStock] = useState([]);
   const [salesStockStatus,setSalesStockStatus] = useState('loading');
   const [salesStockRefresh,setSalesStockRefresh] = useState(0);
@@ -242,25 +256,25 @@ const OutletView = () => {
   },[activeTab,outletId,salesStockRefresh,isStall]);
   const availableStockLabel = (productId,mode=salesFulfillmentMode) => isStall && mode==='LINKED_OUTLET_STOCK' && !stallStock?'Loading linked outlet stock…':salesStockStatus==='ready' ? outletAvailableStock(isStall && mode==='LINKED_OUTLET_STOCK'?(stallStock?.outletStock || []):salesOutletStock,productId) : salesStockStatus==='loading' ? 'Loading…' : 'Unavailable — refresh stock';
 
-  const [showroomItem, setShowroomItem] = useState({ ...emptyShowroomItem });
+  const [showroomItem, setShowroomItem] = useState(draft.showroomItem ?? { ...emptyShowroomItem });
   const [salesValidationErrors, setSalesValidationErrors] = useState([]);
-  const [salesFulfillmentMode, setSalesFulfillmentMode] = useState('');
-  const [saleDetails, setSaleDetails] = useState({ billNo: '', dispatchDate: '' });
-  const [salesProduct, setSalesProduct] = useState('');
-  const [salesQuantity, setSalesQuantity] = useState(1);
-  const [salesDate, setSalesDate] = useState(businessDate());
-  const [customerName, setCustomerName] = useState('');
-  const [customerPhone, setCustomerPhone] = useState('');
-  const [customerAddress, setCustomerAddress] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('CASH');
-  const [advanceSplit,setAdvanceSplit]=useState({});
+  const [salesFulfillmentMode, setSalesFulfillmentMode] = useState(draft.salesFulfillmentMode ?? '');
+  const [saleDetails, setSaleDetails] = useState(draft.saleDetails ?? { billNo: '', dispatchDate: '' });
+  const [salesProduct, setSalesProduct] = useState(draft.salesProduct ?? '');
+  const [salesQuantity, setSalesQuantity] = useState(draft.salesQuantity ?? 1);
+  const [salesDate, setSalesDate] = useState(draft.salesDate ?? businessDate());
+  const [customerName, setCustomerName] = useState(draft.customerName ?? '');
+  const [customerPhone, setCustomerPhone] = useState(draft.customerPhone ?? '');
+  const [customerAddress, setCustomerAddress] = useState(draft.customerAddress ?? '');
+  const [paymentMethod, setPaymentMethod] = useState(draft.paymentMethod ?? 'CASH');
+  const [advanceSplit,setAdvanceSplit]=useState(draft.advanceSplit ?? {});
   const [settlementSplit,setSettlementSplit]=useState({});
-  const [billAmount, setBillAmount] = useState('');
-  const [advanceAmount, setAdvanceAmount] = useState('');
-  const [cashDiscount, setCashDiscount] = useState('');
-  const [extraDiscountType, setExtraDiscountType] = useState('PERCENT');
-  const [extraDiscountValue, setExtraDiscountValue] = useState('');
-  const [extraDiscountReason, setExtraDiscountReason] = useState('');
+  const [billAmount, setBillAmount] = useState(draft.billAmount ?? '');
+  const [advanceAmount, setAdvanceAmount] = useState(draft.advanceAmount ?? '');
+  const [cashDiscount, setCashDiscount] = useState(draft.cashDiscount ?? '');
+  const [extraDiscountType, setExtraDiscountType] = useState(draft.extraDiscountType ?? 'PERCENT');
+  const [extraDiscountValue, setExtraDiscountValue] = useState(draft.extraDiscountValue ?? '');
+  const [extraDiscountReason, setExtraDiscountReason] = useState(draft.extraDiscountReason ?? '');
   const [isSubmittingSales, setIsSubmittingSales] = useState(false);
   const [salesError, setSalesError] = useState(null);
   const [salesSuccess, setSalesSuccess] = useState(null);
@@ -274,6 +288,19 @@ const OutletView = () => {
   const [settlementMethod, setSettlementMethod] = useState('');
   const [settlementError, setSettlementError] = useState('');
   const [settlingPayment, setSettlingPayment] = useState(false);
+
+  const salesDraftForm={salesItems,editingSalesIndex,salesEntryStep,showroomItem,salesFulfillmentMode,saleDetails,salesProduct,salesQuantity,salesDate,customerName,customerPhone,customerAddress,paymentMethod,advanceSplit,billAmount,advanceAmount,cashDiscount,extraDiscountType,extraDiscountValue,extraDiscountReason};
+  const draftFormJson=JSON.stringify(salesDraftForm);
+  useEffect(()=>{
+    const form=JSON.parse(draftFormJson);
+    if(form.salesItems.length || form.salesProduct || form.customerName || form.advanceAmount || pendingSale){
+      setDraftStorageError(!writeSalesDraft(localStorage,draftKey,form,pendingSale));
+    } else { try {localStorage.removeItem(draftKey);} catch {setDraftStorageError(true);} }
+  },[draftKey,draftFormJson,pendingSale]);
+  useEffect(()=>{
+    const warn=event=>{if(salesSubmitLock.current){event.preventDefault();event.returnValue='';}};
+    window.addEventListener('beforeunload',warn);return ()=>window.removeEventListener('beforeunload',warn);
+  },[]);
 
   const grossAmount = ownedShowroomSales ? salesItems.reduce((total, item) => total + Math.round((showroomPrice(item)?.totalSalesValue || 0) * 100), 0) / 100 : Number(billAmount || 0);
   const enteredDiscount = ownedShowroomSales ? Number(cashDiscount || 0) : Number(extraDiscountValue || 0);
@@ -316,9 +343,10 @@ const OutletView = () => {
     setShowroomItem({ ...emptyShowroomItem });
     setSalesQuantity(1);
     setSalesError(null);
-    setSalesSuccess(null);
+    setSalesSuccess(`${editingSalesIndex!==null?'Updated':'Added'} product. ${salesItems.length+(editingSalesIndex!==null || existingIndex>=0?0:1)} product lines in this bill.`);
+    setSalesValidationErrors([]);
     if(editingSalesIndex!==null && ownedShowroomSales){goToSalesStep(3);return;}
-    requestAnimationFrame(()=>{salesProductSelector.current?.focus({preventScroll:true});salesProductSelector.current?.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});});
+    requestAnimationFrame(()=>{salesProductSelector.current?.querySelector('[aria-haspopup="listbox"]')?.focus({preventScroll:true});salesProductSelector.current?.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});});
   };
 
   useEffect(() => {
@@ -341,15 +369,64 @@ const OutletView = () => {
     setSalesError(null);
   };
 
+  const salesFieldError=id=>salesValidationErrors.find(message=>salesIssueTarget(message).id===id);
+  const focusSalesIssue=message=>{
+    const target=salesIssueTarget(message);setSalesEntryStep(target.step);
+    requestAnimationFrame(()=>{
+      const field=target.id?document.getElementById(target.id):salesProductSelector.current?.querySelector('[aria-haspopup="listbox"]');
+      field?.focus({preventScroll:true});field?.scrollIntoView({block:'center',behavior:'smooth'});
+    });
+  };
+  const navigateSalesStep=next=>{
+    if(next<=salesEntryStep){goToSalesStep(next);return;}
+    const issues=[];
+    if(editingSalesIndex!==null)issues.push('Update the product being edited, or cancel the edit.');
+    if(!salesItems.length)issues.push('Add at least one product to the bill.');
+    if(salesProduct && editingSalesIndex===null)issues.push('Add the selected product to the bill before continuing.');
+    if(next>1){
+      if(!salesDate)issues.push('Date of sale is required.');
+      if(!saleDetails.dispatchDate)issues.push('Dispatch date is required.');
+      issues.push(...saleSubmissionIssues(salesDraftForm,true));
+      if(paymentMethod==='SPLIT' && (!splitPayments(advanceSplit)?.payments.length || splitPayments(advanceSplit).total!==Number(advanceAmount)))issues.push('Split payment amounts must equal the amount received.');
+      if(!Number.isFinite(Number(advanceAmount)) || Number(advanceAmount)<0 || Number(advanceAmount)>netBillAmount)issues.push('Amount received must be between zero and the bill total.');
+      if(!showroomBillPrice(grossAmount.toFixed(2),cashDiscount))issues.push('Cash discount must be valid and less than the bill amount.');
+    }
+    if(next>2){
+      if(!customerName.trim())issues.push('Customer name is required.');
+      if(!customerPhone.trim())issues.push('Customer phone number is required.');
+      if(!customerAddress.trim())issues.push('Customer address is required.');
+    }
+    if(issues.length){setSalesValidationErrors(issues);return;}
+    setSalesValidationErrors([]);setSalesSuccess(null);goToSalesStep(next);
+    requestAnimationFrame(()=>{visibleStepFirst()?.focus({preventScroll:true});});
+  };
+  const visibleStepFirst=()=>[...(salesFormRef.current?.querySelectorAll('section:not([hidden]) input,section:not([hidden]) select,section:not([hidden]) button') || [])].find(field=>!field.disabled && field.getClientRects().length);
+  const previousSalesIssueCount=useRef(0);
+  useEffect(()=>{
+    if(salesValidationErrors.length>previousSalesIssueCount.current)salesNoticeRef.current?.scrollIntoView({behavior:'smooth',block:'nearest'});
+    previousSalesIssueCount.current=salesValidationErrors.length;
+  },[salesValidationErrors]);
+  const salesKeyboard=event=>{
+    if(event.key==='Enter' && !event.nativeEvent?.isComposing && ['INPUT','SELECT'].includes(event.target.tagName) && !event.target.closest('[data-searchable-select]') && !event.target.checkValidity()){
+      event.preventDefault();const label=event.target.closest('.input-group')?.querySelector('label')?.textContent || 'This field';
+      setSalesValidationErrors([`${label}: ${event.target.validationMessage}`]);return;
+    }
+    salesEnterKey(event);
+  };
+
   const handleRecordSalesSubmit = async () => {
-    if(editingSalesIndex!==null){setSalesValidationErrors(['Update the product being edited, or cancel the edit.']);return;}
+    if(salesSubmitLock.current)return;
+    const retry=pendingSaleRef.current;
+    if(!retry && salesCatalogueStatus!=='ready'){setSalesError('Product details are unavailable. Refresh products before submitting; your draft is preserved.');return;}
+    if(!retry && editingSalesIndex!==null){setSalesValidationErrors(['Update the product being edited, or cancel the edit.']);return;}
     const missing = missingSaleFields({items:salesItems, customerName, customerPhone, customerAddress, salesDate,
       ownedShowroom:ownedShowroomSales, dispatchDate:saleDetails.dispatchDate, fulfillmentMode:salesFulfillmentMode});
-    if (missing.length) { setSalesValidationErrors(missing); return; }
+    if(!retry)missing.push(...saleSubmissionIssues(salesDraftForm,ownedShowroomSales));
+    if (!retry && missing.length) { setSalesValidationErrors(missing); return; }
     const parsedBillAmount = grossAmount;
     const parsedAdvanceAmount = Number(advanceAmount || 0);
-    if(paymentMethod==='SPLIT' && (!splitPayments(advanceSplit)?.payments.length || splitPayments(advanceSplit).total!==parsedAdvanceAmount)){setSalesError('Enter valid split amounts equal to the advance received.');return;}
-    if (ownedShowroomSales && (!Number.isFinite(parsedBillAmount) || parsedBillAmount <= 0 || !Number.isFinite(enteredDiscount) || enteredDiscount < 0 || calculatedExtraDiscount >= parsedBillAmount || !Number.isFinite(parsedAdvanceAmount) || parsedAdvanceAmount < 0 || parsedAdvanceAmount > netBillAmount)) {
+    if(!retry && paymentMethod==='SPLIT' && (!splitPayments(advanceSplit)?.payments.length || splitPayments(advanceSplit).total!==parsedAdvanceAmount)){setSalesError('Enter valid split amounts equal to the advance received.');return;}
+    if (!retry && ownedShowroomSales && (!Number.isFinite(parsedBillAmount) || parsedBillAmount <= 0 || !Number.isFinite(enteredDiscount) || enteredDiscount < 0 || calculatedExtraDiscount >= parsedBillAmount || !Number.isFinite(parsedAdvanceAmount) || parsedAdvanceAmount < 0 || parsedAdvanceAmount > netBillAmount)) {
       const errors = [];
       if (!Number.isFinite(parsedBillAmount) || parsedBillAmount <= 0) errors.push('Bill amount must be greater than zero');
       if (!Number.isFinite(enteredDiscount) || enteredDiscount < 0 || calculatedExtraDiscount >= parsedBillAmount || (!ownedShowroomSales && extraDiscountType === 'PERCENT' && enteredDiscount > 100)) errors.push('Discount must be valid and less than the bill amount');
@@ -357,13 +434,15 @@ const OutletView = () => {
       setSalesValidationErrors(errors);
       return;
     }
+    salesSubmitLock.current=true;
     setIsSubmittingSales(true);
     setSalesError(null);
     setSalesSuccess(null);
 
     try {
       const submittedItems = salesItems.map((item) => ({ ...item, productName: saleProductName(getProductName(item.product_id),item.size) }));
-      const result = await recordSales({
+      const payload = retry || {
+        requestId: crypto.randomUUID(),
         outletId: outletId,
         date: salesDate,
         ...(ownedShowroomSales ? {
@@ -373,7 +452,15 @@ const OutletView = () => {
           extraDiscountType, cashDiscount: cashDiscount || '0', extraDiscountValue: 0, extraDiscountReason: extraDiscountReason.trim(),
         } : {entryMode: 'QUANTITY_ONLY'}),
         soldItems: salesItems.map(({ quantity, ...item }) => ({ ...item, qty: quantity }))
-      });
+      };
+      // Save the exact request before sending; an uncertain retry must use it unchanged.
+      if(!writeSalesDraft(localStorage,draftKey,salesDraftForm,payload)) {
+        setDraftStorageError(true);
+        throw new Error('Unable to save the recovery draft on this device. Free browser storage and retry before submitting.');
+      }
+      pendingSaleRef.current=payload;setPendingSale(payload);
+      const result=await recordSales(payload);
+      pendingSaleRef.current=null;setPendingSale(null);setDraftRecovered(false);
       if (ownedShowroomSales) setReceipt({ ...result, items: submittedItems.map((item, index) => ({ ...item, ...(result.soldItems?.[index] || {}) })) });
       setSalesSuccess(ownedShowroomSales ? 'Sales invoice created successfully.' : 'Products recorded successfully and outlet stock updated.');
       setSalesItems([]);
@@ -393,8 +480,16 @@ const OutletView = () => {
       setCashDiscount('');
       setExtraDiscountReason('');
     } catch (err) {
-      setSalesError(err.response?.data?.error || err.response?.data?.message || (err.response?.data ? JSON.stringify(err.response.data) : err.message) || 'Failed to record sales.');
+      const unknown=Boolean(pendingSaleRef.current) && uncertainSale(err);
+      if(!unknown){pendingSaleRef.current=null;setPendingSale(null);writeSalesDraft(localStorage,draftKey,salesDraftForm,null);}
+      const details=saleErrorDetails(err.response?.data);
+      const diagnosticId=err.response?.headers?.['x-sales-diagnostic-id'];
+      if(diagnosticId)details.push(`Support reference: ${diagnosticId}`);
+      setSalesError(unknown?'Save confirmation was interrupted. Your bill is preserved. Retry this same submission to confirm it safely; do not enter it again as a new sale.':`Sale was not submitted. ${details.join(' ') || err.message || 'Please correct the details and retry.'}`);
+      setSalesValidationErrors(unknown?[]:details);
+      if([400,409].includes(err.response?.status))setSalesStockRefresh(value=>value+1);
     } finally {
+      salesSubmitLock.current=false;
       setIsSubmittingSales(false);
     }
   };
@@ -816,10 +911,12 @@ const OutletView = () => {
         }
       });
     } else if (activeTab === 'SALES' && outletId) {
+      setSalesCatalogueStatus('loading');
       fetchOutletProductNames(outletId).then(response => {
         if (isMounted) {
           const list = Array.isArray(response) ? response : (response?.products || []);
-          setOwnedShowroomSales(Boolean(response?.ownedShowroom));
+          setOwnedShowroomSales(response?.ownedShowroom ?? String(outletId).toUpperCase().startsWith('NIM'));
+          setSalesCatalogueStatus('ready');
           const options = [
              { label: 'Select a product...', value: '' },
              ...list.map(p => ({
@@ -833,7 +930,7 @@ const OutletView = () => {
         }
       }).catch(() => {
         if (isMounted) {
-           setOwnedShowroomSales(false);
+           setSalesCatalogueStatus('error');
            setSalesProductOptions([{ label: 'Error loading options', value: '' }]);
         }
       });
@@ -1298,6 +1395,10 @@ const OutletView = () => {
                 <div><h3>Capture today’s sales</h3><p>Add each sold product, review the summary, then submit one complete record.</p></div>
               </div>
               
+              {salesCatalogueStatus==='error' && <p role="alert">Product details could not load. Your sales draft is preserved. <Button onClick={()=>setStockReload(value=>value+1)}>Refresh products</Button></p>}
+              {draftRecovered && <p role="status">Your unfinished sales entry was restored on this device. Review it before submitting.</p>}
+              {draftStorageError && <p role="alert">Recovery draft could not be saved. Check browser storage before submitting.</p>}
+              {pendingSale && <div role="alert" className="order-builder-alert order-builder-alert-error">This submission needs confirmation. Retry the saved bill before starting another sale. <Button disabled={isSubmittingSales} onClick={handleRecordSalesSubmit}>{isSubmittingSales?'Confirming…':'Retry saved submission'}</Button><small>Reference: {pendingSale.requestId}</small></div>}
               {salesError && (
                 <div className="order-builder-alert order-builder-alert-error">
                   {salesError}
@@ -1310,8 +1411,11 @@ const OutletView = () => {
                 </div>
               )}
 
+              <div className="sales-keyboard-guide"><strong>Quick entry</strong><span>Enter: next field · Shift + Enter: previous · Tab: next control</span><small>Search products, use ↑ / ↓, then Enter to choose. Submit only after reviewing.</small></div>
+              {salesValidationErrors.length>0 && <div ref={salesNoticeRef} role="alert" className="sales-missing-notice"><div><strong>Please check {salesValidationErrors.length===1?'this detail':'these details'}</strong><button type="button" onClick={()=>setSalesValidationErrors([])} aria-label="Dismiss sales notification">×</button></div><ul>{salesValidationErrors.map((message,index)=><li key={`${message}-${index}`}><button type="button" onClick={()=>focusSalesIssue(message)}>{message} <span>Go to field →</span></button></li>)}</ul></div>}
+              <fieldset ref={salesFormRef} onChangeCapture={event=>{if(event.target.id)setSalesValidationErrors(current=>{const remaining=current.filter(message=>salesIssueTarget(message).id!==event.target.id);return remaining.length===current.length?current:remaining;});}} onKeyDown={salesKeyboard} disabled={isSubmittingSales || Boolean(pendingSale)} style={{border:0,padding:0,margin:0,minWidth:0}}>
               {editingSalesIndex!==null && <p role="status">Editing product {editingSalesIndex+1}. Update the product or cancel the edit before submitting.</p>}
-              {ownedShowroomSales && <nav ref={salesStepTop} className="sales-entry-steps" aria-label="Sales entry steps">{['Products','Payment','Customer','Review'].map((title,index)=><button type="button" key={title} aria-current={salesEntryStep===index?'step':undefined} onClick={()=>goToSalesStep(index)}><span>{index+1}</span>{title}</button>)}</nav>}
+              {ownedShowroomSales && <nav data-sales-keyboard-skip ref={salesStepTop} className="sales-entry-steps" aria-label="Sales entry steps">{['Products','Payment','Customer','Review'].map((title,index)=><button type="button" key={title} aria-current={salesEntryStep===index?'step':undefined} onClick={()=>navigateSalesStep(index)}><span>{index+1}</span>{title}</button>)}</nav>}
               {activeOffers.length > 0 && (!ownedShowroomSales || salesEntryStep===0) && (
                 <section className="sales-builder-offers" aria-label="Current outlet offers">
                   <Gift size={19} />
@@ -1329,40 +1433,40 @@ const OutletView = () => {
               <div className={`sales-builder-workspace${ownedShowroomSales ? ` sales-builder-workspace--nim sales-step-${salesEntryStep}` : ''}`}>
                 <section className="sales-builder-date-card" hidden={ownedShowroomSales && salesEntryStep!==1}>
                   <div className="order-builder-section-label"><span>1</span><div><strong>Sales date</strong><small>Choose the date for this entry</small></div></div>
-                  <Input type="date" label="Date of sale" value={salesDate} onChange={(e) => setSalesDate(e.target.value)} />
-                  {ownedShowroomSales && <><Input label="Bill number (optional)" value={saleDetails.billNo} onChange={event => setSaleDetails({ ...saleDetails, billNo: event.target.value })} maxLength={80} /><Input label="Dispatch date" type="date" value={saleDetails.dispatchDate} onChange={event => setSaleDetails({ ...saleDetails, dispatchDate: event.target.value })} /><p className="showroom-sale-hint">Work-order number is generated automatically when this sale is submitted.<br />Sales person: <strong>{loggedInEmployeeName || 'Recorded from your login'}</strong></p></>}
+                  <Input id="sale-date" error={salesFieldError('sale-date')} required type="date" label="Date of sale" value={salesDate} onChange={(e) => setSalesDate(e.target.value)} />
+                  {ownedShowroomSales && <><Input label="Bill number (optional)" value={saleDetails.billNo} onChange={event => setSaleDetails({ ...saleDetails, billNo: event.target.value })} maxLength={80} /><Input id="sale-dispatch-date" error={salesFieldError('sale-dispatch-date')} required label="Dispatch date" type="date" value={saleDetails.dispatchDate} onChange={event => setSaleDetails({ ...saleDetails, dispatchDate: event.target.value })} /><p className="showroom-sale-hint">Work-order number is generated automatically when this sale is submitted.<br />Sales person: <strong>{loggedInEmployeeName || 'Recorded from your login'}</strong></p></>}
                 </section>
                 <section className="sales-builder-entry-card" ref={salesProductSelector} tabIndex={-1} hidden={ownedShowroomSales && salesEntryStep!==0} style={{scrollMarginTop:'7rem'}}>
                   <div className="order-builder-section-label"><span>1</span><div><strong>Sold product</strong><small>{ownedShowroomSales ? 'Choose products and their delivery source' : 'Only products available at this outlet are listed'}</small></div></div>
-                  <GroupedProductPicker label="Sale product" options={salesProductOptions.map(option=>option.value ? {...option,label:`${option.label} — ${isStall?(salesFulfillmentMode==='LINKED_OUTLET_STOCK'?'Linked outlet stock':'Stall stock'):'Outlet stock'}: ${availableStockLabel(option.value)}`} : option)} value={salesProduct} onChange={val => { setSalesProduct(val); setShowroomItem(current => showroomItemForProduct(current, salesProductOptions.find(option => option.value === val))); }} placeholder={isStall?'Search products and stock…':'Search products and outlet stock…'} />
+                  <GroupedProductPicker searchAll label="Sale product" options={salesProductOptions.map(option=>option.value ? {...option,label:`${option.label} — ${isStall?(salesFulfillmentMode==='LINKED_OUTLET_STOCK'?'Linked outlet stock':'Stall stock'):'Outlet stock'}: ${availableStockLabel(option.value)}`} : option)} value={salesProduct} onChange={val => { setSalesProduct(val); setShowroomItem(current => showroomItemForProduct(current, salesProductOptions.find(option => option.value === val))); setSalesValidationErrors([]);if(val)requestAnimationFrame(()=>document.getElementById(ownedShowroomSales?'sale-delivery-source':'sale-quantity')?.focus()); }} placeholder={isStall?'Search products and stock…':'Search products and outlet stock…'} />
                   {salesProduct && <div role="status" className="sales-product-mrp" style={{padding:'0.75rem 1rem',marginBottom:'1rem',border:'1px solid var(--color-primary)',borderRadius:'0.75rem'}}><strong>Product MRP</strong><ProductMrp item={salesProductOptions.find(option=>option.value===salesProduct) || {productId:salesProduct}} label={false}/></div>}
-                  {ownedShowroomSales && salesProduct && <Select label="Delivery source for this product" value={salesFulfillmentMode} onChange={e => setSalesFulfillmentMode(e.target.value)} options={[{value:'',label:'Choose delivery option'},{value:'LOCAL_STOCK',label:isStall?'Move from stall stock':'Needed immediately — deliver from outlet stock'},...(isStall?[{value:'LINKED_OUTLET_STOCK',label:'Move from linked outlet stock'}]:[]),{value:'FACTORY_DELIVERY',label:'Factory dispatch directly to customer'}]} />}
-                  {ownedShowroomSales && salesProduct && <ShowroomSaleFields isAccessory={Boolean(salesProductOptions.find(option=>option.value===salesProduct)?.isAccessory)} item={showroomItem} onChange={setShowroomItem} quantity={Number(salesQuantity)} />}
+                  {ownedShowroomSales && salesProduct && <Select id="sale-delivery-source" error={salesFieldError('sale-delivery-source')} required label="Delivery source for this product" value={salesFulfillmentMode} onChange={e => setSalesFulfillmentMode(e.target.value)} options={[{value:'',label:'Choose delivery option'},{value:'LOCAL_STOCK',label:isStall?'Move from stall stock':'Needed immediately — deliver from outlet stock'},...(isStall?[{value:'LINKED_OUTLET_STOCK',label:'Move from linked outlet stock'}]:[]),{value:'FACTORY_DELIVERY',label:'Factory dispatch directly to customer'}]} />}
+                  {ownedShowroomSales && salesProduct && <ShowroomSaleFields fieldError={salesFieldError} isAccessory={Boolean(salesProductOptions.find(option=>option.value===salesProduct)?.isAccessory)} item={showroomItem} onChange={setShowroomItem} quantity={Number(salesQuantity)} />}
                   {salesProduct && <p role="status"><strong>{isStall && salesFulfillmentMode==='FACTORY_DELIVERY'?'Factory delivery — stall and linked outlet stock stay unchanged.':<>{isStall?(salesFulfillmentMode==='LINKED_OUTLET_STOCK'?'Available at linked outlet':'Available at stall'):'Available in this outlet'}: {availableStockLabel(salesProduct)}</>}</strong></p>}
                   {salesStockStatus==='error' && <Button variant="secondary" onClick={()=>setSalesStockRefresh(value=>value+1)}>Refresh outlet stock</Button>}
                   <div className="sales-builder-add-row">
-                    <Input label="Quantity sold" type="number" min="1" value={salesQuantity} onChange={(e) => setSalesQuantity(e.target.value)} />
+                    <Input id="sale-quantity" error={salesFieldError('sale-quantity')} required label="Quantity sold" type="number" min="1" value={salesQuantity} onChange={(e) => setSalesQuantity(e.target.value)} />
                     <Button className="order-builder-add-button" onClick={handleAddSalesItem} disabled={isSubmittingSales}><Plus size={18} /> {editingSalesIndex!==null?'Update product':'Add sale'}</Button>
                     {editingSalesIndex!==null && <Button variant="secondary" onClick={cancelSalesEdit} disabled={isSubmittingSales}>Cancel edit</Button>}
                   </div>
                 </section>
                 {ownedShowroomSales && <section className="sales-builder-date-card sales-builder-customer-card" hidden={salesEntryStep!==1}>
                   <div className="order-builder-section-label"><span>2</span><div><strong>Cash and payment details</strong><small>Record the discount, payment, and balance</small></div></div>
-                  <Select label="Payment method" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} options={[
+                  <Select id="sale-payment-method" error={salesFieldError('sale-payment-method')} label="Payment method" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} options={[
                     { value: 'CASH', label: 'Cash' },
                     { value: 'CARD', label: 'Card' },
                     { value: 'UPI', label: 'UPI' },{value:'SPLIT',label:'Split payment (Cash / UPI / Card)'},
                   ]} />
-                  {ownedShowroomSales && <><Input label="Cash discount (₹)" type="number" min="0" step="0.01" placeholder="0.00" value={cashDiscount} onChange={e => setCashDiscount(e.target.value)} /><div className="sales-builder-payment-summary">Total after percentage discount: <strong>{formatCurrency(grossAmount)}</strong><br />Cash discount: <strong>− {formatCurrency(enteredDiscount)}</strong><br />Round-off: <strong>{formatCurrency(showroomBillPrice(grossAmount.toFixed(2), cashDiscount)?.roundOff ?? 0)}</strong><br />Grand total (tax included): <strong>{formatCurrency(netBillAmount)}</strong></div></>}
+                  {ownedShowroomSales && <><Input id="sale-cash-discount" error={salesFieldError('sale-cash-discount')} label="Cash discount (₹)" type="number" min="0" step="0.01" placeholder="0.00" value={cashDiscount} onChange={e => setCashDiscount(e.target.value)} /><div className="sales-builder-payment-summary">Total after percentage discount: <strong>{formatCurrency(grossAmount)}</strong><br />Cash discount: <strong>− {formatCurrency(enteredDiscount)}</strong><br />Round-off: <strong>{formatCurrency(showroomBillPrice(grossAmount.toFixed(2), cashDiscount)?.roundOff ?? 0)}</strong><br />Grand total (tax included): <strong>{formatCurrency(netBillAmount)}</strong></div></>}
                   {paymentMethod==='SPLIT' && <PaymentSplitInput values={advanceSplit} onChange={setAdvanceSplit} onTotalChange={setAdvanceAmount} disabled={isSubmittingSales}/>}
-                  <Input readOnly={paymentMethod==='SPLIT'} label="Amount paid now (advance)" type="number" min="0" step="0.01" placeholder="0.00" value={advanceAmount} onChange={(e) => setAdvanceAmount(e.target.value)} />
+                  <Input id="sale-advance" error={salesFieldError('sale-advance')} required readOnly={paymentMethod==='SPLIT'} label="Amount paid now (advance)" type="number" min="0" step="0.01" placeholder="0.00" value={advanceAmount} onChange={(e) => setAdvanceAmount(e.target.value)} />
                   {grossAmount > 0 && <div className="sales-builder-payment-summary">Balance due: <strong>{formatCurrency(Math.max(0, netBillAmount - Number(advanceAmount || 0)))}</strong></div>}
                 </section>}
                 {ownedShowroomSales && <section className="sales-builder-date-card sales-builder-customer-card" hidden={salesEntryStep!==2}>
                   <div className="order-builder-section-label"><span>3</span><div><strong>Customer details</strong><small>Customer details are required for NIM sales</small></div></div>
-                  <Input label="Customer name" placeholder="e.g. S. Kumar" value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
-                  <Input label="Customer phone number" type="tel" placeholder="e.g. 9876543210" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} />
-                  <Input label="Customer address" placeholder="House, street, area, city" value={customerAddress} onChange={(e) => setCustomerAddress(e.target.value)} />
+                  <Input id="sale-customer-name" error={salesFieldError('sale-customer-name')} required label="Customer name" placeholder="e.g. S. Kumar" value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
+                  <Input id="sale-customer-phone" error={salesFieldError('sale-customer-phone')} required label="Customer phone number" type="tel" placeholder="e.g. 9876543210" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} />
+                  <Input id="sale-customer-address" error={salesFieldError('sale-customer-address')} required label="Customer address" placeholder="House, street, area, city" value={customerAddress} onChange={(e) => setCustomerAddress(e.target.value)} />
 
                 </section>}
               </div>
@@ -1391,10 +1495,11 @@ const OutletView = () => {
 
               {ownedShowroomSales && salesEntryStep===3 && <section className="sales-review-dispatch"><Input label="Dispatch date (required)" type="date" value={saleDetails.dispatchDate} onChange={event=>setSaleDetails(current=>({...current,dispatchDate:event.target.value}))}/><small>Enter the planned dispatch / delivery date before submitting this sale.</small></section>}
               {ownedShowroomSales && salesEntryStep===3 && <div className="sales-review-details"><strong>{customerName || 'Customer name needed'}</strong><span>{customerPhone} · {customerAddress}</span><span>Payment: {paymentMethod==='SPLIT'?paymentDescription(splitPayments(advanceSplit)?.payments):paymentMethod} · Received: {formatCurrency(Number(advanceAmount || 0))} · Pending: {formatCurrency(Math.max(0,netBillAmount-Number(advanceAmount || 0)))}</span><Button variant="secondary" onClick={()=>goToSalesStep(1)}>Edit payment</Button><Button variant="secondary" onClick={()=>goToSalesStep(2)}>Edit customer</Button></div>}
-              {ownedShowroomSales && <div className="sales-step-footer"><span><strong>{salesItems.length} products</strong> · Total {formatCurrency(netBillAmount)}</span><div>{salesEntryStep>0 && <Button variant="secondary" onClick={()=>goToSalesStep(salesEntryStep-1)}>Back</Button>}{salesEntryStep<3 && <Button disabled={editingSalesIndex!==null || (salesEntryStep===0 && !salesItems.length)} onClick={()=>goToSalesStep(salesEntryStep+1)}>Continue to {['Payment','Customer','Review'][salesEntryStep]}</Button>}</div></div>}
+              {ownedShowroomSales && <div className="sales-step-footer"><span><strong>{salesItems.length} products</strong> · Total {formatCurrency(netBillAmount)}</span><div>{salesEntryStep>0 && <Button data-sales-keyboard-skip variant="secondary" onClick={()=>goToSalesStep(salesEntryStep-1)}>Back</Button>}{salesEntryStep<3 && <Button disabled={editingSalesIndex!==null || (salesEntryStep===0 && !salesItems.length)} onClick={()=>navigateSalesStep(salesEntryStep+1)}>Continue to {['Payment','Customer','Review'][salesEntryStep]}</Button>}</div></div>}
               <Button hidden={ownedShowroomSales && salesEntryStep!==3} className="order-builder-submit" onClick={handleRecordSalesSubmit} disabled={isSubmittingSales || editingSalesIndex!==null}>
                 <ShoppingBag size={18} /> {isSubmittingSales ? 'Recording sales…' : 'Submit sales record'}
               </Button>
+            </fieldset>
             </CardContent>
           </Card>
         )}
@@ -1456,11 +1561,6 @@ const OutletView = () => {
           )}
         </Modal>
 
-        <Modal isOpen={salesValidationErrors.length > 0} onClose={() => setSalesValidationErrors([])} title="Complete the required sales details">
-        <p>Please fill or correct these fields:</p>
-        <ul>{salesValidationErrors.map(field => <li key={field}>{field}</li>)}</ul>
-        <Button onClick={() => setSalesValidationErrors([])}>OK</Button>
-      </Modal>
       <Modal isOpen={Boolean(paymentTarget)} onClose={() => !settlingPayment && setPaymentTarget(null)} title={`Record pending payment — ${paymentTarget?.customerName || ''}`}>
           {paymentTarget && <div className="sales-builder-content" style={{ display: 'grid', gap: '1rem' }}>
             <p className="text-muted">Invoice <strong>{paymentTarget.saleReferenceId}</strong> · Balance due: <strong>{formatCurrency(paymentTarget.balanceDue)}</strong></p>

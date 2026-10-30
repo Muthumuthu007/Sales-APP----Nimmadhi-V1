@@ -18,3 +18,10 @@ test('changed payment or account uses a distinct operation ID; sensitive payload
  assert.equal(new Set(ids).size,3);
  assert.ok(!JSON.stringify([...store.data.entries()]).includes('PrivateCustomer'));
 });
+test('restored request ID survives a new browser session and is sent unchanged',async()=>{
+ const requestId=crypto.randomUUID(),ids=[];
+ const api={post:async(_path,payload)=>{ids.push(payload.requestId);return {ok:true};}};
+ await idempotentPost(api,'/sales',{requestId,amount:2000},storage());
+ await idempotentPost(api,'/sales',{requestId,amount:2000},storage());
+ assert.deepEqual(ids,[requestId,requestId]);
+});

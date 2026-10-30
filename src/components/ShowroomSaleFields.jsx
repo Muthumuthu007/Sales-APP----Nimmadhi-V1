@@ -6,7 +6,7 @@ import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { showroomPrice } from '../utils/showroomPricing';
 import './ShowroomSaleFields.css';
-export default function ShowroomSaleFields({ item, onChange, quantity, isAccessory=false }) {
+export default function ShowroomSaleFields({ item, onChange, quantity, isAccessory=false, fieldError=()=>undefined }) {
   const [accessories, setAccessories] = useState([]);
   const [selectedAccessory, setSelectedAccessory] = useState('');
   const [accessoryQuantity, setAccessoryQuantity] = useState('1');
@@ -31,7 +31,7 @@ export default function ShowroomSaleFields({ item, onChange, quantity, isAccesso
     if (scheme.length > 500) { setAccessoryError('Scheme details must fit within 500 characters.'); return; }
     onChange({ ...item, scheme }); setSelectedAccessory(''); setAccessoryQuantity('1'); setAccessoryError('');
   };
-  const field = (key, label, props = {}) => <Input label={label} value={item[key]} onChange={event => onChange({ ...item, [key]: event.target.value })} {...props} />;
+  const field = (key, label, props = {}) => <Input id={`sale-product-${key}`} error={fieldError(`sale-product-${key}`)} required={!['scheme'].includes(key) && !(isAccessory && ['colour','size'].includes(key))} label={label} value={item[key]} onChange={event => onChange({ ...item, [key]: event.target.value })} {...props} />;
   const price = showroomPrice({ ...item, quantity });
   const currency = value => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(value);
   return <div className="showroom-sale-fields">
@@ -43,7 +43,7 @@ export default function ShowroomSaleFields({ item, onChange, quantity, isAccesso
       {field('taxPercent', 'Included tax (%)', { type: 'number', min: '0', max: '100', step: '0.01' })}
     </div>
     <small className="showroom-sale-hint">Saved MRP is editable. Tax is included.</small>
-    <details className="sales-optional-accessories"><summary>Complimentary items / scheme (optional){item.scheme ? ' · Added' : ''}</summary><div className="showroom-accessory-picker">
+    <details data-sales-keyboard-skip className="sales-optional-accessories"><summary>Complimentary items / scheme (optional){item.scheme ? ' · Added' : ''}</summary><div className="showroom-accessory-picker">
       <GroupedProductPicker label="Complimentary accessory" options={accessories.map(productionOption)} value={selectedAccessory} onChange={setSelectedAccessory} placeholder={loadingAccessories ? 'Loading Accessories…' : 'Search accessory products…'} />
       <div className="showroom-accessory-actions"><Input label="Accessory quantity" type="number" min="1" step="1" value={accessoryQuantity} onChange={event => setAccessoryQuantity(event.target.value)} /><Button variant="secondary" disabled={loadingAccessories || !selectedAccessory} onClick={addAccessory}>Add to scheme</Button></div>
       {!loadingAccessories && !accessories.length && !accessoryError && <small className="showroom-sale-hint">No products are configured in the Accessories subgroups.</small>}

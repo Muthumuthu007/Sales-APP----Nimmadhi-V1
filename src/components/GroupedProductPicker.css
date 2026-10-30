@@ -25,3 +25,4 @@
 .complimentary-item-editor > .grouped-product-picker { flex: 1 1 100%; }
 .complimentary-item-editor > .input-group { flex: 1 1 100px; min-width: 0; }
 .complimentary-item-editor > button { min-width: 44px; min-height: 44px; }
+.sales-search-first .grouped-product-choice{grid-column:1/-1;grid-row:1}

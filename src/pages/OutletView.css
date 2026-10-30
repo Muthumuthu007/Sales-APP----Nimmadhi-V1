@@ -175,3 +175,9 @@
 .sales-summary-item{grid-template-columns:minmax(4.5rem,auto) minmax(0,1fr) auto}
 .sales-summary-actions{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
 @media(max-width:540px){.sales-summary-item{grid-template-columns:4.5rem minmax(0,1fr)}.sales-summary-actions{grid-column:1/-1;justify-content:flex-end}}
+.sales-keyboard-guide{display:flex;flex-wrap:wrap;align-items:center;gap:.35rem 1rem;padding:.65rem .85rem;border:1px solid var(--color-border);border-radius:.65rem;font-size:.8rem;color:var(--color-text-muted)}
+.sales-keyboard-guide strong{color:var(--color-text-main)}.sales-keyboard-guide small{flex-basis:100%}
+.sales-missing-notice{border:1px solid #fb923c;border-left:4px solid #fb923c;background:#432d2c;color:#fff2e9;border-radius:.65rem;padding:.8rem 1rem;scroll-margin-top:6rem}
+.sales-missing-notice>div{display:flex;justify-content:space-between;align-items:center}.sales-missing-notice button{background:transparent;border:0;color:inherit;font:inherit;cursor:pointer;text-align:left;min-height:36px}.sales-missing-notice ul{margin:.4rem 0 0;padding-left:1rem}.sales-missing-notice li button{width:100%}.sales-missing-notice li span{color:#ffd084;font-size:.8rem;margin-left:.5rem}.sales-missing-notice button:focus-visible{outline:2px solid #ffd084;border-radius:3px}
+.sales-builder-card input:focus-visible,.sales-builder-card select:focus-visible,.sales-builder-card button:focus-visible{outline:2px solid var(--color-primary);outline-offset:3px}
+@media(max-width:600px){.sales-keyboard-guide{font-size:.75rem}.sales-missing-notice{padding:.65rem}.sales-missing-notice li button{line-height:1.5}}

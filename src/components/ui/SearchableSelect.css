@@ -152,3 +152,4 @@
   .select-options-list { max-height: 36dvh; }
   .select-option { padding-block: .85rem; font-size: .95rem; }
 }
+.select-option.keyboard-active{background:rgba(255,191,36,.14);outline:2px solid var(--color-primary,#fbbf24);outline-offset:-2px}
