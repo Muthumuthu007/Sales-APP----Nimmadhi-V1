@@ -1,3 +1,6 @@
+import OutletCombos from '../components/OutletCombos';
+import ComboSaleDialog from '../components/ComboSaleDialog';
+import './Combos.css';
 import SalesEntryReview from '../components/SalesEntryReview';
 import {salesEnterKey,salesIssueTarget} from '../utils/salesKeyboard';
 import {salesDraftKey,readSalesDraft,writeSalesDraft,saleErrorDetails,uncertainSale,saleSubmissionIssues} from '../utils/salesDraft';
@@ -89,7 +92,7 @@ const OutletView = () => {
     { id: 'DUE_CUSTOMERS', label: 'Pending Payments' },
     { id: 'REPORTS', label: 'Reports' },
   ];
-  const tabs = isStall?[{id:'STOCK_IN',label:'Stock In / Return'},{id:'SALES',label:'Sales Entry'},{id:'CUSTOMER_DISPATCH',label:'Dispatch'},{id:'STOCK',label:'Stock View'},{id:'REPORTS',label:'Reports'}]:(['OUTLET', 'EMPLOYEE', 'CASHIER', 'SUPERVISOR'].includes(role) ? employeeTabs : outletTabs).filter(tab => (tab.id !== 'SALES' || isGodown === false)).concat(isGodown ? [{id:'ASSIGNED_DISPATCH',label:'Dispatch Assigned Orders'},{id:'PRODUCT_IN',label:'Temporary Stocks'},{id:'SALES_OUT',label:'Sales Out'}] : []).filter(tab => tab.id !== 'DUE_CUSTOMERS').concat(!isGodown && String(outletId).toUpperCase().startsWith('NIM')?[{id:'SALES_RECORDS',label:'Sales Records'}]:[]).concat(!isGodown && String(outletId).toUpperCase().startsWith('NIM')?[{id:'CUSTOMER_DISPATCH',label:'Dispatch'}]:[]).concat([{id:'AFTER_SALES',label:'After-sales'}]);
+  const tabs = isStall?[{id:'STOCK_IN',label:'Stock In / Return'},{id:'SALES',label:'Sales Entry'},{id:'CUSTOMER_DISPATCH',label:'Dispatch'},{id:'STOCK',label:'Stock View'},{id:'REPORTS',label:'Reports'}]:(['OUTLET', 'EMPLOYEE', 'CASHIER', 'SUPERVISOR'].includes(role) ? employeeTabs : outletTabs).filter(tab => (tab.id !== 'SALES' || isGodown === false)).concat(isGodown ? [{id:'ASSIGNED_DISPATCH',label:'Dispatch Assigned Orders'},{id:'PRODUCT_IN',label:'Temporary Stocks'},{id:'SALES_OUT',label:'Sales Out'}] : []).filter(tab => tab.id !== 'DUE_CUSTOMERS').concat(!isGodown && String(outletId).toUpperCase().startsWith('NIM')?[{id:'SALES_RECORDS',label:'Sales Records'}]:[]).concat(!isGodown && String(outletId).toUpperCase().startsWith('NIM')?[{id:'CUSTOMER_DISPATCH',label:'Dispatch'}]:[]).concat(!isGodown?[{id:'COMBOS',label:'Combos'}]:[]).concat([{id:'AFTER_SALES',label:'After-sales'}]);
 
   const availableModuleIds=tabs.map(tab=>tab.id).join(',');
   useEffect(()=>{if(requestedModule && availableModuleIds.split(',').includes(requestedModule))setActiveTab(requestedModule);},[requestedModule,availableModuleIds]);
@@ -229,6 +232,8 @@ const OutletView = () => {
   const [draftStorageError,setDraftStorageError]=useState(false);
   const [draftRecovered,setDraftRecovered]=useState(Boolean(savedSalesDraft));
 
+  const [comboPickerOpen,setComboPickerOpen]=useState(false);
+  const [selectedCombo,setSelectedCombo]=useState(null);
   const [salesCatalogueStatus,setSalesCatalogueStatus]=useState('loading');
   const [salesProductOptions, setSalesProductOptions] = useState([{ label: 'Loading products...', value: '' }]);
   const [ownedShowroomSales, setOwnedShowroomSales] = useState(() => String(outletId || '').toUpperCase().startsWith('NIM'));
@@ -328,9 +333,9 @@ const OutletView = () => {
       return;
     }
     if (ownedShowroomSales && !salesFulfillmentMode) {setSalesValidationErrors(['Delivery source for this product']);return;}
-    const existingIndex = salesItems.findIndex(i => i.product_id === salesProduct && (!ownedShowroomSales || i.fulfillmentMode === salesFulfillmentMode) && (!ownedShowroomSales || Object.keys(emptyShowroomItem).every(key => i[key] === showroomItem[key])));
+    const existingIndex = salesItems.findIndex(i => !i.comboId && i.product_id === salesProduct && (!ownedShowroomSales || i.fulfillmentMode === salesFulfillmentMode) && (!ownedShowroomSales || Object.keys(emptyShowroomItem).every(key => i[key] === showroomItem[key])));
     if(editingSalesIndex!==null){
-      setSalesItems(current=>current.map((item,index)=>index===editingSalesIndex?{product_id:salesProduct,quantity:Number(salesQuantity),...(ownedShowroomSales?{...showroomItem,fulfillmentMode:salesFulfillmentMode}:{})}:item));
+      setSalesItems(current=>current.map((item,index)=>index===editingSalesIndex?{...item,product_id:salesProduct,quantity:Number(salesQuantity),...(ownedShowroomSales?{...showroomItem,fulfillmentMode:salesFulfillmentMode}:{})}:item));
     } else if (existingIndex >= 0) {
       const newItems = [...salesItems];
       newItems[existingIndex].quantity += Number(salesQuantity);
@@ -366,7 +371,8 @@ const OutletView = () => {
     requestAnimationFrame(()=>salesProductSelector.current?.scrollIntoView({behavior:'smooth',block:'start'}));
   };
   const removeSalesItem = (idxToRemove) => {
-    setSalesItems(salesItems.filter((_, idx) => idx !== idxToRemove));
+    const selection=salesItems[idxToRemove]?.comboSelectionId;
+    setSalesItems(salesItems.filter((item,idx)=>selection?item.comboSelectionId!==selection:idx!==idxToRemove));
     setSalesError(null);
   };
 
@@ -1128,6 +1134,7 @@ const OutletView = () => {
       <div className="outlet-current-module"><strong>{tabs.find(tab=>tab.id===activeTab)?.label || 'Outlet Operations'}</strong><small>Switch using the ☰ Modules menu</small></div>
 
       <div>
+        {activeTab === 'COMBOS' && <OutletCombos onChoose={combo=>{setSelectedCombo(combo);setActiveTab('SALES');goToSalesStep(0);}}/>}
         {activeTab === 'CUSTOMER_DISPATCH' && <StallCustomerDispatch/>}
         {activeTab === 'SALES_RECORDS' && <OwnSalesRecords outletId={outletId}/>}
         {activeTab === 'AFTER_SALES' && <AfterSales godownMode={Boolean(isGodown)} />}
@@ -1414,7 +1421,7 @@ const OutletView = () => {
 
               <div className="sales-keyboard-guide"><strong>Quick entry</strong><span>Enter: next field · Shift + Enter: previous · Tab: next control</span><small>Search products, use ↑ / ↓, then Enter to choose. Submit only after reviewing.</small></div>
               {salesValidationErrors.length>0 && <div ref={salesNoticeRef} role="alert" className="sales-missing-notice"><div><strong>Please check {salesValidationErrors.length===1?'this detail':'these details'}</strong><button type="button" onClick={()=>setSalesValidationErrors([])} aria-label="Dismiss sales notification">×</button></div><ul>{salesValidationErrors.map((message,index)=><li key={`${message}-${index}`}><button type="button" onClick={()=>focusSalesIssue(message)}>{message} <span>Go to field →</span></button></li>)}</ul></div>}
-              <fieldset ref={salesFormRef} onChangeCapture={event=>{if(event.target.id)setSalesValidationErrors(current=>{const remaining=current.filter(message=>salesIssueTarget(message).id!==event.target.id);return remaining.length===current.length?current:remaining;});}} onKeyDown={salesKeyboard} disabled={isSubmittingSales || Boolean(pendingSale)} style={{border:0,padding:0,margin:0,minWidth:0}}>
+              <fieldset ref={salesFormRef} onChangeCapture={event=>{const fieldId=event.target.id;if(fieldId)setTimeout(()=>setSalesValidationErrors(current=>{const remaining=current.filter(message=>salesIssueTarget(message).id!==fieldId);return remaining.length===current.length?current:remaining;}),0);}} onKeyDown={salesKeyboard} disabled={isSubmittingSales || Boolean(pendingSale)} style={{border:0,padding:0,margin:0,minWidth:0}}>
               {editingSalesIndex!==null && <p role="status">Editing product {editingSalesIndex+1}. Update the product or cancel the edit before submitting.</p>}
               {ownedShowroomSales && <nav data-sales-keyboard-skip ref={salesStepTop} className="sales-entry-steps" aria-label="Sales entry steps">{['Products','Payment','Customer','Review'].map((title,index)=><button type="button" key={title} aria-current={salesEntryStep===index?'step':undefined} onClick={()=>navigateSalesStep(index)}><span>{index+1}</span>{title}</button>)}</nav>}
               {activeOffers.length > 0 && (!ownedShowroomSales || salesEntryStep===0) && (
@@ -1439,10 +1446,11 @@ const OutletView = () => {
                 </section>
                 <section className="sales-builder-entry-card" ref={salesProductSelector} tabIndex={-1} hidden={ownedShowroomSales && salesEntryStep!==0} style={{scrollMarginTop:'7rem'}}>
                   <div className="order-builder-section-label"><span>1</span><div><strong>Sold product</strong><small>{ownedShowroomSales ? 'Choose products and their delivery source' : 'Only products available at this outlet are listed'}</small></div></div>
-                  <GroupedProductPicker searchAll label="Sale product" options={salesProductOptions.map(option=>option.value ? {...option,label:`${option.label} — ${isStall?(salesFulfillmentMode==='LINKED_OUTLET_STOCK'?'Linked outlet stock':'Stall stock'):'Outlet stock'}: ${availableStockLabel(option.value)}`} : option)} value={salesProduct} onChange={val => { setSalesProduct(val); setShowroomItem(current => showroomItemForProduct(current, salesProductOptions.find(option => option.value === val))); setSalesValidationErrors([]);if(val)requestAnimationFrame(()=>document.getElementById(ownedShowroomSales?'sale-delivery-source':'sale-quantity')?.focus()); }} placeholder={isStall?'Search products and stock…':'Search products and outlet stock…'} />
+                  {ownedShowroomSales && !isStall && <Button variant="secondary" onClick={()=>setComboPickerOpen(true)} disabled={editingSalesIndex!==null}>Choose combo</Button>}
+                  <GroupedProductPicker disabled={Boolean(salesItems[editingSalesIndex]?.comboId)} searchAll label="Sale product" options={salesProductOptions.map(option=>option.value ? {...option,label:`${option.label} — ${isStall?(salesFulfillmentMode==='LINKED_OUTLET_STOCK'?'Linked outlet stock':'Stall stock'):'Outlet stock'}: ${availableStockLabel(option.value)}`} : option)} value={salesProduct} onChange={val => { setSalesProduct(val); setShowroomItem(current => showroomItemForProduct(current, salesProductOptions.find(option => option.value === val))); setSalesValidationErrors([]);if(val)requestAnimationFrame(()=>document.getElementById(ownedShowroomSales?'sale-delivery-source':'sale-quantity')?.focus()); }} placeholder={isStall?'Search products and stock…':'Search products and outlet stock…'} />
                   {salesProduct && <div role="status" className="sales-product-mrp" style={{padding:'0.75rem 1rem',marginBottom:'1rem',border:'1px solid var(--color-primary)',borderRadius:'0.75rem'}}><strong>Product MRP</strong><ProductMrp item={salesProductOptions.find(option=>option.value===salesProduct) || {productId:salesProduct}} label={false}/></div>}
                   {ownedShowroomSales && salesProduct && <Select id="sale-delivery-source" error={salesFieldError('sale-delivery-source')} required label="Delivery source for this product" value={salesFulfillmentMode} onChange={e => setSalesFulfillmentMode(e.target.value)} options={[{value:'',label:'Choose delivery option'},{value:'LOCAL_STOCK',label:isStall?'Move from stall stock':'Needed immediately — deliver from outlet stock'},...(isStall?[{value:'LINKED_OUTLET_STOCK',label:'Move from linked outlet stock'}]:[]),{value:'FACTORY_DELIVERY',label:'Factory dispatch directly to customer'}]} />}
-                  {ownedShowroomSales && salesProduct && <ShowroomSaleFields fieldError={salesFieldError} isAccessory={Boolean(salesProductOptions.find(option=>option.value===salesProduct)?.isAccessory)} item={showroomItem} onChange={setShowroomItem} quantity={Number(salesQuantity)} />}
+                  {ownedShowroomSales && salesProduct && <ShowroomSaleFields lockedPrice={Boolean(salesItems[editingSalesIndex]?.comboId)} fieldError={salesFieldError} isAccessory={Boolean(salesProductOptions.find(option=>option.value===salesProduct)?.isAccessory)} item={showroomItem} onChange={setShowroomItem} quantity={Number(salesQuantity)} />}
                   {salesProduct && <p role="status"><strong>{isStall && salesFulfillmentMode==='FACTORY_DELIVERY'?'Factory delivery — stall and linked outlet stock stay unchanged.':<>{isStall?(salesFulfillmentMode==='LINKED_OUTLET_STOCK'?'Available at linked outlet':'Available at stall'):'Available in this outlet'}: {availableStockLabel(salesProduct)}</>}</strong></p>}
                   {salesStockStatus==='error' && <Button variant="secondary" onClick={()=>setSalesStockRefresh(value=>value+1)}>Refresh outlet stock</Button>}
                   <div className="sales-builder-add-row">
@@ -1459,7 +1467,7 @@ const OutletView = () => {
                     { value: 'CARD', label: 'Card' },
                     { value: 'UPI', label: 'UPI' },{value:'SPLIT',label:'Split payment (Cash / UPI / Card)'},
                   ]} />
-                  {ownedShowroomSales && <><Input id="sale-cash-discount" error={salesFieldError('sale-cash-discount')} label="Cash discount (₹)" type="number" min="0" step="0.01" placeholder="0.00" value={cashDiscount} onChange={e => setCashDiscount(e.target.value)} /><div className="sales-builder-payment-summary">Total after percentage discount: <strong>{formatCurrency(grossAmount)}</strong><br />Cash discount: <strong>− {formatCurrency(enteredDiscount)}</strong><br />Round-off: <strong>{formatCurrency(showroomBillPrice(grossAmount.toFixed(2), cashDiscount)?.roundOff ?? 0)}</strong><br />Grand total (tax included): <strong>{formatCurrency(netBillAmount)}</strong></div></>}
+                  {ownedShowroomSales && <><Input id="sale-cash-discount" error={salesFieldError('sale-cash-discount')} label="Cash discount (₹)" type="number" min="0" step="0.01" placeholder="0.00" value={cashDiscount} onChange={e => setCashDiscount(e.target.value)} /><div className="sales-builder-payment-summary">Total after product discounts: <strong>{formatCurrency(grossAmount)}</strong><br />Cash discount: <strong>− {formatCurrency(enteredDiscount)}</strong><br />Round-off: <strong>{formatCurrency(showroomBillPrice(grossAmount.toFixed(2), cashDiscount)?.roundOff ?? 0)}</strong><br />Grand total (tax included): <strong>{formatCurrency(netBillAmount)}</strong></div></>}
                   {paymentMethod==='SPLIT' && <PaymentSplitInput values={advanceSplit} onChange={setAdvanceSplit} onTotalChange={setAdvanceAmount} disabled={isSubmittingSales}/>}
                   <Input id="sale-advance" error={salesFieldError('sale-advance')} required readOnly={paymentMethod==='SPLIT'} label="Amount paid now (advance)" type="number" min="0" step="0.01" placeholder="0.00" value={advanceAmount} onChange={(e) => setAdvanceAmount(e.target.value)} />
                   {grossAmount > 0 && <div className="sales-builder-payment-summary">Balance due: <strong>{formatCurrency(Math.max(0, netBillAmount - Number(advanceAmount || 0)))}</strong></div>}
@@ -1484,9 +1492,9 @@ const OutletView = () => {
                     {salesItems.map((item, idx) => (
                       <div key={idx} className="order-builder-item sales-summary-item">
                         <span className="order-builder-item-quantity" style={{width:'auto',minWidth:'4rem',padding:'.5rem',flexDirection:'column'}}>{item.quantity}<small style={{display:'block',fontSize:'.75rem',fontWeight:400,marginTop:'.35rem'}}>{isStall?(item.fulfillmentMode==='LINKED_OUTLET_STOCK'?'Linked outlet stock':'Stall stock'):'Outlet stock'}: {availableStockLabel(item.product_id,item.fulfillmentMode)}</small></span>
-                        <span className="order-builder-item-name">{saleProductName(salesProductOptions.find(o => o.value === item.product_id)?.label || item.product_id,item.size)}<ProductMrp item={item}/>{ownedShowroomSales && <span className="showroom-item-details">{item.brand} · {item.colour} · {item.size}<br />MRP {formatCurrency(Number(item.mrpSticker))} − {formatCurrency(showroomPrice(item)?.discountAmount || 0)} ({showroomPrice(item)?.discountPercent ?? item.discountPercent}%) · Unit {formatCurrency(showroomPrice(item)?.value || 0)}<br /><strong>Delivery: {item.fulfillmentMode === 'LOCAL_STOCK' ? (isStall?'Stall stock → customer':'Outlet stock → customer') : item.fulfillmentMode==='LINKED_OUTLET_STOCK'?'Linked outlet → customer':'Factory → customer'}</strong><br /><strong>Total {formatCurrency(showroomPrice(item)?.totalSalesValue || 0)}</strong> · Tax included ({item.taxPercent}%){item.scheme && <><br />Scheme: {item.scheme}</>}</span>}</span>
+                        <span className="order-builder-item-name">{saleProductName(salesProductOptions.find(o => o.value === item.product_id)?.label || item.product_id,item.size)}<ProductMrp item={item}/>{item.comboName&&<small>Combo: {item.comboName} · {item.comboCount} bundle(s)</small>}{ownedShowroomSales && <span className="showroom-item-details">{item.brand} · {item.colour} · {item.size}<br />MRP {formatCurrency(Number(item.mrpSticker))} − {formatCurrency(showroomPrice(item)?.discountAmount || 0)} ({showroomPrice(item)?.discountPercent ?? item.discountPercent}%) · Unit {formatCurrency(showroomPrice(item)?.value || 0)}<br /><strong>Delivery: {item.fulfillmentMode === 'LOCAL_STOCK' ? (isStall?'Stall stock → customer':'Outlet stock → customer') : item.fulfillmentMode==='LINKED_OUTLET_STOCK'?'Linked outlet → customer':'Factory → customer'}</strong><br /><strong>Total {formatCurrency(showroomPrice(item)?.totalSalesValue || 0)}</strong> · Tax included ({item.taxPercent}%){item.scheme && <><br />Scheme: {item.scheme}</>}</span>}</span>
                         <div className="sales-summary-actions"><Button variant="secondary" onClick={()=>editSalesItem(idx)} disabled={isSubmittingSales || editingSalesIndex!==null} aria-label={`Edit sales product ${idx+1}`}>Edit product</Button>
-                        <Button variant="secondary" className="order-builder-remove" onClick={() => removeSalesItem(idx)} disabled={isSubmittingSales || editingSalesIndex!==null} aria-label="Remove sales item">
+                        <Button variant="secondary" className="order-builder-remove" onClick={() => removeSalesItem(idx)} disabled={isSubmittingSales || editingSalesIndex!==null} aria-label={item.comboId?'Remove entire combo':'Remove sales item'}>
                           <Trash2 size={16} />
                         </Button></div>
                       </div>
@@ -1556,6 +1564,9 @@ const OutletView = () => {
           </Card>
         )}
 
+        <Modal isOpen={comboPickerOpen} onClose={()=>setComboPickerOpen(false)} title="Available outlet combos"><OutletCombos compact onChoose={combo=>{setSelectedCombo(combo);setComboPickerOpen(false);}}/></Modal>
+        <Modal isOpen={Boolean(selectedCombo)&&!selectedCombo.saleItems.every(item=>salesProductOptions.some(p=>p.value===item.product_id))} onClose={()=>setSelectedCombo(null)} title="Load combo products"><p>{salesCatalogueStatus==='ready'?'Some combo products are unavailable in this outlet’s catalogue. Close this window and refresh the combos.':'Loading product details…'}</p></Modal>
+        {selectedCombo&&selectedCombo.saleItems.every(item=>salesProductOptions.some(p=>p.value===item.product_id))&&<ComboSaleDialog combo={selectedCombo} onClose={()=>setSelectedCombo(null)} products={salesProductOptions} stockLabel={availableStockLabel} onAdd={rows=>{setSalesItems(current=>[...current,...rows]);setSalesSuccess('Combo added. Confirm payment and customer details.');setSalesValidationErrors([]);setActiveTab('SALES');goToSalesStep(0);}}/>}
         <Modal className="sales-invoice-dialog" isOpen={Boolean(receipt)} onClose={() => setReceipt(null)} title="Sales invoice">
           {receipt && (
             <SalesBill receipt={receipt} offerSummary={offerSummary}/>

@@ -1,3 +1,4 @@
+import Combos from './pages/Combos';
 import FactoryPendingPayments from './pages/FactoryPendingPayments';
 import OutletDashboard from './pages/OutletDashboard';
 import AfterSales from './pages/AfterSales';
@@ -121,6 +122,7 @@ function App() {
                 <Outlets />
               </ProtectedRoute>
             } />
+            <Route path="combos" element={<ProtectedRoute allowedRoles={['MANAGER']}><Combos/></ProtectedRoute>} />
             <Route path="complimentary-products" element={
               <ProtectedRoute allowedRoles={['MANAGER']}>
                 <Offers ruleType="COMPLIMENTARY" />

@@ -25,6 +25,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     { to: '/attendance', icon: <ClipboardCheck size={20} />, label: 'Attendance' },
     { to: '/outlets/overview', icon: <LayoutDashboard size={20} />, label: 'Outlet Dashboard' },
     { to: '/outlets', icon: <Store size={20} />, label: 'Outlets' },
+    { to: '/combos', icon: <Gift size={20} />, label: 'Combos' },
     { to: '/complimentary-products', icon: <Gift size={20} />, label: 'Complimentary Products' },
     { to: '/discounts', icon: <BadgeIndianRupee size={20} />, label: 'Discounts' },
     { to: '/employees', icon: <UsersRound size={20} />, label: 'Employees' },
@@ -32,7 +33,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     { to: '/create-user', icon: <UserPlus size={20} />, label: 'Create User' },
   ];
 
-  const modules=role==='STALL'?[['STOCK_IN','Stock In / Return',<Truck size={20}/>],['SALES','Sales Entry',<CreditCard size={20}/>],['CUSTOMER_DISPATCH','Dispatch',<Truck size={20}/>],['STOCK','Stock View',<Store size={20}/>],['REPORTS','Reports',<LayoutDashboard size={20}/>]]:[['ATTENDANCE','Attendance',<ClipboardCheck size={20}/>],['CREATE_ORDER','Create Order',<ShoppingCart size={20}/>],['MY_ORDERS','My Orders',<ShoppingCart size={20}/>],['STOCK','Stock View',<Store size={20}/>],['RECEIVE_STOCK','Receive Stock',<Truck size={20}/>],...(!godownWorkspace?[['SALES','Sales Entry',<CreditCard size={20}/>],...(String(outletId).toUpperCase().startsWith('NIM')?[['SALES_RECORDS','Sales Records',<ClipboardCheck size={20}/>],['CUSTOMER_DISPATCH','Dispatch',<Truck size={20}/>]]:[])]:[]),['REPORTS','Reports',<LayoutDashboard size={20}/>],...(godownWorkspace?[['ASSIGNED_DISPATCH','Dispatch Assigned Orders',<Truck size={20}/>],['PRODUCT_IN','Temporary Stocks',<Store size={20}/>],['SALES_OUT','Sales Out',<ShoppingCart size={20}/>]]:[]),['AFTER_SALES','After-sales',<ClipboardCheck size={20}/>]];
+  const modules=role==='STALL'?[['STOCK_IN','Stock In / Return',<Truck size={20}/>],['SALES','Sales Entry',<CreditCard size={20}/>],['CUSTOMER_DISPATCH','Dispatch',<Truck size={20}/>],['STOCK','Stock View',<Store size={20}/>],['REPORTS','Reports',<LayoutDashboard size={20}/>]]:[['ATTENDANCE','Attendance',<ClipboardCheck size={20}/>],['CREATE_ORDER','Create Order',<ShoppingCart size={20}/>],['MY_ORDERS','My Orders',<ShoppingCart size={20}/>],['STOCK','Stock View',<Store size={20}/>],['RECEIVE_STOCK','Receive Stock',<Truck size={20}/>],...(!godownWorkspace?[['SALES','Sales Entry',<CreditCard size={20}/>],...(String(outletId).toUpperCase().startsWith('NIM')?[['SALES_RECORDS','Sales Records',<ClipboardCheck size={20}/>],['CUSTOMER_DISPATCH','Dispatch',<Truck size={20}/>]]:[])]:[]),['REPORTS','Reports',<LayoutDashboard size={20}/>],...(godownWorkspace?[['ASSIGNED_DISPATCH','Dispatch Assigned Orders',<Truck size={20}/>],['PRODUCT_IN','Temporary Stocks',<Store size={20}/>],['SALES_OUT','Sales Out',<ShoppingCart size={20}/>]]:[]),...(!godownWorkspace?[['COMBOS','Combos',<Gift size={20}/>]]:[]),['AFTER_SALES','After-sales',<ClipboardCheck size={20}/>]];
   const employeeLinks=role==='GODOWN'?[{to:'/godown',icon:<Store size={20}/>,label:'Godown Operations'}]:modules.map(([module,label,icon])=>({to:`/employee?module=${module}`,module,label,icon}));
 
 

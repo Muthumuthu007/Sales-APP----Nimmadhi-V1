@@ -47,3 +47,9 @@ test('payment-only admin sees payment module without factory dispatch access',()
  assert.equal(canAccessAdminPath(access,'/factory-management'),false);
  assert.equal(canAccessAdminPath({restricted:true,modules:['FACTORY_MANAGEMENT']},'/pending-payments'),false);
 });
+test('combo dashboard has a separate assignable permission',()=>{
+ const access={restricted:true,modules:['COMBOS'],locations:['Chennai']};
+ assert.equal(firstAdminPath(access),'/combos');assert.equal(canAccessAdminPath(access,'/combos'),true);
+ assert.equal(canAccessAdminPath(access,'/complimentary-products'),false);
+ assert.equal(canAccessAdminPath({restricted:true,modules:['COMPLIMENTARY_PRODUCTS']},'/combos'),false);
+});

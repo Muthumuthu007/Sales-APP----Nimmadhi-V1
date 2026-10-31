@@ -2,7 +2,7 @@ export const adminModules = [
  ['DASHBOARD','Dashboard','/dashboard'],['FACTORY_MANAGEMENT','Factory Management','/factory-management'],['PENDING_PAYMENTS','Pending Payments','/pending-payments'],['ORDERS','Orders','/orders'],['AFTER_SALES','After-sales','/after-sales'],
  ['LOAD_PLANS','Load Plans','/load-plans'],['DISPATCH_PLANS','Dispatch Plans','/dispatch-plans'],['DISPATCH','Dispatch','/dispatch'],
  ['SALARY','Salary','/salary'],['ATTENDANCE','Attendance','/attendance'],['OUTLET_DASHBOARD','Outlet Dashboard','/outlets/overview'],['OUTLETS','Outlets','/outlets'],
- ['COMPLIMENTARY_PRODUCTS','Complimentary Products','/complimentary-products'],['DISCOUNTS','Discounts','/discounts'],['EMPLOYEES','Employees','/employees'],['CREATE_USER','Create User','/create-user'],
+ ['COMBOS','Combos','/combos'],['COMPLIMENTARY_PRODUCTS','Complimentary Products','/complimentary-products'],['DISCOUNTS','Discounts','/discounts'],['EMPLOYEES','Employees','/employees'],['CREATE_USER','Create User','/create-user'],
 ];
 export function canAccessModule(access,module) {return !access?.restricted || access.modules?.includes(module);}
 export function canAccessAdminPath(access,path) {
