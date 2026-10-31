@@ -1,4 +1,4 @@
-export const emptyShowroomItem = { brand: 'NIM', model: '', colour: '', size: '', mrpSticker: '', discountPercent: '', discountAmount: '', taxPercent: '18', scheme: '' };
+export const emptyShowroomItem = { brand: 'NIM', model: '', colour: '', size: '', mrpSticker: '', discountPercent: '', discountAmount: undefined, taxPercent: '18', scheme: '' };
 const scaled = value => {
   const text = String(value ?? '').trim();
   if (!/^\d{1,10}(\.\d{1,2})?$/.test(text)) return null;
