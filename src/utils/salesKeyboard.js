@@ -22,7 +22,7 @@ export function salesIssueTarget(message) {
  if(text.includes('cash discount'))return {step:1,id:'sale-cash-discount'};
  if(text.includes('date of sale'))return {step:1,id:'sale-date'};
  if(/amount received|amount paid|advance|split|payment|discount.*bill|bill amount/.test(text))return {step:1,id:text.includes('split')?'sale-payment-method':'sale-advance'};
- for(const [word,id] of [['quantity','sale-quantity'],['colour','sale-product-colour'],['size','sale-product-size'],['brand','sale-product-brand'],['model','sale-product-model'],['mrp','sale-product-mrpSticker'],['tax','sale-product-taxPercent'],['discount','sale-product-discountPercent'],['delivery','sale-delivery-source']])if(text.includes(word))return {step:0,id};
+ for(const [word,id] of [['quantity','sale-quantity'],['colour','sale-product-colour'],['size','sale-product-size'],['brand','sale-product-brand'],['model','sale-product-model'],['mrp','sale-product-mrpSticker'],['tax','sale-product-taxPercent'],['discount','sale-product-discountAmount'],['delivery','sale-delivery-source']])if(text.includes(word))return {step:0,id};
  if(text.includes('product') || text.includes('quantity') || text.includes('colour') || text.includes('size') || text.includes('delivery') || text.includes('brand') || text.includes('model') || text.includes('mrp') || text.includes('tax') || text.includes('discount'))return {step:0};
  return {step:3};
 }

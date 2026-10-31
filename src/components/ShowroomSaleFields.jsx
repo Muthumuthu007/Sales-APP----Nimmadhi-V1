@@ -4,7 +4,7 @@ import GroupedProductPicker from './GroupedProductPicker';
 import {productionOption} from '../utils/productHierarchy';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
-import { showroomPrice } from '../utils/showroomPricing';
+import { showroomPrice,discountAmountText } from '../utils/showroomPricing';
 import './ShowroomSaleFields.css';
 export default function ShowroomSaleFields({ item, onChange, quantity, isAccessory=false, fieldError=()=>undefined }) {
   const [accessories, setAccessories] = useState([]);
@@ -39,7 +39,8 @@ export default function ShowroomSaleFields({ item, onChange, quantity, isAccesso
       {field('brand', 'Brand', { maxLength: 80 })}{field('model', 'Model', { maxLength: 200 })}
       {field('colour', isAccessory?'Colour (optional)':'Colour', { placeholder: 'e.g. Red', maxLength: 80 })}{field('size', isAccessory?'Size (optional)':'Size (inches)', { placeholder: 'e.g. 78 × 84 × 6', maxLength: 80 })}
       {field('mrpSticker', 'Sticker MRP per unit (₹)', { type: 'number', min: '0.01', step: '0.01' })}
-      {field('discountPercent', 'Discount (%)', { type: 'number', min: '0', max: '99.99', step: '0.01' })}
+      <Input id="sale-product-discountAmount" required error={fieldError('sale-product-discountAmount')} label="Discount per unit (₹)" type="number" min="0" step="0.01" placeholder="Enter 0 for no discount" value={discountAmountText(item)} onChange={event=>{const next={...item,discountAmount:event.target.value};const calculated=showroomPrice({...next,quantity});onChange({...next,discountPercent:calculated?String(calculated.discountPercent):''});}}/>
+      <div className="showroom-calculated-discount"><span>Calculated discount</span><strong>{price?`${price.discountPercent.toFixed(2)}%`:'—'}</strong></div>
       {field('taxPercent', 'Included tax (%)', { type: 'number', min: '0', max: '100', step: '0.01' })}
     </div>
     <small className="showroom-sale-hint">Saved MRP is editable. Tax is included.</small>
@@ -55,7 +56,7 @@ export default function ShowroomSaleFields({ item, onChange, quantity, isAccesso
     <div className="showroom-price-preview">
       <div><span>Value per unit</span><strong>{price ? currency(price.value) : '—'}</strong></div>
       <div><span>Total sales value</span><strong>{price ? currency(price.totalSalesValue) : '—'}</strong></div>
-      <p>Sticker MRP − discount, multiplied by quantity. Tax is included.</p>
+      <p>Sticker MRP − rupee discount per unit, multiplied by quantity. Tax is included.</p>
     </div>
   </div>;
 }

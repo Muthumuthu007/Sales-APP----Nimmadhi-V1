@@ -34,7 +34,7 @@ test('saved product MRP defaults are editable and do not leak into the next prod
  const option={label:'72X36X5 Bed — max produce: 0',mrpSticker:'50020.00'};
  const item=showroomItemForProduct(emptyShowroomItem,option);
  assert.equal(item.mrpSticker,'50020.00');
- const edited={...item,mrpSticker:'50000',discountPercent:'0'};
+ const edited={...item,mrpSticker:'50000',discountPercent:'0',discountAmount:'0'};
  assert.equal(showroomPrice({...edited,quantity:1}).totalSalesValue,50000);
  assert.equal(option.mrpSticker,'50020.00');
  assert.equal(showroomItemForProduct(edited,{label:'Another bed'}).mrpSticker,'');
@@ -56,4 +56,23 @@ test('only catalogue-classified accessories allow missing size and colour',async
  assert.deepEqual(requiredShowroomFields({isAccessory:true}),['brand','model']);
  assert.ok(requiredShowroomFields({isAccessory:false}).includes('size'));
  assert.ok(requiredShowroomFields({label:'Accessory named mattress'}).includes('colour'));
+});
+
+test('rupee discount remains exact when the calculated percentage repeats',()=>{
+ const result=showroomPrice({mrpSticker:'2999',discountAmount:'500',discountPercent:'16.67',taxPercent:'18',quantity:3});
+ assert.equal(result.value,2499);assert.equal(result.totalSalesValue,7497);assert.equal(result.discountPercent,16.67);assert.equal(result.discountAmount,500);
+ for(const amount of ['-1','2999','3000','1.234'])assert.equal(showroomPrice({mrpSticker:'2999',discountAmount:amount,quantity:1}),null);
+ assert.equal(showroomPrice({mrpSticker:'2999',discountAmount:'0',quantity:1}).value,2999);
+});
+test('legacy percentage lines convert to rupee discounts without changing their unit value',async()=>{
+ const {discountAmountText}=await import('./showroomPricing.js');
+ const legacy={mrpSticker:'1.05',discountPercent:'50',taxPercent:'18',quantity:3};
+ assert.equal(discountAmountText(legacy),'0.52');
+ assert.equal(showroomPrice({...legacy,discountAmount:discountAmountText(legacy)}).totalSalesValue,1.59);
+});
+
+test('clearing the rupee discount stays blank rather than falling back to the previous percentage',async()=>{
+ const {discountAmountText}=await import('./showroomPricing.js');
+ const item={mrpSticker:'2999',discountAmount:'',discountPercent:'16.67',quantity:1};
+ assert.equal(discountAmountText(item),'');assert.equal(showroomPrice(item),null);
 });

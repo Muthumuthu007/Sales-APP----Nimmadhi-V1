@@ -1,3 +1,4 @@
+import SalesEntryReview from '../components/SalesEntryReview';
 import {salesEnterKey,salesIssueTarget} from '../utils/salesKeyboard';
 import {salesDraftKey,readSalesDraft,writeSalesDraft,saleErrorDetails,uncertainSale,saleSubmissionIssues} from '../utils/salesDraft';
 import StallCustomerDispatch from './StallCustomerDispatch';
@@ -6,7 +7,7 @@ import StallStockIn from './StallStockIn';
 import OwnSalesRecords from './OwnSalesRecords';
 import PaymentBreakdown from '../components/PaymentBreakdown';
 import PaymentSplitInput from '../components/PaymentSplitInput';
-import {splitPayments,paymentDescription} from '../utils/paymentSplits';
+import {splitPayments} from '../utils/paymentSplits';
 import {requiredShowroomFields} from '../utils/showroomPricing';
 import OrderGroupTree from '../components/OrderGroupTree';
 import {useSearchParams} from 'react-router-dom';
@@ -49,7 +50,7 @@ import { fetchActiveOutletOffers } from '../api/offers';
 import { AuthContext } from '../context/AuthContext';
 import EmployeeAttendance from './EmployeeAttendance';
 import ShowroomSaleFields from '../components/ShowroomSaleFields';
-import { showroomPrice, showroomBillPrice, emptyShowroomItem } from '../utils/showroomPricing';
+import { showroomPrice, showroomBillPrice, emptyShowroomItem,discountAmountText } from '../utils/showroomPricing';
 import './OutletView.css';
 
 const OutletView = () => {
@@ -321,7 +322,7 @@ const OutletView = () => {
     if (ownedShowroomSales && (!requiredShowroomFields(salesProductOptions.find(option=>option.value===salesProduct)).every(key => showroomItem[key].trim()) || !showroomPrice({ ...showroomItem, quantity: Number(salesQuantity) })?.value)) {
       const fields = requiredShowroomFields(salesProductOptions.find(option=>option.value===salesProduct)).filter(key => !showroomItem[key].trim()).map(key => ({brand:'Brand',model:'Model',colour:'Colour',size:'Size'})[key]);
       if (!showroomItem.mrpSticker || Number(showroomItem.mrpSticker) <= 0) fields.push('Sticker MRP');
-      if (showroomItem.discountPercent === '' || Number(showroomItem.discountPercent) < 0 || Number(showroomItem.discountPercent) > 99.99) fields.push('Discount percentage');
+      if (!showroomPrice({...showroomItem,quantity:Number(salesQuantity)})) fields.push('Discount amount must be zero or more and less than the sticker MRP');
       if (showroomItem.taxPercent === '' || Number(showroomItem.taxPercent) < 0 || Number(showroomItem.taxPercent) > 100) fields.push('Tax percentage');
       setSalesValidationErrors(fields.length ? fields : ['Valid product pricing and quantity']);
       return;
@@ -360,7 +361,7 @@ const OutletView = () => {
   const editSalesItem=index=>{
     const item=salesItems[index];
     setEditingSalesIndex(index);setSalesProduct(item.product_id);setSalesQuantity(item.quantity);setSalesFulfillmentMode(item.fulfillmentMode || '');
-    setShowroomItem(Object.fromEntries(Object.entries(emptyShowroomItem).map(([key,value])=>[key,String(item[key] ?? value)])));
+    setShowroomItem(Object.fromEntries(Object.entries(emptyShowroomItem).map(([key,value])=>[key,key==='discountAmount'?discountAmountText(item):String(item[key] ?? value)])));
     setSalesError(null);setSalesSuccess(null);goToSalesStep(0);
     requestAnimationFrame(()=>salesProductSelector.current?.scrollIntoView({behavior:'smooth',block:'start'}));
   };
@@ -451,7 +452,7 @@ const OutletView = () => {
           ...saleDetails, dispatchDate: saleDetails.dispatchDate || null, advanceAmount: parsedAdvanceAmount,
           extraDiscountType, cashDiscount: cashDiscount || '0', extraDiscountValue: 0, extraDiscountReason: extraDiscountReason.trim(),
         } : {entryMode: 'QUANTITY_ONLY'}),
-        soldItems: salesItems.map(({ quantity, ...item }) => ({ ...item, qty: quantity }))
+        soldItems: salesItems.map(({ quantity, ...item }) => ({ ...item, ...(ownedShowroomSales?{discountPercent:String(item.discountAmount ?? '').trim()!==''?showroomPrice({...item,quantity})?.discountPercent:item.discountPercent,...(String(item.discountAmount ?? '').trim()===''?{discountAmount:undefined}:{})}:{}), qty: quantity }))
       };
       // Save the exact request before sending; an uncertain retry must use it unchanged.
       if(!writeSalesDraft(localStorage,draftKey,salesDraftForm,payload)) {
@@ -1483,7 +1484,7 @@ const OutletView = () => {
                     {salesItems.map((item, idx) => (
                       <div key={idx} className="order-builder-item sales-summary-item">
                         <span className="order-builder-item-quantity" style={{width:'auto',minWidth:'4rem',padding:'.5rem',flexDirection:'column'}}>{item.quantity}<small style={{display:'block',fontSize:'.75rem',fontWeight:400,marginTop:'.35rem'}}>{isStall?(item.fulfillmentMode==='LINKED_OUTLET_STOCK'?'Linked outlet stock':'Stall stock'):'Outlet stock'}: {availableStockLabel(item.product_id,item.fulfillmentMode)}</small></span>
-                        <span className="order-builder-item-name">{saleProductName(salesProductOptions.find(o => o.value === item.product_id)?.label || item.product_id,item.size)}<ProductMrp item={item}/>{ownedShowroomSales && <span className="showroom-item-details">{item.brand} · {item.colour} · {item.size}<br />MRP {formatCurrency(Number(item.mrpSticker))} − {item.discountPercent}% · Unit {formatCurrency(showroomPrice(item)?.value || 0)}<br /><strong>Delivery: {item.fulfillmentMode === 'LOCAL_STOCK' ? (isStall?'Stall stock → customer':'Outlet stock → customer') : item.fulfillmentMode==='LINKED_OUTLET_STOCK'?'Linked outlet → customer':'Factory → customer'}</strong><br /><strong>Total {formatCurrency(showroomPrice(item)?.totalSalesValue || 0)}</strong> · Tax included ({item.taxPercent}%){item.scheme && <><br />Scheme: {item.scheme}</>}</span>}</span>
+                        <span className="order-builder-item-name">{saleProductName(salesProductOptions.find(o => o.value === item.product_id)?.label || item.product_id,item.size)}<ProductMrp item={item}/>{ownedShowroomSales && <span className="showroom-item-details">{item.brand} · {item.colour} · {item.size}<br />MRP {formatCurrency(Number(item.mrpSticker))} − {formatCurrency(showroomPrice(item)?.discountAmount || 0)} ({showroomPrice(item)?.discountPercent ?? item.discountPercent}%) · Unit {formatCurrency(showroomPrice(item)?.value || 0)}<br /><strong>Delivery: {item.fulfillmentMode === 'LOCAL_STOCK' ? (isStall?'Stall stock → customer':'Outlet stock → customer') : item.fulfillmentMode==='LINKED_OUTLET_STOCK'?'Linked outlet → customer':'Factory → customer'}</strong><br /><strong>Total {formatCurrency(showroomPrice(item)?.totalSalesValue || 0)}</strong> · Tax included ({item.taxPercent}%){item.scheme && <><br />Scheme: {item.scheme}</>}</span>}</span>
                         <div className="sales-summary-actions"><Button variant="secondary" onClick={()=>editSalesItem(idx)} disabled={isSubmittingSales || editingSalesIndex!==null} aria-label={`Edit sales product ${idx+1}`}>Edit product</Button>
                         <Button variant="secondary" className="order-builder-remove" onClick={() => removeSalesItem(idx)} disabled={isSubmittingSales || editingSalesIndex!==null} aria-label="Remove sales item">
                           <Trash2 size={16} />
@@ -1494,8 +1495,7 @@ const OutletView = () => {
                 )}
               </div>
 
-              {ownedShowroomSales && salesEntryStep===3 && <section className="sales-review-dispatch"><Input label="Dispatch date (required)" type="date" value={saleDetails.dispatchDate} onChange={event=>setSaleDetails(current=>({...current,dispatchDate:event.target.value}))}/><small>Enter the planned dispatch / delivery date before submitting this sale.</small></section>}
-              {ownedShowroomSales && salesEntryStep===3 && <div className="sales-review-details"><strong>{customerName || 'Customer name needed'}</strong><span>{customerPhone} · {customerAddress}</span><span>Payment: {paymentMethod==='SPLIT'?paymentDescription(splitPayments(advanceSplit)?.payments):paymentMethod} · Received: {formatCurrency(Number(advanceAmount || 0))} · Pending: {formatCurrency(Math.max(0,netBillAmount-Number(advanceAmount || 0)))}</span><Button variant="secondary" onClick={()=>goToSalesStep(1)}>Edit payment</Button><Button variant="secondary" onClick={()=>goToSalesStep(2)}>Edit customer</Button></div>}
+              {ownedShowroomSales && salesEntryStep===3 && <SalesEntryReview items={salesItems} gross={grossAmount} cashDiscount={cashDiscount} received={advanceAmount} paymentMethod={paymentMethod} split={advanceSplit} customerName={customerName} customerPhone={customerPhone} customerAddress={customerAddress} date={salesDate} details={saleDetails} salesPerson={loggedInEmployeeName} onEdit={goToSalesStep}/>}
               {ownedShowroomSales && <div className="sales-step-footer"><span><strong>{salesItems.length} products</strong> · Total {formatCurrency(netBillAmount)}</span><div>{salesEntryStep>0 && <Button data-sales-keyboard-skip variant="secondary" onClick={()=>goToSalesStep(salesEntryStep-1)}>Back</Button>}{salesEntryStep<3 && <Button disabled={editingSalesIndex!==null || (salesEntryStep===0 && !salesItems.length)} onClick={()=>navigateSalesStep(salesEntryStep+1)}>Continue to {['Payment','Customer','Review'][salesEntryStep]}</Button>}</div></div>}
               <Button hidden={ownedShowroomSales && salesEntryStep!==3} className="order-builder-submit" onClick={handleRecordSalesSubmit} disabled={isSubmittingSales || editingSalesIndex!==null}>
                 <ShoppingBag size={18} /> {isSubmittingSales ? 'Recording sales…' : 'Submit sales record'}
