@@ -29,3 +29,11 @@ test('an invoice requires an explicit payment method, including zero-advance bil
  assert.deepEqual(saleSubmissionIssues({advanceAmount:'0',salesItems:[]},true),['Select a payment method.']);
  for(const paymentMethod of ['CASH','UPI','CARD','SPLIT'])assert.deepEqual(saleSubmissionIssues({paymentMethod,advanceAmount:'0',salesItems:[]},true),[]);
 });
+
+test('multiple draft content includes partially entered customer and product details',async()=>{
+ const {hasSalesDraftContent}=await import('./salesDraft.js');
+ assert.equal(hasSalesDraftContent({salesItems:[],salesDate:'2026-11-02',advanceAmount:''}),false);
+ assert.equal(hasSalesDraftContent({salesItems:[],customerPhone:'9876543210'}),true);
+ assert.equal(hasSalesDraftContent({salesItems:[],advanceAmount:'0'}),true);
+ assert.equal(hasSalesDraftContent({salesItems:[{product_id:'A',quantity:1}]}),true);
+});

@@ -34,3 +34,7 @@ export function saleSubmissionIssues(form, owned) {
   }
   return issues;
 }
+
+export function hasSalesDraftContent(form) {
+ return Boolean(form.salesItems?.length || form.salesProduct || form.customerName || form.customerPhone || form.customerAddress || String(form.advanceAmount ?? '').trim() || form.showroomItem?.model);
+}

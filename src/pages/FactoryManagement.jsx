@@ -1,3 +1,4 @@
+import {factoryDispatchDateGroups} from '../utils/factoryDispatchDates';
 import {factoryProductName} from '../utils/saleProductName';
 import {factorySchemeDetails} from '../utils/factoryComplimentary';
 import OwnSalesRecords from './OwnSalesRecords';
@@ -49,6 +50,7 @@ export default function FactoryManagement() {
     catch(err) {setDispatchError(err.response?.data?.error || 'Unable to record dispatch.');}
     finally {setSaving(false);}
   };
+  const dateGroups=factoryDispatchDateGroups(orders.filter(order=>order.status===tab));
   const columns=[
     {key:'displayId',label:'Factory customer order',render:row => row.displayId || row.orderId},
     {key:'outletId',label:'Own outlet / Order source',render:row => <>{outletLabel(row.outletId,outlets)}{row.stallId&&<><br/><strong>Order from stall: {row.stallName || row.stallId}</strong></>}</>},
@@ -76,7 +78,7 @@ export default function FactoryManagement() {
       <Select label="Own outlet" value={outletId} onChange={event => setOutletId(event.target.value)} options={[{value:'',label:'All own outlets'},...outlets.map(outlet => ({value:outlet.outletId,label:outletLabel(outlet.outletId,outlets)}))]} />
     </CardContent></Card>
     <div style={{display:'flex',gap:'0.75rem',flexWrap:'wrap'}}>{[['PENDING','Awaiting dispatch'],['PARTIALLY_DISPATCHED','Partial dispatch'],['DISPATCHED','Dispatched to customer'],['SALES_RECORDS','Sales Records'],['PAYMENTS','Pending Payments'],['AFTER_SALES','After-sales factory work']].map(([id,label]) => <Button key={id} variant={tab===id ? 'primary':'secondary'} onClick={() => setTab(id)}>{label}{!['PAYMENTS','AFTER_SALES','SALES_RECORDS'].includes(id) && ` (${orders.filter(order=>order.status===id).length})`}</Button>)}</div>
-    {tab==='SALES_RECORDS' ? <OwnSalesRecords readOnly outletId={outletId} outlets={outlets}/> : tab==='AFTER_SALES' ? <AfterSales factoryMode /> : tab==='PAYMENTS' ? <FactoryPendingPayments readOnly /> : loading ? <LoadingState message="Loading direct customer orders…" /> : error ? <ErrorState error={error} onRetry={load} /> : <Card><CardContent><Table columns={columns} data={orders.filter(order=>order.status===tab)} emptyStateMessage="No direct customer orders in this stage." /></CardContent></Card>}
+    {tab==='SALES_RECORDS' ? <OwnSalesRecords readOnly outletId={outletId} outlets={outlets}/> : tab==='AFTER_SALES' ? <AfterSales factoryMode /> : tab==='PAYMENTS' ? <FactoryPendingPayments readOnly /> : loading ? <LoadingState message="Loading direct customer orders…" /> : error ? <ErrorState error={error} onRetry={load} /> : <Card><CardContent><p>Today’s planned dispatches appear first, followed by upcoming dates. Overdue and undated orders remain listed below.</p>{dateGroups.length?dateGroups.map(group=><section key={group.date || 'undated'} aria-label={`${group.kind} dispatches ${group.date}`} style={{marginBottom:'1.5rem'}}><h3 style={{display:'flex',flexWrap:'wrap',gap:'.6rem',alignItems:'center',padding:'.8rem',borderBottom:'1px solid var(--color-border)',color:group.kind==='today'?'var(--color-primary)':'var(--color-text)'}}>{group.date?new Intl.DateTimeFormat('en-IN',{day:'numeric',month:'short',year:'numeric',timeZone:'Asia/Kolkata'}).format(new Date(`${group.date}T00:00:00+05:30`)):'Dispatch date not recorded'} · {({today:'Today',upcoming:'Upcoming',overdue:tab==='DISPATCHED'?'Past planned date':'Overdue',undated:'Needs a date'})[group.kind]} <small>({group.orders.length} {group.orders.length===1?'order':'orders'})</small></h3><Table columns={columns} data={group.orders} emptyStateMessage="No orders for this date."/></section>):<p>No direct customer orders in this stage.</p>}</CardContent></Card>}
     <Modal isOpen={Boolean(selected)} onClose={() => !saving && setSelected(null)} title={`Factory → Customer · ${selected?.displayId || ''}`}>
       {selected && <div style={{display:'grid',gap:'1rem'}}>
         <strong>{selected.customerName} · {selected.customerPhone}</strong><p>{selected.customerAddress}</p>

@@ -1,3 +1,4 @@
+import SalesDraftControls from '../components/SalesDraftControls';
 import OutletCombos from '../components/OutletCombos';
 import ComboSaleDialog from '../components/ComboSaleDialog';
 import './Combos.css';
@@ -6,6 +7,7 @@ import {salesEnterKey,salesIssueTarget} from '../utils/salesKeyboard';
 import {salesDraftKey,readSalesDraft,writeSalesDraft,saleErrorDetails,uncertainSale,saleSubmissionIssues} from '../utils/salesDraft';
 import StallCustomerDispatch from './StallCustomerDispatch';
 import StockMovementReport from './StockMovementReport';
+import OutletStockSalesReport from './OutletStockSalesReport';
 import StallStockIn from './StallStockIn';
 import OwnSalesRecords from './OwnSalesRecords';
 import PaymentBreakdown from '../components/PaymentBreakdown';
@@ -226,6 +228,7 @@ const OutletView = () => {
   const draftKey=salesDraftKey(sessionStorage.getItem('username'),outletId);
   const [savedSalesDraft]=useState(()=>readSalesDraft(localStorage,draftKey));
   const draft=savedSalesDraft?.form || {};
+  const [activeServerDraft,setActiveServerDraft]=useState(draft.activeServerDraft || null);
   const [pendingSale,setPendingSale]=useState(savedSalesDraft?.pending || null);
   const pendingSaleRef=useRef(savedSalesDraft?.pending || null);
   const salesSubmitLock=useRef(false);
@@ -295,7 +298,18 @@ const OutletView = () => {
   const [settlementError, setSettlementError] = useState('');
   const [settlingPayment, setSettlingPayment] = useState(false);
 
-  const salesDraftForm={salesItems,editingSalesIndex,salesEntryStep,showroomItem,salesFulfillmentMode,saleDetails,salesProduct,salesQuantity,salesDate,customerName,customerPhone,customerAddress,paymentMethod,advanceSplit,billAmount,advanceAmount,cashDiscount,extraDiscountType,extraDiscountValue,extraDiscountReason};
+  const salesDraftForm={activeServerDraft,salesItems,editingSalesIndex,salesEntryStep,showroomItem,salesFulfillmentMode,saleDetails,salesProduct,salesQuantity,salesDate,customerName,customerPhone,customerAddress,paymentMethod,advanceSplit,billAmount,advanceAmount,cashDiscount,extraDiscountType,extraDiscountValue,extraDiscountReason};
+  const restoreBillForm=(form={},serverDraft=null)=>{
+    setSalesItems(form.salesItems ?? []);setEditingSalesIndex(form.editingSalesIndex ?? null);setSalesEntryStep(form.salesEntryStep ?? 0);
+    setShowroomItem(form.showroomItem ?? {...emptyShowroomItem});setSalesFulfillmentMode(form.salesFulfillmentMode ?? '');setSaleDetails(form.saleDetails ?? {billNo:'',dispatchDate:''});
+    setSalesProduct(form.salesProduct ?? '');setSalesQuantity(form.salesQuantity ?? 1);setSalesDate(form.salesDate ?? businessDate());
+    setCustomerName(form.customerName ?? '');setCustomerPhone(form.customerPhone ?? '');setCustomerAddress(form.customerAddress ?? '');
+    setPaymentMethod(form.paymentMethod ?? '');setAdvanceSplit(form.advanceSplit ?? {});setBillAmount(form.billAmount ?? '');setAdvanceAmount(form.advanceAmount ?? '');
+    setCashDiscount(form.cashDiscount ?? '');setExtraDiscountType(form.extraDiscountType ?? 'PERCENT');setExtraDiscountValue(form.extraDiscountValue ?? '');setExtraDiscountReason(form.extraDiscountReason ?? '');
+    setActiveServerDraft(serverDraft?{draftId:serverDraft.draftId,version:serverDraft.version,name:serverDraft.name}:null);
+    setSalesError(null);setSalesSuccess(null);setSalesValidationErrors([]);setDraftRecovered(false);setSelectedCombo(null);setComboPickerOpen(false);setSalesStockRefresh(v=>v+1);
+    requestAnimationFrame(()=>salesStepTop.current?.scrollIntoView({behavior:'smooth',block:'start'}));
+  };
   const draftFormJson=JSON.stringify(salesDraftForm);
   useEffect(()=>{
     const form=JSON.parse(draftFormJson);
@@ -451,6 +465,7 @@ const OutletView = () => {
       const payload = retry || {
         requestId: crypto.randomUUID(),
         outletId: outletId,
+        ...(activeServerDraft?{draftId:activeServerDraft.draftId,draftVersion:activeServerDraft.version}:{}),
         date: salesDate,
         ...(ownedShowroomSales ? {
           customerName: customerName.trim(), customerPhone: customerPhone.trim(), customerAddress: customerAddress.trim(),
@@ -467,7 +482,7 @@ const OutletView = () => {
       }
       pendingSaleRef.current=payload;setPendingSale(payload);
       const result=await recordSales(payload);
-      pendingSaleRef.current=null;setPendingSale(null);setDraftRecovered(false);
+      pendingSaleRef.current=null;setPendingSale(null);setDraftRecovered(false);setActiveServerDraft(null);
       if (ownedShowroomSales) setReceipt({ ...result, items: submittedItems.map((item, index) => ({ ...item, ...(result.soldItems?.[index] || {}) })) });
       setSalesSuccess(ownedShowroomSales ? 'Sales invoice created successfully.' : 'Products recorded successfully and outlet stock updated.');
       setSalesItems([]);
@@ -1403,6 +1418,7 @@ const OutletView = () => {
                 <div><h3>Capture today’s sales</h3><p>Add each sold product, review the summary, then submit one complete record.</p></div>
               </div>
               
+              {ownedShowroomSales && <SalesDraftControls form={salesDraftForm} activeDraft={activeServerDraft} disabled={isSubmittingSales || Boolean(pendingSale)} onSaved={row=>setActiveServerDraft({draftId:row.draftId,version:row.version,name:row.name})} onReset={()=>restoreBillForm()} onRestore={row=>restoreBillForm(row.form,row)}/>}
               {salesCatalogueStatus==='error' && <p role="alert">Product details could not load. Your sales draft is preserved. <Button onClick={()=>setStockReload(value=>value+1)}>Refresh products</Button></p>}
               {draftRecovered && <p role="status">Your unfinished sales entry was restored on this device. Review it before submitting.</p>}
               {draftStorageError && <p role="alert">Recovery draft could not be saved. Check browser storage before submitting.</p>}
@@ -1424,6 +1440,7 @@ const OutletView = () => {
               <fieldset ref={salesFormRef} onChangeCapture={event=>{const fieldId=event.target.id;if(fieldId)setTimeout(()=>setSalesValidationErrors(current=>{const remaining=current.filter(message=>salesIssueTarget(message).id!==fieldId);return remaining.length===current.length?current:remaining;}),0);}} onKeyDown={salesKeyboard} disabled={isSubmittingSales || Boolean(pendingSale)} style={{border:0,padding:0,margin:0,minWidth:0}}>
               {editingSalesIndex!==null && <p role="status">Editing product {editingSalesIndex+1}. Update the product or cancel the edit before submitting.</p>}
               {ownedShowroomSales && <nav data-sales-keyboard-skip ref={salesStepTop} className="sales-entry-steps" aria-label="Sales entry steps">{['Products','Payment','Customer','Review'].map((title,index)=><button type="button" key={title} aria-current={salesEntryStep===index?'step':undefined} onClick={()=>navigateSalesStep(index)}><span>{index+1}</span>{title}</button>)}</nav>}
+              {ownedShowroomSales && salesEntryStep>0 && <nav data-sales-keyboard-skip className="sales-step-edit-actions" aria-label="Edit earlier sales details"><span>Need to make a change?</span>{['products','payment','customer'].slice(0,salesEntryStep).map((label,index)=><Button key={label} variant="secondary" onClick={()=>navigateSalesStep(index)}>Edit {label}</Button>)}</nav>}
               {activeOffers.length > 0 && (!ownedShowroomSales || salesEntryStep===0) && (
                 <section className="sales-builder-offers" aria-label="Current outlet offers">
                   <Gift size={19} />
@@ -1481,7 +1498,7 @@ const OutletView = () => {
                 </section>}
               </div>
 
-              <div className="order-builder-summary" hidden={ownedShowroomSales && salesEntryStep!==3}>
+              <div className="order-builder-summary" hidden={ownedShowroomSales && salesEntryStep!==0 && salesEntryStep!==3}>
                 <div className="order-builder-summary-heading"><PackageSearch size={19} /><div><h4>Sales summary</h4><span>{salesItems.length} {salesItems.length === 1 ? 'product' : 'products'} added</span></div></div>
                 {salesItems.length === 0 ? (
                   <div className="order-builder-empty">
@@ -1587,8 +1604,9 @@ const OutletView = () => {
         {activeTab === 'REPORTS' && isGodown && <GodownReports />}
         {activeTab === 'REPORTS' && isGodown === false && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%' }}>
-            {isStall || reportView==='stock' ? <StockMovementReport outletId={outletId} catalogue={productOptions} onBack={isStall?undefined:()=>setReportView('list')}/> : reportView === 'list' ? (
+            {reportView==='outlet-stock-sales' ? <OutletStockSalesReport outletId={outletId} catalogue={productOptions} onBack={()=>setReportView('list')}/> : isStall || reportView==='stock' ? <StockMovementReport outletId={outletId} catalogue={productOptions} onBack={isStall?undefined:()=>setReportView('list')}/> : reportView === 'list' ? (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
+                {ownedShowroomSales && <Card><CardContent><h3>Fully Paid Outlet-stock Sales</h3><p>Products supplied from outlet stock on fully paid bills, grouped by main group and subgroup.</p><Button onClick={()=>setReportView('outlet-stock-sales')}>Open outlet-stock sales</Button></CardContent></Card>}
                 <Card><CardContent><h3>Stock Movement Report</h3><p>Date-wise opening, received, sold, transferred-out and closing stock.</p><Button onClick={()=>setReportView('stock')}>Open stock report</Button></CardContent></Card>
                 <Card 
                   style={{ cursor: 'pointer', backgroundColor: 'var(--color-bg)' }} 
