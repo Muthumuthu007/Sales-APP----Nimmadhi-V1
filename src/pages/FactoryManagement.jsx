@@ -28,6 +28,7 @@ export default function FactoryManagement() {
   const [orders,setOrders]=useState([]), [outlets,setOutlets]=useState([]);
   const [outletId,setOutletId]=useState(''), [tab,setTab]=useState('PENDING');
   const [orderBy,setOrderBy]=useState('DISPATCH_DATE');
+  const [sortDirection,setSortDirection]=useState('ASC');
   const [loading,setLoading]=useState(true), [error,setError]=useState('');
   const [selected,setSelected]=useState(null), [quantities,setQuantities]=useState({});
   const [dispatchId,setDispatchId]=useState(''), [saving,setSaving]=useState(false), [dispatchError,setDispatchError]=useState('');
@@ -51,7 +52,7 @@ export default function FactoryManagement() {
     catch(err) {setDispatchError(err.response?.data?.error || 'Unable to record dispatch.');}
     finally {setSaving(false);}
   };
-  const visibleOrders=sortFactoryDispatchOrders(orders.filter(order=>order.status===tab),orderBy);
+  const visibleOrders=sortFactoryDispatchOrders(orders.filter(order=>order.status===tab),orderBy,sortDirection);
   const columns=[
     {key:'displayId',label:'Factory customer order',render:row => row.displayId || row.orderId},
     {key:'outletId',label:'Own outlet / Order source',render:row => <>{outletLabel(row.outletId,outlets)}{row.stallId&&<><br/><strong>Order from stall: {row.stallName || row.stallId}</strong></>}</>},
@@ -79,7 +80,7 @@ export default function FactoryManagement() {
       <Select label="Own outlet" value={outletId} onChange={event => setOutletId(event.target.value)} options={[{value:'',label:'All own outlets'},...outlets.map(outlet => ({value:outlet.outletId,label:outletLabel(outlet.outletId,outlets)}))]} />
     </CardContent></Card>
     <div style={{display:'flex',gap:'0.75rem',flexWrap:'wrap'}}>{[['PENDING','Awaiting dispatch'],['PARTIALLY_DISPATCHED','Partial dispatch'],['DISPATCHED','Dispatched to customer'],['SALES_RECORDS','Sales Records'],['PAYMENTS','Pending Payments'],['AFTER_SALES','After-sales factory work']].map(([id,label]) => <Button key={id} variant={tab===id ? 'primary':'secondary'} onClick={() => setTab(id)}>{label}{!['PAYMENTS','AFTER_SALES','SALES_RECORDS'].includes(id) && ` (${orders.filter(order=>order.status===id).length})`}</Button>)}</div>
-    {tab==='SALES_RECORDS' ? <OwnSalesRecords readOnly outletId={outletId} outlets={outlets}/> : tab==='AFTER_SALES' ? <AfterSales factoryMode /> : tab==='PAYMENTS' ? <FactoryPendingPayments readOnly /> : loading ? <LoadingState message="Loading direct customer orders…" /> : error ? <ErrorState error={error} onRetry={load} /> : <Card><CardContent><div style={{display:'flex',alignItems:'end',gap:'1rem',flexWrap:'wrap',marginBottom:'1rem'}}><Select label="Order by" value={orderBy} onChange={event=>setOrderBy(event.target.value)} options={[{value:'DISPATCH_DATE',label:'Dispatch date'},{value:'ORDER_ID',label:'Order ID'},{value:'CREATED_DATE',label:'Created date'}]}/><span>{visibleOrders.length} {visibleOrders.length===1?'order':'orders'} · {orderBy==='ORDER_ID'?'Order ID: lowest first':orderBy==='CREATED_DATE'?'Created date: first in, first listed; undated orders last':'Dispatch date: earliest first; undated orders last'}</span></div><Table columns={columns} data={visibleOrders} emptyStateMessage="No direct customer orders in this stage."/></CardContent></Card>}
+    {tab==='SALES_RECORDS' ? <OwnSalesRecords readOnly outletId={outletId} outlets={outlets}/> : tab==='AFTER_SALES' ? <AfterSales factoryMode /> : tab==='PAYMENTS' ? <FactoryPendingPayments readOnly /> : loading ? <LoadingState message="Loading direct customer orders…" /> : error ? <ErrorState error={error} onRetry={load} /> : <Card><CardContent><div style={{display:'flex',alignItems:'end',gap:'1rem',flexWrap:'wrap',marginBottom:'1rem'}}><Select label="Order by" value={orderBy} onChange={event=>setOrderBy(event.target.value)} options={[{value:'DISPATCH_DATE',label:'Dispatch date'},{value:'ORDER_ID',label:'Order ID'},{value:'CREATED_DATE',label:'Created date'}]}/><Select label="Sort direction" value={sortDirection} onChange={event=>setSortDirection(event.target.value)} options={[{value:'ASC',label:'Ascending — first in first'},{value:'DESC',label:'Descending — last in first'}]}/><span>{visibleOrders.length} {visibleOrders.length===1?'order':'orders'} · {orderBy==='ORDER_ID'?(sortDirection==='DESC'?'Order ID: highest first':'Order ID: lowest first'):orderBy==='CREATED_DATE'?(sortDirection==='DESC'?'Created date: latest first; undated orders last':'Created date: earliest first; undated orders last'):(sortDirection==='DESC'?'Dispatch date: latest first; undated orders last':'Dispatch date: earliest first; undated orders last')}</span></div><Table columns={columns} data={visibleOrders} emptyStateMessage="No direct customer orders in this stage."/></CardContent></Card>}
     <Modal isOpen={Boolean(selected)} onClose={() => !saving && setSelected(null)} title={`Factory → Customer · ${selected?.displayId || ''}`}>
       {selected && <div style={{display:'grid',gap:'1rem'}}>
         <strong>{selected.customerName} · {selected.customerPhone}</strong><p>{selected.customerAddress}</p>

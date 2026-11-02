@@ -27,3 +27,15 @@ test('created date retains invalid or missing dates last with numeric ID tie bre
  const rows=[{orderId:'ORD-10',createdAt:'2026-11-02T10:00:00+05:30'},{orderId:'ORD-2',createdAt:'2026-11-02T10:00:00+05:30'},{orderId:'ORD-20',createdAt:'2026-02-30'},{orderId:'ORD-30',createdAt:'bad'}];
  assert.deepEqual(sortFactoryDispatchOrders(rows,'CREATED_DATE').map(r=>r.orderId),['ORD-2','ORD-10','ORD-20','ORD-30']);
 });
+
+test('descending created date shows last-in orders first and keeps missing dates last',()=>{
+ const rows=[{orderId:'1',createdAt:'2026-11-01T10:00:00Z'},{orderId:'2',createdAt:'2026-11-02T10:00:00Z'},{orderId:'3',createdAt:'bad'},{orderId:'4'}];
+ const original=structuredClone(rows);
+ assert.deepEqual(sortFactoryDispatchOrders(rows,'CREATED_DATE','DESC').map(r=>r.orderId),['2','1','4','3']);
+ assert.deepEqual(rows,original);
+});
+test('descending supports dispatch dates and natural numeric order IDs',()=>{
+ const rows=[{displayId:'ORD-2',dispatchDate:'2026-11-01'},{displayId:'ORD-10',dispatchDate:'2026-11-03'},{displayId:'ORD-3'}];
+ assert.deepEqual(sortFactoryDispatchOrders(rows,'ORDER_ID','DESC').map(r=>r.displayId),['ORD-10','ORD-3','ORD-2']);
+ assert.deepEqual(sortFactoryDispatchOrders(rows,'DISPATCH_DATE','DESC').map(r=>r.displayId),['ORD-10','ORD-2','ORD-3']);
+});
