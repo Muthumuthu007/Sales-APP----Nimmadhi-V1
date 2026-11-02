@@ -1,20 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {factoryDispatchDateGroups} from './factoryDispatchDates.js';
-test('today then upcoming dates ascending, overdue dates separate, undated last',()=>{
- const rows=[{orderId:'late',dispatchDate:'2026-10-28'},{orderId:'future2',dispatchDate:'2026-10-31'},{orderId:'missing'},{orderId:'today',dispatchDate:'2026-10-29'},{orderId:'future',dispatchDate:'2026-10-30'}];
+import {sortFactoryDispatchOrders} from './factoryDispatchDates.js';
+test('dispatch date sorting is chronological with undated orders last',()=>{
+ const rows=[{orderId:'future',dispatchDate:'2026-11-03'},{orderId:'missing'},{orderId:'today',dispatchDate:'2026-11-02'},{orderId:'old',dispatchDate:'2026-10-29'}];
  const original=structuredClone(rows);
- const groups=factoryDispatchDateGroups(rows,'2026-10-29');
- assert.deepEqual(groups.map(g=>g.date),['2026-10-29','2026-10-30','2026-10-31','2026-10-28','']);
- assert.deepEqual(groups.map(g=>g.kind),['today','upcoming','upcoming','overdue','undated']);
+ assert.deepEqual(sortFactoryDispatchOrders(rows).map(r=>r.orderId),['old','today','future','missing']);
  assert.deepEqual(rows,original);
 });
-test('same-date orders grouped and sorted by reference without losing any orders',()=>{
- const groups=factoryDispatchDateGroups([{displayId:'ORD-10',dispatchDate:'2026-10-29'},{displayId:'ORD-2',dispatchDate:'2026-10-29'}],'2026-10-29');
- assert.equal(groups.length,1);assert.deepEqual(groups[0].orders.map(r=>r.displayId),['ORD-2','ORD-10']);
+test('order ID sorting uses displayed reference and numeric order',()=>{
+ const rows=[{orderId:'uuid-a',displayId:'ORD-10'},{orderId:'uuid-b',displayId:'ORD-2'},{orderId:'ORD-3'}];
+ assert.deepEqual(sortFactoryDispatchOrders(rows,'ORDER_ID').map(r=>r.displayId || r.orderId),['ORD-2','ORD-3','ORD-10']);
 });
-test('invalid dates stay visible in undated and empty lists stay empty',()=>{
- assert.deepEqual(factoryDispatchDateGroups([],'2026-10-29'),[]);
- const groups=factoryDispatchDateGroups([{dispatchDate:'2026-02-30'},{dispatchDate:'unknown'},{dispatchDate:null}],'2026-10-29');
- assert.equal(groups.length,1);assert.equal(groups[0].kind,'undated');assert.equal(groups[0].orders.length,3);
+test('matching dates sort by order ID and invalid dates remain visible at end',()=>{
+ const rows=[{displayId:'ORD-10',dispatchDate:'2026-11-02'},{displayId:'ORD-2',dispatchDate:'2026-11-02'},{displayId:'ORD-4',dispatchDate:'2026-02-30'},{displayId:'ORD-5',dispatchDate:'unknown'}];
+ assert.deepEqual(sortFactoryDispatchOrders(rows).map(r=>r.displayId),['ORD-2','ORD-10','ORD-4','ORD-5']);
+ assert.deepEqual(sortFactoryDispatchOrders([]),[]);
 });
