@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {missingSaleFields,editableDeliveryMode} from './salesValidation.js';
+import {missingSaleFields,editableDeliveryMode,salesIssueMessage} from './salesValidation.js';
 test('empty NIM sale lists every missing required field for the popup', () => {
  const fields=missingSaleFields({ownedShowroom:true});
  for (const label of ['Date of sale','Customer name','Customer phone number','Customer address','Dispatch date','Customer needs / delivery option','Product and quantity — add at least one item']) assert.ok(fields.includes(label));
@@ -28,4 +28,11 @@ test('own-store mixed delivery validates each product rather than a whole-invoic
 test('saved factory choices normalize for editing without changing other delivery sources',()=>{
  assert.deepEqual(['LOCAL_STOCK','FACTORY_CUSTOMER','FACTORY_CUSTOMER','FACTORY_CUSTOMER'].map(editableDeliveryMode),['LOCAL_STOCK','FACTORY_DELIVERY','FACTORY_DELIVERY','FACTORY_DELIVERY']);
  assert.equal(editableDeliveryMode('LINKED_OUTLET_STOCK'),'LINKED_OUTLET_STOCK');
+});
+
+test('notification names missing fields in plain language and retains actionable validation',()=>{
+ assert.equal(salesIssueMessage('Product'),'Please fill in product.');
+ assert.equal(salesIssueMessage('Customer phone number'),'Please fill in customer phone number.');
+ assert.equal(salesIssueMessage('Select a payment method.'),'Select a payment method.');
+ assert.equal(salesIssueMessage('Quantity must be greater than zero'),'Quantity must be greater than zero');
 });

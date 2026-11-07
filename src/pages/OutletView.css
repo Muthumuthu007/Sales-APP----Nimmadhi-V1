@@ -195,3 +195,16 @@
 .sales-drafts-toolbar>div:first-child{margin-right:auto}.sales-drafts-toolbar small{display:block;color:var(--color-text-muted);margin-top:.25rem}.sales-drafts-toolbar>p{flex-basis:100%}
 .sales-draft-row{display:grid;gap:.5rem;margin-top:.8rem;padding:1rem;border:1px solid var(--color-border);border-radius:.65rem;overflow-wrap:anywhere}.sales-draft-row>div{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center}
 @media(max-width:600px){.sales-drafts-toolbar>div:first-child{flex-basis:100%}.sales-drafts-toolbar>button{flex:1 1 auto}}
+
+.sales-validation-dialog{font-family:system-ui,sans-serif;box-sizing:border-box;width:min(560px,calc(100vw - 2rem));max-height:calc(100dvh - 3rem);overflow:auto;border:2px solid #fbbf24;border-radius:16px;padding:1.4rem;color:#f8fafc;background:#24213f;box-shadow:0 20px 80px #0008}
+.sales-validation-dialog::backdrop{background:#080c20b8}
+.sales-validation-dialog h2{font-size:1.3rem;margin:0 0 .7rem;color:#fbbf24}
+.sales-validation-dialog p{line-height:1.5;margin:0 0 1rem;color:#e2e8f0}
+.sales-validation-dialog ul{padding:0;list-style:none;margin:0 0 1rem}
+.sales-validation-dialog li{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.7rem 0;border-bottom:1px solid #ffffff26;overflow-wrap:anywhere}
+.sales-validation-dialog button{min-height:44px;cursor:pointer;border:1px solid #ffffff42;border-radius:8px;padding:.5rem .8rem;background:transparent;color:#fff;font:inherit}
+.sales-validation-dialog li button{color:#fde68a;flex-shrink:0}
+.sales-validation-dialog .sales-validation-continue{background:#fbbf24;color:#17152c;font-weight:700;width:100%;border:0}
+.sales-validation-dialog .sales-validation-close{width:100%;margin-top:.6rem}
+.sales-validation-dialog button:focus-visible{outline:3px solid #fff;outline-offset:2px}
+@media(max-width:480px){.sales-validation-dialog{padding:1rem}.sales-validation-dialog li{align-items:flex-start;flex-direction:column;gap:.3rem}.sales-validation-dialog li button{width:100%;text-align:left}}

@@ -14,3 +14,8 @@ export function missingSaleFields({items = [], customerName, customerPhone, cust
 export function editableDeliveryMode(mode) {
  return mode==='FACTORY_CUSTOMER'?'FACTORY_DELIVERY':mode;
 }
+
+export function salesIssueMessage(message) {
+ const text=String(message || '').trim();
+ return /^[a-z][a-z /()—–-]*$/i.test(text) && !/must|please|valid|add |select |enter |required|update|cancel/i.test(text) ? `Please fill in ${text.charAt(0).toLowerCase()+text.slice(1)}.` : text;
+}

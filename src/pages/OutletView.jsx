@@ -33,7 +33,8 @@ import GodownQuantityStock from '../components/GodownQuantityStock';
 import GroupedProductPicker from '../components/GroupedProductPicker';
 import {showroomItemForProduct} from '../utils/showroomPricing';
 import {productionOption,groupedProductOptions} from '../utils/productHierarchy';
-import { missingSaleFields } from '../utils/salesValidation';
+import { missingSaleFields,salesIssueMessage } from '../utils/salesValidation';
+import SalesValidationNotice from '../components/SalesValidationNotice';
 import { complimentaryForProduct } from '../utils/orderComplimentary';
 import OrderProduct from '../components/OrderProduct';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
@@ -266,7 +267,12 @@ const OutletView = () => {
   const availableStockLabel = (productId,mode=salesFulfillmentMode) => isStall && mode==='LINKED_OUTLET_STOCK' && !stallStock?'Loading linked outlet stock…':salesStockStatus==='ready' ? outletAvailableStock(isStall && mode==='LINKED_OUTLET_STOCK'?(stallStock?.outletStock || []):salesOutletStock,productId) : salesStockStatus==='loading' ? 'Loading…' : 'Unavailable — refresh stock';
 
   const [showroomItem, setShowroomItem] = useState(draft.showroomItem ?? { ...emptyShowroomItem });
-  const [salesValidationErrors, setSalesValidationErrors] = useState([]);
+  const [salesValidationErrors, updateSalesValidationErrors] = useState([]);
+  const [salesValidationOpen,setSalesValidationOpen]=useState(false);
+  const setSalesValidationErrors=value=>{
+    updateSalesValidationErrors(Array.isArray(value)?[...new Set(value)]:value);
+    if(Array.isArray(value))setSalesValidationOpen(value.length>0);
+  };
   const [salesFulfillmentMode, setSalesFulfillmentMode] = useState(draft.salesFulfillmentMode ?? '');
   const [saleDetails, setSaleDetails] = useState(draft.saleDetails ?? { billNo: '', dispatchDate: '' });
   const [salesProduct, setSalesProduct] = useState(draft.salesProduct ?? '');
@@ -392,6 +398,7 @@ const OutletView = () => {
 
   const salesFieldError=id=>salesValidationErrors.find(message=>salesIssueTarget(message).id===id);
   const focusSalesIssue=message=>{
+    setSalesValidationOpen(false);
     const target=salesIssueTarget(message);setSalesEntryStep(target.step);
     requestAnimationFrame(()=>{
       const field=target.id?document.getElementById(target.id):salesProductSelector.current?.querySelector('[aria-haspopup="listbox"]');
@@ -422,10 +429,8 @@ const OutletView = () => {
     requestAnimationFrame(()=>{visibleStepFirst()?.focus({preventScroll:true});});
   };
   const visibleStepFirst=()=>[...(salesFormRef.current?.querySelectorAll('section:not([hidden]) input,section:not([hidden]) select,section:not([hidden]) button') || [])].find(field=>!field.disabled && field.getClientRects().length);
-  const previousSalesIssueCount=useRef(0);
   useEffect(()=>{
-    if(salesValidationErrors.length>previousSalesIssueCount.current)salesNoticeRef.current?.scrollIntoView({behavior:'smooth',block:'nearest'});
-    previousSalesIssueCount.current=salesValidationErrors.length;
+    if(salesValidationErrors.length)salesNoticeRef.current?.scrollIntoView({behavior:'smooth',block:'nearest'});
   },[salesValidationErrors]);
   const salesKeyboard=event=>{
     if(event.key==='Enter' && !event.nativeEvent?.isComposing && ['INPUT','SELECT'].includes(event.target.tagName) && !event.target.closest('[data-searchable-select]') && !event.target.checkValidity()){
@@ -446,7 +451,7 @@ const OutletView = () => {
     if (!retry && missing.length) { setSalesValidationErrors(missing); return; }
     const parsedBillAmount = grossAmount;
     const parsedAdvanceAmount = Number(advanceAmount || 0);
-    if(!retry && paymentMethod==='SPLIT' && (!splitPayments(advanceSplit)?.payments.length || splitPayments(advanceSplit).total!==parsedAdvanceAmount)){setSalesError('Enter valid split amounts equal to the advance received.');return;}
+    if(!retry && paymentMethod==='SPLIT' && (!splitPayments(advanceSplit)?.payments.length || splitPayments(advanceSplit).total!==parsedAdvanceAmount)){setSalesValidationErrors(['Enter valid split amounts equal to the advance received.']);return;}
     if (!retry && ownedShowroomSales && (!Number.isFinite(parsedBillAmount) || parsedBillAmount <= 0 || !Number.isFinite(enteredDiscount) || enteredDiscount < 0 || calculatedExtraDiscount >= parsedBillAmount || !Number.isFinite(parsedAdvanceAmount) || parsedAdvanceAmount < 0 || parsedAdvanceAmount > netBillAmount)) {
       const errors = [];
       if (!Number.isFinite(parsedBillAmount) || parsedBillAmount <= 0) errors.push('Bill amount must be greater than zero');
@@ -1436,7 +1441,8 @@ const OutletView = () => {
               )}
 
               <div className="sales-keyboard-guide"><strong>Quick entry</strong><span>Enter: next field · Shift + Enter: previous · Tab: next control</span><small>Search products, use ↑ / ↓, then Enter to choose. Submit only after reviewing.</small></div>
-              {salesValidationErrors.length>0 && <div ref={salesNoticeRef} role="alert" className="sales-missing-notice"><div><strong>Please check {salesValidationErrors.length===1?'this detail':'these details'}</strong><button type="button" onClick={()=>setSalesValidationErrors([])} aria-label="Dismiss sales notification">×</button></div><ul>{salesValidationErrors.map((message,index)=><li key={`${message}-${index}`}><button type="button" onClick={()=>focusSalesIssue(message)}>{message} <span>Go to field →</span></button></li>)}</ul></div>}
+              <SalesValidationNotice open={salesValidationOpen} issues={salesValidationErrors} onClose={()=>setSalesValidationOpen(false)} onFix={focusSalesIssue}/>
+              {salesValidationErrors.length>0 && <div ref={salesNoticeRef} role="alert" className="sales-missing-notice"><div><strong>Please fill in the missing or incorrect details to proceed</strong><button type="button" onClick={()=>setSalesValidationErrors([])} aria-label="Dismiss sales notification">×</button></div><ul>{salesValidationErrors.map((message,index)=><li key={`${message}-${index}`}><button type="button" onClick={()=>focusSalesIssue(message)}>{salesIssueMessage(message)} <span>Go to field →</span></button></li>)}</ul></div>}
               <fieldset ref={salesFormRef} onChangeCapture={event=>{const fieldId=event.target.id;if(fieldId)setTimeout(()=>setSalesValidationErrors(current=>{const remaining=current.filter(message=>salesIssueTarget(message).id!==fieldId);return remaining.length===current.length?current:remaining;}),0);}} onKeyDown={salesKeyboard} disabled={isSubmittingSales || Boolean(pendingSale)} style={{border:0,padding:0,margin:0,minWidth:0}}>
               {editingSalesIndex!==null && <p role="status">Editing product {editingSalesIndex+1}. Update the product or cancel the edit before submitting.</p>}
               {ownedShowroomSales && <nav data-sales-keyboard-skip ref={salesStepTop} className="sales-entry-steps" aria-label="Sales entry steps">{['Products','Payment','Customer','Review'].map((title,index)=><button type="button" key={title} aria-current={salesEntryStep===index?'step':undefined} onClick={()=>navigateSalesStep(index)}><span>{index+1}</span>{title}</button>)}</nav>}
