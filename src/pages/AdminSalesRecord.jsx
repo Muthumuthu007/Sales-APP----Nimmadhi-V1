@@ -1,3 +1,4 @@
+import SalesHsnSettings from '../components/SalesHsnSettings';
 import React,{useEffect,useRef,useState} from 'react';
 import api from '../api/axios';
 import {businessDate} from '../utils/businessDate';
@@ -12,6 +13,7 @@ const numeric=new Set(['salesQty','taxableAmount','salesTax','sgstTaxAmt','cgstT
 const format=(value,key)=>value===null||value===undefined||value===''?'':key==='orderDate'?new Date(value+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'2-digit'}):numeric.has(key)?Number(value).toLocaleString('en-IN',{maximumFractionDigits:2,minimumFractionDigits:['salesQty','salesTax'].includes(key)?0:2}):value;
 export default function AdminSalesRecord(){
  const [filters,setFilters]=useState({startDate:businessDate(),endDate:businessDate(),salesType:'ALL'}),[data,setData]=useState(null),[loading,setLoading]=useState(true),[error,setError]=useState(''),[exportError,setExportError]=useState(''),[exporting,setExporting]=useState(false),[page,setPage]=useState(1);
+ const [hsnOpen,setHsnOpen]=useState(false),[hsnNotice,setHsnNotice]=useState('');
  const sequence=useRef(0);
  const load=async params=>{
   const id=++sequence.current;setLoading(true);setError('');setExportError('');
@@ -30,18 +32,21 @@ export default function AdminSalesRecord(){
   finally{setExporting(false);}
  };
  const rows=data?.rows || [],size=50,pages=Math.max(1,Math.ceil(rows.length/size));
- return <div className="admin-sales-record"><Card><CardHeader title="Sales Record"/><CardContent>
+ return <div className="admin-sales-record"><Card><CardHeader title="Sales Record" action={<Button variant="secondary" onClick={()=>setHsnOpen(true)}>Edit HSN codes</Button>}/><CardContent>
  <p className="asr-muted">View sales by sale date and export the Sales sheet in the supplied Excel format.</p>
  <form className="asr-filters" onSubmit={apply}><label>From date<input type="date" required value={filters.startDate} onChange={e=>setFilters({...filters,startDate:e.target.value})}/></label><label>To date<input type="date" required min={filters.startDate} value={filters.endDate} onChange={e=>setFilters({...filters,endDate:e.target.value})}/></label><label>Sales category<select value={filters.salesType} onChange={e=>setFilters({...filters,salesType:e.target.value})}>{types.map(([v,l])=><option key={v} value={v}>{l}</option>)}</select></label><Button type="submit" disabled={loading}>{loading?'Loading…':'Apply filters'}</Button></form>
  </CardContent></Card>
+ {hsnNotice&&<p className="asr-notice" role="status">{hsnNotice}</p>}
  {loading?<LoadingState message="Loading sales records…"/>:error?<ErrorState error={error} onRetry={()=>load({...filters})}/>:data&&<>
  <div className="asr-summary">{[['Invoices',data.summary.invoices],['Sales quantity',format(data.summary.quantity,'salesQty')],['Taxable amount recorded','₹'+format(data.summary.taxableAmount,'totalAmount')],['Total sales','₹'+format(data.summary.totalAmount,'totalAmount')]].map(([label,value])=><div key={label}><span>{label}</span><strong>{value}</strong></div>)}</div>
  <Card><CardHeader title={`${types.find(([v])=>v===data.salesType)?.[1]} · ${format(data.startDate,'orderDate')} to ${format(data.endDate,'orderDate')}`} action={<Button onClick={download} disabled={exporting}>{exporting?'Exporting…':'Export as Excel'}</Button>}/><CardContent>
- <p className="asr-muted">{data.taxSplitNote} HSN codes are blank. Invoice rounding is listed separately so totals match recorded sales.</p>
+ <p className="asr-muted">{data.taxSplitNote} HSN codes use the supplied product-category mapping. Bare and unassigned categories remain blank. Invoice rounding is listed separately so totals match recorded sales.</p>
+ {data.summary.missingHsnLines>0&&<p className="asr-notice" role="status">{data.summary.missingHsnLines} sales line(s) have no assigned HSN code, including Bare where applicable.</p>}
  {data.summary.missingTaxLines>0&&<p className="asr-notice" role="status">{data.summary.missingTaxLines} sales line(s) have incomplete saved tax information. Their missing tax fields are blank; they are still included in sales totals.</p>}
  {exportError&&<p role="alert" className="asr-notice">{exportError}</p>}
  <div className="asr-table" tabIndex="0" role="region" aria-label="Sales details, scroll horizontally for all columns"><table><thead><tr>{columns.map(([key,label])=><th scope="col" key={key}>{label}</th>)}</tr></thead><tbody>{rows.slice((page-1)*size,page*size).map((row,index)=><tr key={`${row.outletId}-${row.saleId}-${index}`} title={`Outlet: ${row.outletId}`} >{columns.map(([key])=><td className={numeric.has(key)?'asr-number':''} key={key}>{format(row[key],key)}</td>)}</tr>)}</tbody></table>{!rows.length&&<p className="asr-empty">No sales in the selected date range and category.</p>}</div>
  <div className="asr-pagination"><small>{rows.length} lines · Export includes all matching lines</small><div><Button variant="secondary" disabled={page===1} onClick={()=>setPage(p=>p-1)}>Previous</Button><span>Page {page} of {pages}</span><Button variant="secondary" disabled={page===pages} onClick={()=>setPage(p=>p+1)}>Next</Button></div></div>
  </CardContent></Card></>}
+ <SalesHsnSettings isOpen={hsnOpen} onClose={()=>setHsnOpen(false)} onSaved={result=>{setHsnOpen(false);setHsnNotice(result.message);if(data)load({startDate:data.startDate,endDate:data.endDate,salesType:data.salesType});}}/>
  </div>;
 }
