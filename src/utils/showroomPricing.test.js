@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { showroomPrice } from './showroomPricing.js';
+import { showroomPrice,emptyShowroomItem,showroomItemForProduct } from './showroomPricing.js';
 test('screenshot MRP less 60% gives 30851.20 with included tax', () => {
  const price = showroomPrice({ mrpSticker: '77128', discountPercent: '60', taxPercent: '18', quantity: 1 });
  assert.equal(price.value, 30851.20); assert.equal(price.totalSalesValue, 30851.20);
@@ -75,4 +75,11 @@ test('clearing the rupee discount stays blank rather than falling back to the pr
  const {discountAmountText}=await import('./showroomPricing.js');
  const item={mrpSticker:'2999',discountAmount:'',discountPercent:'16.67',quantity:1};
  assert.equal(discountAmountText(item),'');assert.equal(showroomPrice(item),null);
+});
+
+test('new product selection uses group tax including zero and resets stale rate',()=>{
+ const current={...emptyShowroomItem,taxPercent:'18',taxSettingsVersion:1};
+ const zero=showroomItemForProduct(current,{label:'Pillow',taxPercent:'0',taxSettingsVersion:2});
+ assert.equal(zero.taxPercent,'0');assert.equal(zero.taxSettingsVersion,2);
+ const unset=showroomItemForProduct(zero,{label:'Unassigned'});assert.equal(unset.taxPercent,'18');assert.equal(unset.taxSettingsVersion,undefined);
 });

@@ -32,7 +32,7 @@ export default function AdminSalesRecord(){
   finally{setExporting(false);}
  };
  const rows=data?.rows || [],size=50,pages=Math.max(1,Math.ceil(rows.length/size));
- return <div className="admin-sales-record"><Card><CardHeader title="Sales Record" action={<Button variant="secondary" onClick={()=>setHsnOpen(true)}>Edit HSN codes</Button>}/><CardContent>
+ return <div className="admin-sales-record"><Card><CardHeader title="Sales Record" action={<Button variant="secondary" onClick={()=>setHsnOpen(true)}>Edit HSN & tax rates</Button>}/><CardContent>
  <p className="asr-muted">View sales by sale date and export the Sales sheet in the supplied Excel format.</p>
  <form className="asr-filters" onSubmit={apply}><label>From date<input type="date" required value={filters.startDate} onChange={e=>setFilters({...filters,startDate:e.target.value})}/></label><label>To date<input type="date" required min={filters.startDate} value={filters.endDate} onChange={e=>setFilters({...filters,endDate:e.target.value})}/></label><label>Sales category<select value={filters.salesType} onChange={e=>setFilters({...filters,salesType:e.target.value})}>{types.map(([v,l])=><option key={v} value={v}>{l}</option>)}</select></label><Button type="submit" disabled={loading}>{loading?'Loading…':'Apply filters'}</Button></form>
  </CardContent></Card>

@@ -41,9 +41,9 @@ export default function ShowroomSaleFields({ item, onChange, quantity, isAccesso
       {field('mrpSticker', 'Sticker MRP per unit (₹)', { readOnly:lockedPrice,type: 'number', min: '0.01', step: '0.01' })}
       <Input readOnly={lockedPrice} id="sale-product-discountAmount" required error={fieldError('sale-product-discountAmount')} label="Discount (%)" type="number" min="0" max="99.99" step="0.01" placeholder="Enter 0 for no discount" value={item.discountPercent} onChange={event=>onChange({...item,discountPercent:event.target.value,discountAmount:undefined})}/>
       <div className="showroom-calculated-discount"><span>Discount per unit</span><strong>{price?currency(price.discountAmount):'—'}</strong></div>
-      {field('taxPercent', 'Included tax (%)', { type: 'number', min: '0', max: '100', step: '0.01' })}
+      {field('taxPercent', 'Included tax (%)', { readOnly:item.taxSettingsVersion!=null,type: 'number', min: '0', max: '100', step: '0.01' })}
     </div>
-    <small className="showroom-sale-hint">Saved MRP is editable. Tax is included.</small>
+    <small className="showroom-sale-hint">Saved MRP is editable. Tax is included. Configured tax rates are set by the admin.</small>
     <details data-sales-keyboard-skip className="sales-optional-accessories"><summary>Complimentary items / scheme (optional){item.scheme ? ' · Added' : ''}</summary><div className="showroom-accessory-picker">
       <GroupedProductPicker label="Complimentary accessory" options={accessories.map(productionOption)} value={selectedAccessory} onChange={setSelectedAccessory} placeholder={loadingAccessories ? 'Loading Accessories…' : 'Search accessory products…'} />
       <div className="showroom-accessory-actions"><Input label="Accessory quantity" type="number" min="1" step="1" value={accessoryQuantity} onChange={event => setAccessoryQuantity(event.target.value)} /><Button variant="secondary" disabled={loadingAccessories || !selectedAccessory} onClick={addAccessory}>Add to scheme</Button></div>

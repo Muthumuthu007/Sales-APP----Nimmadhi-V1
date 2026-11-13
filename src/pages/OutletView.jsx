@@ -167,8 +167,10 @@ const OutletView = () => {
   const matchingGroupCategories = useMemo(() => {
     const query = groupSearch.trim().toLowerCase();
     return groupedProductOptions(productOptions)
-      .map(main => ({...main, groups: main.groups.filter(group =>
-        `${main.name} ${group.label}`.toLowerCase().includes(query))}))
+      .map(main => ({...main, groups: main.groups.map(group => ({...group, options:
+        `${main.name} ${group.label}`.toLowerCase().includes(query) ? group.options :
+          group.options.filter(product => product.label.toLowerCase().includes(query))
+      })).filter(group => group.options.length)}))
       .filter(main => main.groups.length > 0);
   }, [productOptions, groupSearch]);
 
@@ -387,7 +389,7 @@ const OutletView = () => {
   const editSalesItem=index=>{
     const item=salesItems[index];
     setEditingSalesIndex(index);setSalesProduct(item.product_id);setSalesQuantity(item.quantity);setSalesFulfillmentMode(item.fulfillmentMode || '');
-    setShowroomItem(Object.fromEntries(Object.entries(emptyShowroomItem).map(([key,value])=>[key,key==='discountAmount'?discountAmountText(item):String(item[key] ?? value)])));
+    setShowroomItem({...Object.fromEntries(Object.entries(emptyShowroomItem).map(([key,value])=>[key,key==='discountAmount'?discountAmountText(item):String(item[key] ?? value)])),taxSettingsVersion:item.taxSettingsVersion});
     setSalesError(null);setSalesSuccess(null);goToSalesStep(0);
     requestAnimationFrame(()=>salesProductSelector.current?.scrollIntoView({behavior:'smooth',block:'start'}));
   };
@@ -1170,7 +1172,7 @@ const OutletView = () => {
             <CardContent className="order-builder-content">
               <div className="order-builder-intro">
                 <div className="order-builder-intro-icon"><ShoppingBag size={20} /></div>
-                <div><h3>Choose products by production group</h3><p>Select a group first, then add the product and quantity to your order.</p></div>
+                <div><h3>Choose products by production group</h3><p>Choose a product under its group, then enter the quantity to add it to your order.</p></div>
               </div>
               
               {apiError && (
@@ -1195,11 +1197,11 @@ const OutletView = () => {
               <div className="order-builder-workspace">
                 <section className="order-builder-groups">
                   <div className="order-builder-section-label"><span>1</span><div><strong>Production group</strong><small>Start with a collection</small></div></div>
-                  <Input label="Search production groups" type="search" value={groupSearch} onChange={event=>setGroupSearch(event.target.value)} placeholder="Search group or subgroup name…" />
+                  <Input label="Search groups or products" type="search" value={groupSearch} onChange={event=>setGroupSearch(event.target.value)} placeholder="Search group, subgroup or product…" />
                   <div className="order-builder-categories">
-                    <OrderGroupTree categories={matchingGroupCategories} selectedId={selectedProductGroup} search={groupSearch} onSelect={id=>{setSelectedProductGroup(id);setSelectedProduct('');}} />
+                    <OrderGroupTree categories={matchingGroupCategories} selectedId={selectedProductGroup} selectedProductId={selectedProduct} onSelectProduct={(groupId,productId)=>{setSelectedProductGroup(groupId);setSelectedProduct(productId);requestAnimationFrame(()=>document.getElementById('order-create-quantity')?.focus());}} search={groupSearch} onSelect={id=>{setSelectedProductGroup(id);setSelectedProduct('');}} />
                   </div>
-                  {!matchingGroupCategories.length && <p role="status">No production groups match your search.</p>}
+                  {!matchingGroupCategories.length && <p role="status">No products match your search.</p>}
                 </section>
                 <section className="order-builder-selection">
                   <div className="order-builder-section-label"><span>2</span><div><strong>Product and quantity</strong><small>{selectedProductGroup ? `${productGroups.find(group=>group.id===selectedProductGroup)?.label || ''} products only` : 'Select a production group'}</small></div></div>
@@ -1212,7 +1214,7 @@ const OutletView = () => {
                     <Select label="Unit" value={customSize.unit} onChange={(event) => setCustomSize({ ...customSize, unit: event.target.value })} options={[{ value: 'inches', label: 'Inches' }, { value: 'cm', label: 'Centimetres' }]} />
                   </div>}
                   <div className="order-builder-add-row">
-                    <Input label="Quantity" type="number" min="1" value={quantity} onChange={(e) => setQuantity(e.target.value)} />
+                    <Input id="order-create-quantity" label="Quantity" type="number" min="1" value={quantity} onChange={(e) => setQuantity(e.target.value)} />
                     <Button className="order-builder-add-button" onClick={handleAddItem} disabled={isSubmitting}><Plus size={18} /> Add item</Button>
                   </div>
                 </section>

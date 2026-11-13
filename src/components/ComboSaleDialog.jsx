@@ -7,7 +7,7 @@ import {showroomItemForProduct,emptyShowroomItem} from '../utils/showroomPricing
 const money=n=>Number(n || 0).toLocaleString('en-IN',{style:'currency',currency:'INR'});
 export default function ComboSaleDialog({combo,onClose,onAdd,products,stockLabel}){
  const [count,setCount]=useState('1'),[error,setError]=useState('');
- const [rows,setRows]=useState(()=>combo.saleItems.map(item=>{const option=products.find(p=>p.value===item.product_id);return {...showroomItemForProduct({...emptyShowroomItem},option || {label:item.productName}),...item,quantity:Number(item.qty),taxPercent:'18',fulfillmentMode:'',isAccessory:Boolean(option?.isAccessory)};}));
+ const [rows,setRows]=useState(()=>combo.saleItems.map(item=>{const option=products.find(p=>p.value===item.product_id);return {...showroomItemForProduct({...emptyShowroomItem},option || {label:item.productName}),...item,quantity:Number(item.qty),taxPercent:option?.taxPercent == null ? '18' : String(option.taxPercent),taxSettingsVersion:option?.taxPercent == null ? undefined : option.taxSettingsVersion,fulfillmentMode:'',isAccessory:Boolean(option?.isAccessory)};}));
  const change=(index,key,value)=>setRows(current=>current.map((item,i)=>index===i?{...item,[key]:value}:item));
  const confirm=()=>{
   if(!Number.isSafeInteger(Number(count)) || Number(count)<1 || Number(count)>100){setError('Choose a whole combo quantity between 1 and 100.');return;}

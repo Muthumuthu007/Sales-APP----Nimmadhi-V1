@@ -31,6 +31,7 @@ export function showroomItemForProduct(current, option) {
   const name = option?.label?.split(' — max produce:')[0] || '';
   const size = name.match(/\d+(?:\.\d+)?[xX×]\d+(?:\.\d+)?[xX×]\d+(?:\.\d+)?/);
   return {...current, model: name, size: size ? size[0].replace(/[xX]/g, ' × ') : '',
+    taxPercent:option?.taxPercent == null ? '18' : String(option.taxPercent),taxSettingsVersion:option?.taxPercent == null ? undefined : option.taxSettingsVersion,
     mrpSticker: option?.mrpSticker == null ? '' : String(option.mrpSticker)};
 }
 

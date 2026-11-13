@@ -26,3 +26,11 @@ test('order groups nest every level while preserving IDs and products at parent 
  assert.equal(density.children[0].children[0].groups[0].id,'leaf-id');
  assert.equal(tree[0].children.find(n=>n.label==='Latex').children[0].groups[0].id,'other-id');
 });
+
+test('ancestor IDs keep equally named branches distinct within one category',async()=>{
+ const {orderGroupTree}=await import('./productHierarchy.js');
+ const options=['a','b'].map(id=>productionOption({productId:`p-${id}`,productName:id,groupId:id,mainGroupName:'Accessories',groupPath:'Accessories → Custom',groupAncestors:[{id:'root',name:'Accessories'},{id,name:'Custom'}]}));
+ const tree=orderGroupTree(groupedProductOptions(options));
+ assert.deepEqual(tree[0].children.map(node=>node.id),['a','b']);
+ assert.equal(tree[0].children[1].groups[0].options[0].value,'p-b');
+});
