@@ -81,3 +81,6 @@ export async function fetchFactoryManagement(outletId = '') {
 export async function dispatchFactoryCustomer(orderId, data) {
   return api.post(`/manager/factory-management/${encodeURIComponent(orderId)}/dispatch`, data);
 }
+export async function recordFactoryDelivery(orderId, data) {
+  return api.post(`/manager/factory-management/${encodeURIComponent(orderId)}/delivery`, data);
+}
