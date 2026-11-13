@@ -1,3 +1,4 @@
+import AdminSalesRecord from './pages/AdminSalesRecord';
 import Combos from './pages/Combos';
 import FactoryPendingPayments from './pages/FactoryPendingPayments';
 import OutletDashboard from './pages/OutletDashboard';
@@ -62,6 +63,7 @@ function App() {
             <Route index element={<RootRedirect />} />
             
             {/* MANAGER ROUTES */}
+            <Route path="sales-record" element={<ProtectedRoute allowedRoles={['MANAGER']}><AdminSalesRecord/></ProtectedRoute>}/>
             <Route path="pending-payments" element={<ProtectedRoute allowedRoles={['MANAGER']}><FactoryPendingPayments /></ProtectedRoute>} />
             <Route path="admin-management" element={<ProtectedRoute allowedRoles={['MANAGER']}><ScopedAdminManagement /></ProtectedRoute>} />
             <Route path="after-sales" element={<ProtectedRoute allowedRoles={['MANAGER']}><AfterSales /></ProtectedRoute>} />
