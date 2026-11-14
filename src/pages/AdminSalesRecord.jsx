@@ -8,8 +8,8 @@ import {LoadingState,ErrorState} from '../components/ui/StateContainers';
 import './AdminSalesRecord.css';
 
 const types=[['ALL','Overall sales'],['OWN','Own outlet sales'],['OTHER','Other outlets sales']];
-const columns=[['orderNumber','Order Number'],['orderDate','Order Date'],['itemName','Item name'],['hsnCode','HSN Code'],['salesQty','Sales Qty'],['customerName','Customer Name'],['address','Address'],['phoneNumber','Phone Number'],['gstNo','GST No.'],['taxableAmount','Taxable amount'],['salesTax','Sales tax'],['sgstTaxAmt','SGST TaxAmt'],['cgstTaxAmt','CGST TaxAmt'],['igstTaxAmt','IGST TaxAmt'],['totalAmount','Total amount']];
-const numeric=new Set(['salesQty','taxableAmount','salesTax','sgstTaxAmt','cgstTaxAmt','igstTaxAmt','totalAmount']);
+const columns=[['orderNumber','Sales Number'],['orderDate','Sales Date'],['itemName','Item name'],['hsnCode','HSN Code'],['salesQty','Sales Qty'],['customerName','Customer Name'],['address','Address'],['phoneNumber','Phone Number'],['gstNo','GST No.'],['taxableAmount','Taxable amount'],['salesTax','Sales tax'],['sgstTaxAmt','SGST TaxAmt'],['cgstTaxAmt','CGST TaxAmt'],['igstTaxAmt','IGST TaxAmt'],['roundoff','Roundoff'],['totalAmount','Total amount']];
+const numeric=new Set(['salesQty','taxableAmount','salesTax','sgstTaxAmt','cgstTaxAmt','igstTaxAmt','roundoff','totalAmount']);
 const format=(value,key)=>value===null||value===undefined||value===''?'':key==='orderDate'?new Date(value+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'2-digit'}):numeric.has(key)?Number(value).toLocaleString('en-IN',{maximumFractionDigits:2,minimumFractionDigits:['salesQty','salesTax'].includes(key)?0:2}):value;
 export default function AdminSalesRecord(){
  const [filters,setFilters]=useState({startDate:businessDate(),endDate:businessDate(),salesType:'ALL'}),[data,setData]=useState(null),[loading,setLoading]=useState(true),[error,setError]=useState(''),[exportError,setExportError]=useState(''),[exporting,setExporting]=useState(false),[page,setPage]=useState(1);
@@ -40,7 +40,7 @@ export default function AdminSalesRecord(){
  {loading?<LoadingState message="Loading sales records…"/>:error?<ErrorState error={error} onRetry={()=>load({...filters})}/>:data&&<>
  <div className="asr-summary">{[['Invoices',data.summary.invoices],['Sales quantity',format(data.summary.quantity,'salesQty')],['Taxable amount recorded','₹'+format(data.summary.taxableAmount,'totalAmount')],['Total sales','₹'+format(data.summary.totalAmount,'totalAmount')]].map(([label,value])=><div key={label}><span>{label}</span><strong>{value}</strong></div>)}</div>
  <Card><CardHeader title={`${types.find(([v])=>v===data.salesType)?.[1]} · ${format(data.startDate,'orderDate')} to ${format(data.endDate,'orderDate')}`} action={<Button onClick={download} disabled={exporting}>{exporting?'Exporting…':'Export as Excel'}</Button>}/><CardContent>
- <p className="asr-muted">{data.taxSplitNote} HSN codes use the supplied product-category mapping. Bare and unassigned categories remain blank. Invoice rounding is listed separately so totals match recorded sales.</p>
+ <p className="asr-muted">{data.taxSplitNote} HSN codes use the supplied product-category mapping. Bare and unassigned categories remain blank. Roundoff includes tax-split differences and invoice rounding; total sales stays unchanged.</p>
  {data.summary.missingHsnLines>0&&<p className="asr-notice" role="status">{data.summary.missingHsnLines} sales line(s) have no assigned HSN code, including Bare where applicable.</p>}
  {data.summary.missingTaxLines>0&&<p className="asr-notice" role="status">{data.summary.missingTaxLines} sales line(s) have incomplete saved tax information. Their missing tax fields are blank; they are still included in sales totals.</p>}
  {exportError&&<p role="alert" className="asr-notice">{exportError}</p>}
