@@ -1,3 +1,4 @@
+import OutletReportMenu from '../components/OutletReportMenu';
 import OutletAwaitingDispatch from './OutletAwaitingDispatch';
 import OutletDeliveryReturns from './OutletDeliveryReturns';
 import SalesDraftControls from '../components/SalesDraftControls';
@@ -1616,55 +1617,8 @@ const OutletView = () => {
         {activeTab === 'REPORTS' && isGodown && <GodownReports />}
         {activeTab === 'REPORTS' && isGodown === false && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%' }}>
-            {reportView==='outlet-stock-sales' ? <OutletStockSalesReport outletId={outletId} catalogue={productOptions} onBack={()=>setReportView('list')}/> : isStall || reportView==='stock' ? <StockMovementReport outletId={outletId} catalogue={productOptions} onBack={isStall?undefined:()=>setReportView('list')}/> : reportView === 'list' ? (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
-                {ownedShowroomSales && <Card><CardContent><h3>Fully Paid Outlet-stock Sales</h3><p>Products supplied from outlet stock on fully paid bills, grouped by main group and subgroup.</p><Button onClick={()=>setReportView('outlet-stock-sales')}>Open outlet-stock sales</Button></CardContent></Card>}
-                <Card><CardContent><h3>Stock Movement Report</h3><p>Date-wise opening, received, sold, transferred-out and closing stock.</p><Button onClick={()=>setReportView('stock')}>Open stock report</Button></CardContent></Card>
-                <Card 
-                  style={{ cursor: 'pointer', backgroundColor: 'var(--color-bg)' }} 
-                  onClick={() => { setReportView('daily'); setReportData(null); setReportError(null); }}
-                >
-                  <CardContent style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem', border: '1px solid var(--color-border)', borderRadius: '8px' }}>
-                    <div style={{ backgroundColor: 'var(--color-secondary)', padding: '0.75rem', borderRadius: '8px', color: 'var(--color-primary)' }}>
-                      <Calendar size={24} />
-                    </div>
-                    <div>
-                      <h3 style={{ margin: '0 0 0.25rem 0', fontSize: '1.125rem' }}>Daily Reports</h3>
-                      <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>View detailed daily production and inventory reports</p>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card 
-                  style={{ cursor: 'pointer', backgroundColor: 'var(--color-bg)' }} 
-                  onClick={() => { setReportView('weekly'); setReportData(null); setReportError(null); }}
-                >
-                  <CardContent style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem', border: '1px solid var(--color-border)', borderRadius: '8px' }}>
-                    <div style={{ backgroundColor: 'var(--color-secondary)', padding: '0.75rem', borderRadius: '8px', color: 'var(--color-primary)' }}>
-                      <Calendar size={24} />
-                    </div>
-                    <div>
-                      <h3 style={{ margin: '0 0 0.25rem 0', fontSize: '1.125rem' }}>Weekly Reports</h3>
-                      <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>Analyze weekly trends and performance metrics</p>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card 
-                  style={{ cursor: 'pointer', backgroundColor: 'var(--color-bg)' }} 
-                  onClick={() => { setReportView('monthly'); setReportData(null); setReportError(null); }}
-                >
-                  <CardContent style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem', border: '1px solid var(--color-border)', borderRadius: '8px' }}>
-                    <div style={{ backgroundColor: 'var(--color-secondary)', padding: '0.75rem', borderRadius: '8px', color: 'var(--color-primary)' }}>
-                      <FileText size={24} />
-                    </div>
-                    <div>
-                      <h3 style={{ margin: '0 0 0.25rem 0', fontSize: '1.125rem' }}>Monthly Reports</h3>
-                      <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>Track monthly production and inventory statistics</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
+            {reportView.startsWith('outlet-stock-sales:') ? <OutletStockSalesReport key={reportView} period={reportView.split(':')[1]} outletId={outletId} catalogue={productOptions} onBack={()=>setReportView('list')}/> : isStall || reportView.startsWith('stock:') ? <StockMovementReport key={reportView} period={reportView.split(':')[1] || 'daily'} outletId={outletId} catalogue={productOptions} onBack={isStall?undefined:()=>setReportView('list')}/> : reportView === 'list' ? (
+              <OutletReportMenu ownOutlet={ownedShowroomSales} onOpen={view=>{setReportView(view);setReportData(null);setReportError(null);}}/>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                 <div style={{ 

@@ -14,6 +14,7 @@ const columns = [
   ['Recovered from this salary month', row => row.advanceRecovery], ['Advance balance after month', row => row.advanceBalance],
   ['Current outstanding advance', row => row.outstandingAdvance],
   ['Salary payable', row => row.netSalary],
+  ['Location',row=>row.locationName],['Outlet',row=>row.outletName],['Outlet ID',row=>row.outletId],
 ];
 const quote = value => {
   let text = String(value ?? '');
@@ -21,7 +22,7 @@ const quote = value => {
   return '"' + text.replaceAll('"', '""') + '"';
 };
 export function salaryReportCsv(rows, month, outlet) {
-  const totals = columns.map((_, index) => index === 2 ? 'TOTAL' : index >= 6 ?
+  const totals = columns.map((_, index) => index === 2 ? 'TOTAL' : index >= 6 && !['Location','Outlet','Outlet ID'].includes(columns[index][0]) ?
     Math.round(rows.reduce((sum, row) => sum + Number(columns[index][1](row) || 0), 0) * 100) / 100 : '');
   return '\ufeff' + [
     ['Nimmadhi salary report', month, outlet],

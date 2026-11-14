@@ -1,5 +1,5 @@
 .order-builder-card { max-width: 1040px; }
-.sales-builder-card { max-width: 980px; }
+.sales-builder-card { width: 100%; max-width: 980px; margin-inline: auto; }
 .sales-builder-content { display: flex; flex-direction: column; gap: 1.5rem; padding: 1.5rem; }
 .sales-builder-step { color: var(--color-text-muted); font-size: .78rem; font-weight: 600; }
 .sales-builder-intro { display: flex; align-items: center; gap: .9rem; }.sales-builder-intro-icon { display: grid; place-items: center; width: 2.6rem; height: 2.6rem; color: #fbbf24; background: rgba(251,191,36,.1); border: 1px solid rgba(251,191,36,.24); border-radius: .8rem; }.sales-builder-intro h3 { margin: 0; font-size: 1rem; }.sales-builder-intro p { margin: .25rem 0 0; color: var(--color-text-muted); font-size: .84rem; }

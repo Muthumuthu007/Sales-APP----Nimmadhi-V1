@@ -30,19 +30,19 @@ export async function updateEmployeeSalary(empId, salaryData) {
  * @param {string} outletId
  */
 export async function fetchEmployeesWithSalary(outletId) {
-  return api.post('/manager/employees/list', { outletId });
+  return api.post('/manager/employees/list', { outletId }, {ignoreLocationScope:true});
 }
 
 export async function fetchManagerEmployees(outletId) {
-  return api.post('/manager/employees/list', { outletId });
+  return api.post('/manager/employees/list', { outletId }, {ignoreLocationScope:true});
 }
 
 export async function createManagerEmployee(employeeData) {
   return api.post('/manager/employees', employeeData);
 }
 
-export async function fetchOutlets() {
-  return api.get('/outlets');
+export async function fetchOutlets(config = {}) {
+  return api.get('/outlets', config);
 }
 
 export async function createOutlet(outletData) {
@@ -58,7 +58,7 @@ export async function deleteOutlet(outletId) {
 }
 
 export async function fetchOutletIncentives(outletId, month) {
-  return api.get('/manager/incentives', { params: { outletId, month } });
+  return api.get('/manager/incentives', { params: { outletId, month }, ignoreLocationScope:true });
 }
 
 export async function fetchManagerAttendance(outletId, period, date) {
@@ -78,7 +78,7 @@ export async function assignOutletProductGroups(outletId, groupIds, productAcces
 }
 
 export async function fetchEmployeeAdvances(empId, outletId, month) {
-  return api.get(`/manager/employees/${encodeURIComponent(empId)}/advances`, { params: { outletId, month } });
+  return api.get(`/manager/employees/${encodeURIComponent(empId)}/advances`, { params: { outletId, month }, ignoreLocationScope:true });
 }
 export async function recordEmployeeAdvance(empId, data) {
   return api.post(`/manager/employees/${encodeURIComponent(empId)}/advances`, data);

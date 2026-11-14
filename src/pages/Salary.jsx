@@ -1,7 +1,9 @@
+import {locationOptions} from '../utils/locationScope';
+import {employeeOutlets,employeeAtOutlet,mapEmployeeLocations,combineEmployeeIncentives,locationId} from '../utils/employeeLocations';
 import { bankSalaryReportXml } from '../utils/bankSalaryReport';
 import { salaryReportCsv } from '../utils/salaryReport';
 import { attendanceSalary, salaryCalendar, travelAllowancePay, netSalaryPay } from '../utils/salaryEligibility';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader } from '../components/ui/Card';
 import { Table } from '../components/ui/Table';
 import { Button } from '../components/ui/Button';
@@ -19,6 +21,8 @@ const Salary = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [outletId, setOutletId] = useState('');
+  const [location,setLocation]=useState(''),[outletsReady,setOutletsReady]=useState(false);
+  const loadSequence=useRef(0);
   const [outlets, setOutlets] = useState([]);
   const [employeesList, setEmployeesList] = useState([]);
   const [employeesLoading, setEmployeesLoading] = useState(false);
@@ -26,39 +30,30 @@ const Salary = () => {
   const [month, setMonth] = useState(() => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }).slice(0, 7));
   const [incentiveReport, setIncentiveReport] = useState(null);
 
-  const loadEmployees = useCallback(async (targetId = outletId) => {
-    if (!targetId || !month) {
-      setEmployeesError('Select an outlet and salary month first.');
-      return;
-    }
-    setEmployeesLoading(true);
-    setEmployeesError(null);
+  const loadEmployees = useCallback(async () => {
+    if(!outletsReady || !month)return;
+    const sequence=++loadSequence.current;setEmployeesLoading(true);setEmployeesError(null);setEmployeesList([]);setIncentiveReport(null);
     try {
-      const [employeeResponse, incentiveResponse] = await Promise.all([
-        fetchEmployeesWithSalary(targetId),
-        fetchOutletIncentives(targetId, month),
-      ]);
-      const response = employeeResponse;
-      const list = Array.isArray(response) ? response : (response?.employees || response?.data || []);
-      const withAdvances = await Promise.all(list.map(async employee => ({...employee, advances: await fetchEmployeeAdvances(employee.empId, targetId, month)})));
-      setEmployeesList(withAdvances);
-      setIncentiveReport(incentiveResponse || null);
-    } catch (err) {
-      setEmployeesList([]);
-      setIncentiveReport(null);
-      setEmployeesError(err.response?.data?.message || err.response?.data?.error || err.message || 'Failed to fetch employee salaries.');
-    } finally {
-      setEmployeesLoading(false);
-    }
-  }, [outletId, month]);
+      const results=await mapEmployeeLocations(employeeOutlets(outlets,location,outletId),async outlet=>{
+        const id=locationId(outlet);
+        const [response,incentives]=await Promise.all([fetchEmployeesWithSalary(id),fetchOutletIncentives(id,month)]);
+        const list=Array.isArray(response)?response:(response?.employees || response?.data || []);
+        const incentiveByEmployee=new Map((incentives?.employees || []).map(employee=>[employee.empId,employee]));
+        const employees=await mapEmployeeLocations(list,async employee=>({...employeeAtOutlet(employee,outlet),incentive:incentiveByEmployee.get(employee.empId) || {},advances:await fetchEmployeeAdvances(employee.empId,id,month)}));
+        return {employees,incentives};
+      });
+      if(sequence===loadSequence.current){setEmployeesList(results.flatMap(result=>result.employees));setIncentiveReport(combineEmployeeIncentives(results.map(result=>result.incentives)));}
+    }catch(err){if(sequence===loadSequence.current){setEmployeesList([]);setIncentiveReport(null);setEmployeesError(err.response?.data?.error || err.response?.data?.message || 'Unable to load the complete salary report. Refresh to retry.');}}
+    finally{if(sequence===loadSequence.current)setEmployeesLoading(false);}
+  },[outletsReady,outlets,location,outletId,month]);
 
   useEffect(() => {
     let isMounted = true;
-    fetchOutlets().then((response) => {
+    fetchOutlets({ignoreLocationScope:true}).then((response) => {
       if (!isMounted) return;
       const availableOutlets = response?.outlets || [];
       setOutlets(availableOutlets);
-      if (availableOutlets.length) setOutletId(availableOutlets[0].outletId || availableOutlets[0].id);
+      setOutletsReady(true);
     }).catch(() => {
       if (isMounted) setEmployeesError('Unable to load registered outlets.');
     });
@@ -66,17 +61,13 @@ const Salary = () => {
   }, []);
 
   useEffect(() => {
-    if (outletId) loadEmployees(outletId);
+    const tracker=loadSequence;loadEmployees();return()=>{tracker.current++;};
   }, [outletId, loadEmployees]);
 
   const viewPayslip = (emp) => {
     setSelectedUser(emp);
     setModalOpen(true);
   };
-
-  const incentiveByEmployee = Object.fromEntries(
-    (incentiveReport?.employees || []).map((employee) => [employee.empId, employee])
-  );
 
   const calendar = month ? salaryCalendar(month) : { sundays: 0 };
   const money = amount => `₹${Number(amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -86,7 +77,7 @@ const Salary = () => {
     const salary = emp.salary || emp;
     const isMonthly = salary.salaryModel === 'MONTHLY';
     const baseRate = isMonthly ? (salary.basicSalary || 0) : (salary.perDayRate || 0);
-    const incentive = incentiveByEmployee[emp.empId] || {};
+    const incentive = emp.incentive || {};
     const presentDays = incentive.presentDays || 0;
     const otHours = 0;
     const calculation = isMonthly ? attendanceSalary(baseRate, 26, presentDays, calendar.sundays) : { dailyRate: baseRate, attendancePay: baseRate * presentDays, sundayPay: 0, paidSundays: 0, absentDays: 0, baseSalary: baseRate * presentDays };
@@ -123,6 +114,8 @@ const Salary = () => {
 
   const columns = [
     { key: 'name', label: 'Employee', render: (row) => row.name || row.employeeName || row.empName || 'Unnamed' },
+    {key:'locationName',label:'Location'},
+    {key:'outletName',label:'Outlet',render:row=>`${row.outletName} (${row.outletId})`},
     { key: 'designation', label: 'Designation', render: (row) => row.designation || row.role || '-' },
     { key: 'salaryModel', label: 'Salary Model', render: (row) => row.salaryModel === 'MONTHLY' ? 'Monthly' : 'Daily / Per Day' },
     {
@@ -157,7 +150,7 @@ const Salary = () => {
   const saveAdvance = async () => {
     setAdvanceSaving(true); setAdvanceError('');
     try {
-      await recordEmployeeAdvance(advanceUser.empId, {...advanceForm, outletId});
+      await recordEmployeeAdvance(advanceUser.empId, {...advanceForm, outletId:advanceUser.outletId});
       setAdvanceUser(null);
       await loadEmployees(outletId);
     } catch (error) {
@@ -167,7 +160,7 @@ const Salary = () => {
 
   const downloadReport = () => {
     const outlet = outlets.find(item => (item.outletId || item.id) === outletId);
-    const csv = salaryReportCsv(salaryData, month, outlet?.outletName || outlet?.name || outletId);
+    const csv = salaryReportCsv(salaryData, month, outlet?.outletName || outlet?.name || locationOptions(outlets).find(option=>option.value===location)?.label || 'All locations');
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
     const link = document.createElement('a');
     link.href = url;
@@ -178,6 +171,7 @@ const Salary = () => {
 
   const bankColumns = [
     {key:'name',label:'Employee',render:row => row.name || row.employeeName || row.empName || 'Unnamed'},
+    {key:'outletName',label:'Outlet',render:row=>`${row.outletName} (${row.outletId})`},
     {key:'bankAccountNumber',label:'A/C NO',render:row => row.bankAccountNumber || 'Not recorded'},
     {key:'ifscCode',label:'IFSC CODE',render:row => row.ifscCode || 'Not recorded'},
     {key:'bankName',label:'BANK',render:row => row.bankName || 'Not recorded'},
@@ -188,16 +182,16 @@ const Salary = () => {
   const missingBankCount = bankSalaryData.filter(row => !row.bankAccountNumber || !row.ifscCode || !row.bankName || !row.bankBranch).length;
   const downloadBankReport = () => {
     const outlet = outlets.find(item => (item.outletId || item.id) === outletId);
-    const xml = bankSalaryReportXml(bankSalaryData, month, outlet?.outletName || outlet?.name || outletId);
+    const xml = bankSalaryReportXml(bankSalaryData, month, outlet?.outletName || outlet?.name || locationOptions(outlets).find(option=>option.value===location)?.label || 'All locations');
     const url = URL.createObjectURL(new Blob([xml], {type:'application/vnd.ms-excel;charset=utf-8'}));
     const link = document.createElement('a'); link.href = url;
-    link.download = `bank-salary-${outletId.replace(/[^a-zA-Z0-9_-]/g,'_')}-${month}.xml`;
+    link.download = `bank-salary-${(outletId || location || 'all-locations').replace(/[^a-zA-Z0-9_-]/g,'_')}-${month}.xml`;
     link.click(); URL.revokeObjectURL(url);
   };
 
   const outletOptions = [
-    { value: '', label: outlets.length ? 'Select outlet' : 'No outlets available' },
-    ...outlets.map((outlet) => ({
+    { value: '', label: 'All outlets' },
+    ...employeeOutlets(outlets,location).map((outlet) => ({
       value: outlet.outletId || outlet.id,
       label: `${outlet.outletName || outlet.name || outlet.username || 'Outlet'} (${outlet.outletId || outlet.id})`,
     })),
@@ -208,6 +202,7 @@ const Salary = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '0.5rem' }}>
         <h2 style={{ margin: 0 }}>Salary Generation</h2>
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+          <div style={{ minWidth: '220px' }}><Select label="Location" value={location} onChange={event=>{setLocation(event.target.value);setOutletId('');}} options={locationOptions(outlets)} disabled={!outletsReady || employeesLoading}/></div>
           <div style={{ minWidth: '260px' }}>
             <Select
               label="Outlet"
@@ -221,7 +216,7 @@ const Salary = () => {
             <Input label="Salary month" type="month" disabled={employeesLoading} value={month} onChange={(e) => setMonth(e.target.value)} />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', height: '100%', justifyContent: 'flex-end', paddingTop: '1.25rem' }}>
-            <Button onClick={() => loadEmployees(outletId)} disabled={employeesLoading || !outletId}>
+            <Button onClick={() => loadEmployees(outletId)} disabled={employeesLoading || !outletsReady || !month}>
               {employeesLoading ? 'Loading...' : 'Generate'}
             </Button>
             <Button variant="secondary" onClick={() => setBankReportOpen(!bankReportOpen)} disabled={employeesLoading || !salaryData.length}>Bank Payment Report</Button>
@@ -254,7 +249,7 @@ const Salary = () => {
                 </p>
               )}
             </>
-          ) : <span className="text-muted">Choose an outlet and month, then generate the report.</span>}
+          ) : <span className="text-muted">Choose locations and a month to generate the report.</span>}
         </CardContent>
       </Card>
 
@@ -265,7 +260,7 @@ const Salary = () => {
               <LoadingState message="Fetching employee salaries..." />
             </div>
           ) : (
-            <Table columns={columns} data={salaryData} emptyStateMessage="No employee salary configurations found for this outlet." />
+            <Table columns={columns} data={salaryData} emptyStateMessage="No employee salary configurations found for this selection." />
           )}
         </CardContent>
       </Card>
@@ -275,7 +270,7 @@ const Salary = () => {
         <CardContent>
           <p>AMT is the final salary payable after ESI &amp; PF, advance recovery, and other salary adjustments.</p>
           {missingBankCount > 0 && <p role="status">Bank details are incomplete for {missingBankCount} employee(s). Add them in employee salary configuration.</p>}
-          <Table columns={bankColumns} data={bankSalaryData} emptyStateMessage="No employees for this outlet." />
+          <Table columns={bankColumns} data={bankSalaryData} emptyStateMessage="No employees for this selection." />
           <p><strong>Total salary payable: {money(bankSalaryData.reduce((sum,row) => sum + row.netSalary,0))}</strong></p>
           <Button onClick={downloadBankReport} disabled={!bankSalaryData.length}>Download Bank Report (Excel)</Button>
         </CardContent>
@@ -283,6 +278,7 @@ const Salary = () => {
 
       <Modal isOpen={Boolean(advanceUser)} onClose={() => { if (!advanceSaving) setAdvanceUser(null); }} title={`Advances · ${advanceUser?.name || ''}`}>
         {advanceUser && <div style={{display:'grid',gap:'1rem'}}>
+          <p>{advanceUser.locationName} · {advanceUser.outletName} ({advanceUser.outletId})</p>
           <strong>Outstanding advance: {money(advanceUser.outstandingAdvance)}</strong>
           <Select label="Entry type" value={advanceForm.kind} options={[{value:'ADVANCE',label:'Advance received'},{value:'RECOVERY',label:'Recover from salary'}]} onChange={e => setAdvanceForm({...advanceForm,kind:e.target.value})} disabled={advanceSaving} />
           <Input label="Salary month" type="month" value={advanceForm.month} onChange={e => setAdvanceForm({...advanceForm,month:e.target.value})} disabled={advanceSaving} />

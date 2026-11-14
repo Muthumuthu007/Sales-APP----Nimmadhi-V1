@@ -2,11 +2,13 @@ import React,{useEffect,useMemo,useState} from 'react';
 import api from '../api/axios';
 import {businessDate} from '../utils/businessDate';
 import {Card,CardHeader,CardContent} from '../components/ui/Card';
-import {Input} from '../components/ui/Input';
+import ReportPeriodPicker from '../components/ReportPeriodPicker';
+import {reportPeriodRange} from '../utils/reportPeriods';
 import {Button} from '../components/ui/Button';
 import GroupedStockTable from '../components/GroupedStockTable';
-export default function OutletStockSalesReport({outletId,catalogue,onBack}){
- const [start,setStart]=useState(businessDate),[end,setEnd]=useState(businessDate),[reload,setReload]=useState(0),[snapshot,setSnapshot]=useState({key:'',data:null,error:''});
+export default function OutletStockSalesReport({outletId,catalogue,onBack,period='daily'}){
+ const [anchor,setAnchor]=useState(()=>period==='monthly'?businessDate().slice(0,7):businessDate()),[reload,setReload]=useState(0),[snapshot,setSnapshot]=useState({key:'',data:null,error:''});
+ const range=reportPeriodRange(period,anchor),start=range?.start,end=range?.end;
  const key=`${outletId}:${start}:${end}:${reload}`,loading=snapshot.key!==key;
  const invalid=!start || !end || start>end;
  const data=loading?null:snapshot.data,error=loading?'':snapshot.error;
@@ -24,10 +26,10 @@ export default function OutletStockSalesReport({outletId,catalogue,onBack}){
  const download=()=>{
   const cell=value=>'"'+String(value ?? '').replace(/^[=+@-]/,"'$&").replaceAll('"','""')+'"';
   const rows=[['Outlet',outletId],['Sale dates',start,end],['Main group','Subgroup','Product','Size','Colour','Quantity supplied','Work order','Bill','Sale date','Customer','Phone','Address','Sale outlet','Stall'],...(data?.lines || []).map(r=>[r.mainGroupName,r.groupPath,r.productName,r.size,r.colour,r.quantity,r.workOrderNo,r.billNo || r.saleReferenceId,r.saleDate,r.customerName,r.customerPhone,r.customerAddress,r.outletId,r.stallId])];
-  const url=URL.createObjectURL(new Blob(['\ufeff'+rows.map(row=>row.map(cell).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download=`paid-outlet-stock-sales-${outletId}-${start}-${end}.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(url),60000);
+  const url=URL.createObjectURL(new Blob(['\ufeff'+rows.map(row=>row.map(cell).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download=`paid-outlet-stock-sales-${period}-${outletId}-${start}-${end}.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(url),60000);
  };
- return <Card><CardHeader title="Fully Paid Outlet-stock Sales" action={<Button variant="secondary" onClick={onBack}>Back to reports</Button>}/><CardContent>
- <div style={{display:'flex',flexWrap:'wrap',gap:'1rem',alignItems:'end'}}><Input label="Sale date from" type="date" value={start} max={end || businessDate()} onChange={e=>setStart(e.target.value)}/><Input label="Sale date to" type="date" value={end} min={start} max={businessDate()} onChange={e=>setEnd(e.target.value)}/><Button variant="secondary" disabled={invalid || loading} onClick={()=>setReload(v=>v+1)}>Refresh report</Button><Button disabled={invalid || loading || Boolean(error) || !products.length} onClick={download}>Download CSV</Button></div>
+ return <Card><CardHeader title={`${period[0].toUpperCase()+period.slice(1)} Fully Paid Outlet-stock Sales`} action={<Button variant="secondary" onClick={onBack}>Back to reports</Button>}/><CardContent>
+ <div style={{display:'flex',flexWrap:'wrap',gap:'1rem',alignItems:'end'}}><ReportPeriodPicker period={period} anchor={anchor} onChange={setAnchor}/><Button variant="secondary" disabled={invalid || loading} onClick={()=>setReload(v=>v+1)}>Refresh report</Button><Button disabled={invalid || loading || Boolean(error) || !products.length} onClick={download}>Download CSV</Button></div>
  <p>Fully paid bills supplied from this outlet’s stock, grouped by product hierarchy. Factory deliveries and pending payments are excluded. Dates refer to the sale date; payment status is current.</p>
  <p>Own-outlet local sales are supplied when saved. For linked-stall deliveries and separately tracked dispatches, only the quantity marked dispatched is included.</p>
  {invalid?<p role="alert">Choose a valid date range.</p>:loading?<p role="status">Loading outlet-stock sales…</p>:error?<p role="alert">{error}</p>:<><div style={{display:'flex',flexWrap:'wrap',gap:'1.5rem',padding:'1rem 0'}}><span><strong>{products.length}</strong> products / variants</span><span><strong>{data?.totalQuantity || 0}</strong> units supplied</span><span><strong>{data?.totalInvoices || 0}</strong> fully paid bills</span></div><GroupedStockTable data={products} columns={columns} catalogue={catalogue} emptyStateMessage="No fully paid outlet-stock sales in this date range."/></>}
