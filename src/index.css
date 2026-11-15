@@ -224,7 +224,7 @@ select {
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
 }
 
-.order-details-layout { display: grid; grid-template-columns: minmax(220px,1fr) minmax(0,3fr); gap: 1.5rem; }
+.order-details-layout { display: grid; grid-template-columns: minmax(220px,260px) minmax(0,1fr); gap: 1.5rem; }
 .page-header h2 { overflow-wrap: anywhere; }
 @media screen and (max-width: 1024px) { .order-details-layout { grid-template-columns: minmax(0,1fr); } }
 @media screen and (max-width: 640px) {
@@ -240,4 +240,15 @@ select {
 @media screen and (max-width: 640px) {
   .order-approval-actions { flex-direction: column; gap: .75rem; }
   .order-approval-actions .btn { width: 100%; }
+}
+
+.approval-quantity-summary { display: flex; flex-wrap: wrap; gap: .75rem 1.5rem; padding: 1rem; border-top: 1px solid var(--color-border); background: rgba(255,255,255,.025); }
+.approval-table td { overflow-wrap: break-word; word-break: normal; }
+.approval-table td:nth-child(1) { min-width: 230px; }
+.approval-table td:last-child { min-width: 260px; }
+@media screen and (max-width: 1200px) { .order-details-layout { grid-template-columns: minmax(0,1fr); } }
+@media screen and (max-width: 640px) {
+ .approval-table td:nth-child(1), .approval-table td:last-child { min-width: 0; }
+ .approval-table .product-hierarchy-heading { display: block; border: 0; }
+ .approval-table .product-hierarchy-heading th { display: block; width: 100%; }
 }

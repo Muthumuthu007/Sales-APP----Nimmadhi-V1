@@ -123,8 +123,11 @@
 @media (min-width: 1025px) and (max-width: 1250px) {
   .order-builder-workspace, .sales-builder-workspace { grid-template-columns: minmax(0,1fr); }
 }
-.receipt-product-row { display: grid; grid-template-columns: minmax(0,1fr) 150px; gap: 1rem; align-items: end; padding: .85rem; border: 1px solid var(--color-border); border-radius: 8px; }
-@media screen and (max-width: 640px) { .receipt-product-row { grid-template-columns: minmax(0,1fr); } }
+.receipt-product-row { display: grid; grid-template-columns: minmax(0,1fr); gap: .85rem; align-items: start; padding: .85rem; border: 1px solid var(--color-border); border-radius: 8px; min-width: 0; }
+.receipt-product-description { min-width: 0; overflow-wrap: break-word; word-break: normal; }
+.receipt-product-row .input-group { max-width: 100%; margin-bottom: 0; }
+.order-receipt-modal { max-width: 960px; }
+
 
 /* Keep NIM product pricing before payment and customer fields at every width. */
 .sales-builder-workspace--nim { grid-template-columns: minmax(0, 1fr); }

@@ -1,5 +1,5 @@
 import {test} from 'node:test';import assert from 'node:assert/strict';
-import {orderContents} from './orderContents.js';
+import {orderContents,complimentaryQuantitySummary} from './orderContents.js';
 const bed={product_id:'B',productName:'72X36X6 Bed',orderedQty:2,freeItems:[{product_id:'P',productName:'Pillows',quantity:2},{product_id:'C',productName:'Comforter',quantity:1}]};
 test('ordered products and absolute gifts have independent totals and parent links',()=>{
  const result=orderContents([bed]);assert.equal(result.productTotal,2);assert.equal(result.complimentaryTotal,3);assert.equal(result.complimentary.length,2);assert.equal(result.complimentary[0].complimentaryFor[0].productId,'B');
@@ -25,4 +25,12 @@ test('receipt progress and parent metadata survive flat complimentary separation
 });
 test('missing gift quantities stay unknown rather than becoming invented quantities',()=>{
  const result=orderContents([{product_id:'B',quantity:1,freeItems:[{productId:'P',productName:'Pillow'}]}]);assert.equal(result.complimentary[0].quantity,undefined);assert.equal(result.complimentaryTotal,0);
+});
+
+test('estimate-only complimentary summary shows offered quantity instead of a misleading zero total',()=>{
+ const result=orderContents([{product_id:'B',orderedQty:3,complimentaryOffers:[{freeProductId:'P',freeQuantity:2}]}]);
+ assert.deepEqual(complimentaryQuantitySummary(result),{label:'Offered complimentary quantity',quantity:6,note:'Not allocated yet'});
+});
+test('allocated complimentary summary retains actual quantities',()=>{
+ assert.deepEqual(complimentaryQuantitySummary(orderContents([bed])),{label:'Total complimentary quantity',quantity:3,note:''});
 });

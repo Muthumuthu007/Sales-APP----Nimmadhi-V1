@@ -372,6 +372,7 @@ const LoadPlans = () => {
         isOpen={Boolean(detailsPlan)}
         onClose={() => setDetailsPlan(null)}
         title={`Load Plan ${detailsPlan?.displayId || compactId(detailsPlan?.loadPlanId)}`}
+        className="load-plan-details-modal"
       >
         <div className="load-plan-detail-summary">
           <div><span>Outlet</span><strong>{outletLabel(detailsPlan?.outletId, outlets)}</strong></div>

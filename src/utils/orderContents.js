@@ -34,3 +34,11 @@ export function orderContents(items=[]){
  }
  return {products,complimentary:gifts,unknownQuantities:gifts.filter(row=>itemQuantity(row)===null).length,productTotal:products.reduce((n,row)=>n+(itemQuantity(row) || 0),0),complimentaryTotal:gifts.filter(row=>!row.isOfferEstimate).reduce((n,row)=>n+(itemQuantity(row)||0),0),offerTotal:gifts.filter(row=>row.isOfferEstimate).reduce((n,row)=>n+(itemQuantity(row)||0),0)};
 }
+
+// Estimates must never be presented beside a misleading zero approved total.
+export function complimentaryQuantitySummary(result){
+ if(result.offerTotal>0 && result.complimentaryTotal===0){
+  return {label:'Offered complimentary quantity',quantity:result.offerTotal,note:'Not allocated yet'};
+ }
+ return {label:'Total complimentary quantity',quantity:result.complimentaryTotal,note:result.offerTotal>0?`Additional offered quantity: ${result.offerTotal} · not allocated yet`:''};
+}

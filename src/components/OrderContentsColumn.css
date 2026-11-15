@@ -1,1 +1,13 @@
-.order-contents-column{min-width:210px;max-width:480px;white-space:normal;overflow-wrap:anywhere;display:grid;gap:.65rem}.order-contents-item{display:grid;gap:.35rem;padding-bottom:.65rem;border-bottom:1px solid var(--color-border)}.order-complimentary-for{display:block;color:var(--color-primary);white-space:normal}.order-contents-total{display:grid;gap:.25rem;padding-top:.5rem;border-top:2px solid var(--color-border)}.order-contents-empty{color:var(--color-text-muted)}.order-contents-columns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem}.order-contents-columns>section{min-width:0}.order-contents-columns .order-contents-column{min-width:0;max-width:none}@media(max-width:650px){.order-contents-columns{grid-template-columns:1fr}}
+.order-contents-column { min-width: 0; width: 100%; max-width: 480px; white-space: normal; overflow-wrap: break-word; word-break: normal; display: grid; gap: .75rem; }
+.order-contents-item { min-width: 0; display: grid; gap: .4rem; padding-bottom: .75rem; border-bottom: 1px solid var(--color-border); line-height: 1.45; }
+.order-contents-item:nth-last-child(2) { border-bottom: 0; }
+.order-product-description { overflow-wrap: break-word; word-break: normal; }
+.order-complimentary-for { display: block; color: var(--color-text-muted); white-space: normal; }
+.order-contents-total { display: grid; gap: .3rem; padding-top: .75rem; border-top: 1px solid var(--color-border); line-height: 1.45; }
+.order-contents-total small, .order-contents-empty { color: var(--color-text-muted); }
+/* Respond to the available panel width, including narrow desktop dialogs. */
+.order-contents-columns { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,20rem),1fr)); gap: 1rem; align-items: start; }
+.order-contents-columns > section { min-width: 0; padding: 1rem; border: 1px solid var(--color-border); border-radius: .75rem; background: rgba(255,255,255,.025); }
+.order-contents-columns > section > h4 { margin: 0 0 1rem; font-size: 1rem; line-height: 1.4; }
+.order-contents-columns .order-contents-column { min-width: 0; max-width: none; }
+@media(max-width:480px) { .order-contents-columns > section { padding: .75rem; } }

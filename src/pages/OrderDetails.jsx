@@ -1,4 +1,4 @@
-import {OrderContentsColumns} from '../components/OrderContentsColumn';
+import {orderContents} from '../utils/orderContents';
 import {AuthContext} from '../context/AuthContext';
 import {isReadOnlyAdmin} from '../auth/adminAccess';
 import ProductListBlocks from '../components/ProductListBlocks';
@@ -263,7 +263,7 @@ const OrderDetails = () => {
         <button aria-label="Back to orders" onClick={() => navigate('/orders')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)' }}>
           <ArrowLeft size={24} />
         </button>
-        <h2 style={{ margin: 0 }}>Approval Workspace: Order {order.orderId || order.id}</h2>
+        <h2 style={{ margin: 0 }}>Order approval — {order.displayId || order.orderId || order.id}</h2>
         <Badge status={order.status} />
         {order.isCustomized && <strong style={{ color: 'var(--color-primary)' }}>Customized order</strong>}
       </div>
@@ -282,7 +282,7 @@ const OrderDetails = () => {
 
       <div className="order-details-layout">
         <Card style={{ alignSelf: 'start' }}>
-          <CardHeader title="Order Metadata" />
+          <CardHeader title="Order details" />
           <CardContent style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div>
               <span className="text-muted">Outlet:</span>
@@ -294,7 +294,7 @@ const OrderDetails = () => {
             </div>
             <div>
               <span className="text-muted">Date Logged:</span>
-              <div className="font-semibold">{order.createdAt || 'N/A'}</div>
+              <div className="font-semibold">{order.createdAt && !Number.isNaN(new Date(order.createdAt).getTime()) ? new Date(order.createdAt).toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'}) : 'Not recorded'}</div>
             </div>
             {order.status !== 'PENDING' && (
               <div style={{ padding: '0.75rem', backgroundColor: 'var(--color-secondary)', borderRadius: '4px', fontSize: '0.875rem' }}>
@@ -305,7 +305,7 @@ const OrderDetails = () => {
         </Card>
 
         <Card>
-          <CardHeader title="Dynamic Iterative Approval" />
+          <CardHeader title="Order approval" />
           <CardContent style={{ padding: 0 }}>
             <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '0.5rem' }}>
               <Button variant="secondary" onClick={() => setStockRefresh((value) => value + 1)} disabled={stockLoading}>Refresh outlet stock</Button>
@@ -425,7 +425,11 @@ const OrderDetails = () => {
                 </tbody>
               </table>
             </div>
-            <OrderContentsColumns items={approvalItems}/>
+            <div className="approval-quantity-summary" aria-label="Order quantity totals">
+              <span>Total ordered: <strong>{orderContents(approvalItems).productTotal}</strong></span>
+              <span>Approval pending: <strong>{approvalItems.reduce((total,item)=>total+Number(item.pendingQty || 0),0)}</strong></span>
+              {isEditable&&<span>Approving now: <strong>{approvalItems.reduce((total,item)=>total+Number(item.approveDelta || 0),0)}</strong></span>}
+            </div>
           </CardContent>
           {isEditable && (
             <div className="order-approval-actions" style={{ padding: '1rem', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--color-secondary)' }}>

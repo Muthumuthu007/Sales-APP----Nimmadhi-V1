@@ -1312,14 +1312,15 @@ const OutletView = () => {
           isOpen={Boolean(receiptTarget)}
           onClose={() => { if (!receivingStock) setReceiptTarget(null); }}
           title={`Receive stock — ${receiptTarget?.displayId || receiptTarget?.orderId || ''}`}
+          className="order-receipt-modal"
         >
           <p className="text-muted" style={{ marginTop: 0 }}>Enter quantities only for products that arrived now. Leave the other products blank.</p>
           {receiptError && <div className="order-builder-alert order-builder-alert-error">{receiptError}</div>}
           <div style={{ display: 'grid', gap: '0.85rem' }}>
             <OrderContentsColumns receipt items={receiptTarget?.receiptItems || []} renderItem={(item) => (
               <div key={item.product_id} className="receipt-product-row">
-                <div><strong>{item.productName || getProductName(item.product_id) || item.product_id}</strong><div className="text-muted" style={{ fontSize: '0.82rem', marginTop: '0.25rem' }}>Pending: {item.remainingQty} of {item.quantity}</div><DispatchSources sources={item.dispatchSources} /></div>
-                <Input label="Received now" type="number" min="1" max={item.remainingQty} placeholder="Leave blank" value={receiptQuantities[item.product_id] ?? ''} onChange={(event) => setReceiptQuantities((current) => ({ ...current, [item.product_id]: event.target.value }))} disabled={receivingStock} />
+                <div className="receipt-product-description"><strong>{item.productName || getProductName(item.product_id) || item.product_id}</strong><div className="text-muted" style={{ fontSize: '0.82rem', marginTop: '0.25rem' }}>Pending: {item.remainingQty} of {item.quantity}</div><DispatchSources sources={item.dispatchSources} /></div>
+                <Input label="Received now" aria-label={`Quantity received for ${item.productName || getProductName(item.product_id) || item.product_id}`} type="number" min="1" max={item.remainingQty} placeholder="Leave blank" value={receiptQuantities[item.product_id] ?? ''} onChange={(event) => setReceiptQuantities((current) => ({ ...current, [item.product_id]: event.target.value }))} disabled={receivingStock} />
               </div>
             )}/>
           </div>
