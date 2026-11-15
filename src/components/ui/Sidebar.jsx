@@ -2,11 +2,11 @@ import api from '../../api/axios';
 import {canAccessAdminPath} from '../../auth/adminAccess';
 import React, { useContext, useEffect, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, ShoppingCart, CalendarDays, X, Truck, CreditCard, Store, UserPlus, UsersRound, Gift, BadgeIndianRupee, ClipboardCheck, QrCode, Factory } from 'lucide-react';
+import { LayoutDashboard, ShoppingCart, CalendarDays, X, Truck, CreditCard, Store, UserPlus, UsersRound, Gift, BadgeIndianRupee, ClipboardCheck, QrCode, Factory, PackageCheck } from 'lucide-react';
 import { AuthContext } from '../../context/AuthContext';
 import './Sidebar.css';
 
-const Sidebar = ({ isOpen, onClose }) => {
+const Sidebar = ({ isOpen, onClose, modal=true, onPointerEnter, onPointerLeave }) => {
   const { role, adminAccess, outletId } = useContext(AuthContext);
   const location=useLocation();
   const [godownWorkspace,setGodownWorkspace]=useState(false);
@@ -20,6 +20,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     { to: '/after-sales', icon: <ClipboardCheck size={20} />, label: 'After-sales' },
     { to: '/orders', icon: <ShoppingCart size={20} />, label: 'Orders' },
     { to: '/load-plans', icon: <CalendarDays size={20} />, label: 'Load Plans' },
+    { to: '/create-load', icon: <Truck size={20} />, label: 'Create Load' },
     { to: '/dispatch-plans', icon: <QrCode size={20} />, label: 'Dispatch Plans' },
     { to: '/dispatch', icon: <Truck size={20} />, label: 'Dispatch' },
     { to: '/salary', icon: <CreditCard size={20} />, label: 'Salary' },
@@ -34,14 +35,15 @@ const Sidebar = ({ isOpen, onClose }) => {
     { to: '/create-user', icon: <UserPlus size={20} />, label: 'Create User' },
   ];
 
-  const modules=role==='STALL'?[['STOCK_IN','Stock In / Return',<Truck size={20}/>],['SALES','Sales Entry',<CreditCard size={20}/>],['CUSTOMER_DISPATCH','Dispatch',<Truck size={20}/>],['STOCK','Stock View',<Store size={20}/>],['REPORTS','Reports',<LayoutDashboard size={20}/>]]:[['ATTENDANCE','Attendance',<ClipboardCheck size={20}/>],['CREATE_ORDER','Create Order',<ShoppingCart size={20}/>],['MY_ORDERS','My Orders',<ShoppingCart size={20}/>],['STOCK','Stock View',<Store size={20}/>],['RECEIVE_STOCK','Receive Stock',<Truck size={20}/>],...(!godownWorkspace?[['SALES','Sales Entry',<CreditCard size={20}/>],...(String(outletId).toUpperCase().startsWith('NIM')?[['SALES_RECORDS','Sales Records',<ClipboardCheck size={20}/>],['AWAITING_DISPATCH','Awaiting dispatch',<Factory size={20}/>],['CUSTOMER_DISPATCH','Dispatch',<Truck size={20}/>]]:[])]:[]),['REPORTS','Reports',<LayoutDashboard size={20}/>],...(godownWorkspace?[['ASSIGNED_DISPATCH','Dispatch Assigned Orders',<Truck size={20}/>],['PRODUCT_IN','Temporary Stocks',<Store size={20}/>],['SALES_OUT','Sales Out',<ShoppingCart size={20}/>]]:[]),...(!godownWorkspace?[['DELIVERY_RETURNS','Delivery & returns',<Truck size={20}/>],['COMBOS','Combos',<Gift size={20}/>]]:[]),['AFTER_SALES','After-sales',<ClipboardCheck size={20}/>]];
-  const employeeLinks=role==='GODOWN'?[{to:'/godown',icon:<Store size={20}/>,label:'Godown Operations'}]:modules.map(([module,label,icon])=>({to:`/employee?module=${module}`,module,label,icon}));
+  const modules=role==='STALL'?[['STOCK_IN','Stock In / Return',<Truck size={20}/>],['SALES','Sales Entry',<CreditCard size={20}/>],['CUSTOMER_DISPATCH','Dispatch',<Truck size={20}/>],['STOCK','Stock View',<Store size={20}/>],['REPORTS','Reports',<LayoutDashboard size={20}/>]]:[['ATTENDANCE','Attendance',<ClipboardCheck size={20}/>],['CREATE_ORDER','Create Order',<ShoppingCart size={20}/>],['MY_ORDERS','My Orders',<ShoppingCart size={20}/>],['STOCK','Stock View',<Store size={20}/>],['RECEIVE_STOCK','Receive Stock',<Truck size={20}/>],...(!godownWorkspace?[['SALES','Sales Entry',<CreditCard size={20}/>],...(String(outletId).toUpperCase().startsWith('NIM')?[['SALES_RECORDS','Sales Records',<ClipboardCheck size={20}/>],['AWAITING_DISPATCH','Awaiting dispatch',<Factory size={20}/>],['CUSTOMER_DISPATCH','Dispatch',<Truck size={20}/>]]:[])]:[]),['REPORTS','Reports',<LayoutDashboard size={20}/>],...(godownWorkspace?[['ASSIGNED_DISPATCH','Dispatch Assigned Orders',<Truck size={20}/>],['PRODUCT_IN','Temporary Stocks',<Store size={20}/>],['SALES_OUT','Sales Out',<ShoppingCart size={20}/>]]:[]),...(!godownWorkspace?[['THIRD_PARTY_STOCK_IN','Stock In',<PackageCheck size={20}/>],['DELIVERY_RETURNS','Delivery & returns',<Truck size={20}/>],['COMBOS','Combos',<Gift size={20}/>]]:[]),['AFTER_SALES','After-sales',<ClipboardCheck size={20}/>]];
+  const visibleModules=modules.filter(([module])=>module!=='COMBOS' || String(outletId || '').toUpperCase().startsWith('NIM'));
+  const employeeLinks=role==='GODOWN'?[{to:'/godown',icon:<Store size={20}/>,label:'Godown Operations'}]:visibleModules.map(([module,label,icon])=>({to:`/employee?module=${module}`,module,label,icon}));
 
 
   const links = role === 'MANAGER' ? managerLinks.filter(link=>canAccessAdminPath(adminAccess,link.to)) : employeeLinks;
 
   return (
-    <aside id="main-navigation" role={isOpen ? 'dialog' : undefined} aria-modal={isOpen ? true : undefined} aria-label="Main navigation" className={`sidebar${isOpen ? ' sidebar--open' : ''}`}>
+    <aside id="main-navigation" role={isOpen && modal ? 'dialog' : undefined} aria-modal={isOpen && modal ? true : undefined} onPointerEnter={onPointerEnter} onPointerLeave={onPointerLeave} aria-label="Main navigation" className={`sidebar${isOpen ? ' sidebar--open' : ''}${isOpen && !modal ? ' sidebar--hover' : ''}`}>
       <div className="sidebar-header">
         <button type="button" className="sidebar-close" onClick={onClose} aria-label="Close navigation menu"><X size={22}/></button>
         <div className="logo-icon">✨</div>

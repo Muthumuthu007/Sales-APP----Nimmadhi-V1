@@ -81,3 +81,6 @@
 }
 @media (max-width: 480px) { .layout-content { padding: .75rem; padding-bottom: max(1rem, env(safe-area-inset-bottom)); } }
 .sidebar-backdrop{display:block}
+
+.sidebar-backdrop--hover{top:60px}
+@media(max-width:768px){.sidebar-backdrop--hover{top:56px}}

@@ -1,3 +1,4 @@
+import VehicleLoads from './components/VehicleLoads';
 import AdminSalesRecord from './pages/AdminSalesRecord';
 import Combos from './pages/Combos';
 import FactoryPendingPayments from './pages/FactoryPendingPayments';
@@ -84,6 +85,7 @@ function App() {
                 <OrderDetails />
               </ProtectedRoute>
             } />
+            <Route path="create-load" element={<ProtectedRoute allowedRoles={['MANAGER']}><VehicleLoads creating /></ProtectedRoute>} />
             <Route path="load-plans" element={
               <ProtectedRoute allowedRoles={['MANAGER']}>
                 <LoadPlans />

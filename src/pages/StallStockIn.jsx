@@ -1,3 +1,5 @@
+import ProductListBlocks from '../components/ProductListBlocks';
+import GroupedProductPicker from '../components/GroupedProductPicker';
 import React,{useCallback,useEffect,useState} from 'react';
 import api from '../api/axios';
 import {idempotentPost} from '../api/idempotent';
@@ -40,19 +42,19 @@ export default function StallStockIn(){
  {error&&<p role="alert">{error}</p>}{message&&<p role="status">{message}</p>}
  <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%,240px),1fr))',gap:'1rem'}}>
  <Select label="Movement" value={direction} onChange={e=>{setDirection(e.target.value);setProduct('');setQuantity('1');setItems([]);setError('');setMessage('');}} options={[{value:'IN',label:'Stock In — outlet to stall'},{value:'RETURN',label:'Return unsold stock — stall to outlet'}]} disabled={busy}/>
- <Select label="Product" value={product} onChange={e=>setProduct(e.target.value)} options={[{value:'',label:'Choose product'},...(source || []).filter(row=>available(row.productId)>0).map(row=>({value:row.productId,label:`${row.productName || row.productId} · Available: ${available(row.productId)}`}))]} disabled={busy || !data}/>
+ <GroupedProductPicker label="Product" value={product} onChange={setProduct} options={[{value:'',label:'Choose product'},...(source || []).filter(row=>available(row.productId)>0).map(row=>({value:row.productId,label:`${row.productName || row.productId} · Available: ${available(row.productId)}`}))]} disabled={busy || !data}/>
  <Input label="Quantity" type="number" min="1" step="1" value={quantity} onChange={e=>setQuantity(e.target.value)} disabled={busy}/>
  </div>
  <Button variant="secondary" disabled={busy || !product} onClick={add}>Add product to list</Button>
  <h3>Transfer list · {items.length} products · {items.reduce((total,item)=>total+(Number(item.quantity) || 0),0)} units</h3>
  <p>Add all products here, then submit once. Switching the movement clears this list.</p>
- <div style={{display:'grid',gap:'.75rem',marginBottom:'1rem'}}>{items.map(item=><div key={item.productId} style={{display:'flex',alignItems:'center',gap:'1rem',flexWrap:'wrap',padding:'1rem',border:'1px solid var(--color-border)',borderRadius:'.75rem'}}>
+ <div style={{display:'grid',gap:'.75rem',marginBottom:'1rem'}}><ProductListBlocks items={items} renderItem={item=><div key={item.productId} style={{display:'flex',alignItems:'center',gap:'1rem',flexWrap:'wrap',padding:'1rem',border:'1px solid var(--color-border)',borderRadius:'.75rem'}}>
   <div style={{flex:'1 1 200px',minWidth:0,overflowWrap:'anywhere'}}><strong>{item.productName}</strong><div>Available: {available(item.productId)}</div></div>
   <div style={{flex:'0 1 160px'}}><Input label={`Quantity for ${item.productName}`} type="number" min="1" max={available(item.productId)} step="1" value={item.quantity} disabled={busy} onChange={event=>setItems(current=>current.map(row=>row.productId===item.productId?{...row,quantity:event.target.value}:row))}/></div>
   <Button variant="secondary" disabled={busy} aria-label={`Remove ${item.productName}`} onClick={()=>setItems(current=>current.filter(row=>row.productId!==item.productId))}>Remove</Button>
- </div>)}</div>
+ </div>}/></div>
  {!items.length && <p>No products added yet.</p>}
  <Button disabled={busy || !items.length} onClick={submit}>{busy?'Saving…':direction==='IN'?'Receive stock at stall':'Return stock to linked outlet'}</Button>
- <h3>Recent stock transfers</h3><Table columns={[{key:'recordedAt',label:'Date'},{key:'direction',label:'Movement',render:r=>r.direction==='IN'?'Outlet → Stall':'Stall → Outlet'},{key:'items',label:'Products',render:r=>(r.items || []).map(item=><div key={item.productId}>{item.productName || item.productId} × {item.quantity}</div>)},{key:'recordedBy',label:'Recorded by'}]} data={data?.transfers || []} emptyStateMessage="No transfers recorded yet."/>
+ <h3>Recent stock transfers</h3><Table columns={[{key:'recordedAt',label:'Date'},{key:'direction',label:'Movement',render:r=>r.direction==='IN'?'Outlet → Stall':'Stall → Outlet'},{key:'items',label:'Products',render:r=><ProductListBlocks items={r.items || []} renderItem={item=><div key={item.productId}>{item.productName || item.productId} × {item.quantity}</div>}/>},{key:'recordedBy',label:'Recorded by'}]} data={data?.transfers || []} emptyStateMessage="No transfers recorded yet."/>
  </CardContent></Card>;
 }

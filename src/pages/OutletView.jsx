@@ -1,3 +1,7 @@
+import {baseThickness,customOrderSize} from '../utils/customOrderSize';
+import OutletStockIn from '../components/OutletStockIn';
+import OrderContentsColumn,{OrderContentsColumns} from '../components/OrderContentsColumn';
+import ProductListBlocks from '../components/ProductListBlocks';
 import OutletReportMenu from '../components/OutletReportMenu';
 import OutletAwaitingDispatch from './OutletAwaitingDispatch';
 import OutletDeliveryReturns from './OutletDeliveryReturns';
@@ -17,7 +21,6 @@ import PaymentBreakdown from '../components/PaymentBreakdown';
 import PaymentSplitInput from '../components/PaymentSplitInput';
 import {splitPayments} from '../utils/paymentSplits';
 import {requiredShowroomFields} from '../utils/showroomPricing';
-import OrderGroupTree from '../components/OrderGroupTree';
 import {useSearchParams} from 'react-router-dom';
 import {saleProductName} from '../utils/saleProductName';
 import SalesBill from '../components/SalesBill';
@@ -35,14 +38,13 @@ import DispatchSources from '../components/DispatchSources';
 import GodownQuantityStock from '../components/GodownQuantityStock';
 import GroupedProductPicker from '../components/GroupedProductPicker';
 import {showroomItemForProduct} from '../utils/showroomPricing';
-import {productionOption,groupedProductOptions} from '../utils/productHierarchy';
+import {productionOption} from '../utils/productHierarchy';
 import { missingSaleFields,salesIssueMessage } from '../utils/salesValidation';
 import SalesValidationNotice from '../components/SalesValidationNotice';
 import { complimentaryForProduct } from '../utils/orderComplimentary';
-import OrderProduct from '../components/OrderProduct';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import api from '../api/axios';
-import { Calendar, FileText, Gift, MapPin, PackageSearch, Plus, ShoppingBag, Trash2 } from 'lucide-react';
+import { Calendar, FileText, MapPin, PackageSearch, Plus, ShoppingBag, Trash2 } from 'lucide-react';
 import { Card, CardHeader, CardContent } from '../components/ui/Card';
 import { Table } from '../components/ui/Table';
 import { Input, Select } from '../components/ui/Input';
@@ -70,6 +72,7 @@ const OutletView = () => {
   const [godownStockView, setGodownStockView] = useState('CURRENT');
   useEffect(() => { let alive = true; api.get('/outlet/workspace').then(data => { if (alive) setIsGodown(data.locationType === 'GODOWN'); }).catch(() => {}); return () => { alive = false; }; }, [outletId]);
   const isStall=role==='STALL';
+  const canUseCombos=!isStall && isGodown===false && String(outletId || '').toUpperCase().startsWith('NIM');
   const [stallStock,setStallStock]=useState(null);
   useEffect(()=>{if(isStall)api.get('/stall/stock').then(setStallStock).catch(()=>{});},[isStall]);
   const [activeTab, setActiveTab] = useState(() => (
@@ -98,10 +101,11 @@ const OutletView = () => {
     { id: 'DUE_CUSTOMERS', label: 'Pending Payments' },
     { id: 'REPORTS', label: 'Reports' },
   ];
-  const tabs = isStall?[{id:'STOCK_IN',label:'Stock In / Return'},{id:'SALES',label:'Sales Entry'},{id:'CUSTOMER_DISPATCH',label:'Dispatch'},{id:'STOCK',label:'Stock View'},{id:'REPORTS',label:'Reports'}]:(['OUTLET', 'EMPLOYEE', 'CASHIER', 'SUPERVISOR'].includes(role) ? employeeTabs : outletTabs).filter(tab => (tab.id !== 'SALES' || isGodown === false)).concat(isGodown ? [{id:'ASSIGNED_DISPATCH',label:'Dispatch Assigned Orders'},{id:'PRODUCT_IN',label:'Temporary Stocks'},{id:'SALES_OUT',label:'Sales Out'}] : []).filter(tab => tab.id !== 'DUE_CUSTOMERS').concat(!isGodown && String(outletId).toUpperCase().startsWith('NIM')?[{id:'SALES_RECORDS',label:'Sales Records'},{id:'AWAITING_DISPATCH',label:'Awaiting dispatch'}]:[]).concat(!isGodown && String(outletId).toUpperCase().startsWith('NIM')?[{id:'CUSTOMER_DISPATCH',label:'Dispatch'}]:[]).concat(isGodown===false?[{id:'DELIVERY_RETURNS',label:'Delivery & returns'}]:[]).concat(!isGodown?[{id:'COMBOS',label:'Combos'}]:[]).concat([{id:'AFTER_SALES',label:'After-sales'}]);
+  const tabs = isStall?[{id:'STOCK_IN',label:'Stock In / Return'},{id:'SALES',label:'Sales Entry'},{id:'CUSTOMER_DISPATCH',label:'Dispatch'},{id:'STOCK',label:'Stock View'},{id:'REPORTS',label:'Reports'}]:(['OUTLET', 'EMPLOYEE', 'CASHIER', 'SUPERVISOR'].includes(role) ? employeeTabs : outletTabs).filter(tab => (tab.id !== 'SALES' || isGodown === false)).concat(isGodown ? [{id:'ASSIGNED_DISPATCH',label:'Dispatch Assigned Orders'},{id:'PRODUCT_IN',label:'Temporary Stocks'},{id:'SALES_OUT',label:'Sales Out'}] : []).filter(tab => tab.id !== 'DUE_CUSTOMERS').concat(!isGodown && String(outletId).toUpperCase().startsWith('NIM')?[{id:'SALES_RECORDS',label:'Sales Records'},{id:'AWAITING_DISPATCH',label:'Awaiting dispatch'}]:[]).concat(!isGodown && String(outletId).toUpperCase().startsWith('NIM')?[{id:'CUSTOMER_DISPATCH',label:'Dispatch'}]:[]).concat(isGodown===false?[{id:'THIRD_PARTY_STOCK_IN',label:'Stock In'}]:[]).concat(isGodown===false?[{id:'DELIVERY_RETURNS',label:'Delivery & returns'}]:[]).concat(canUseCombos?[{id:'COMBOS',label:'Combos'}]:[]).concat([{id:'AFTER_SALES',label:'After-sales'}]);
 
   const availableModuleIds=tabs.map(tab=>tab.id).join(',');
   useEffect(()=>{if(requestedModule && availableModuleIds.split(',').includes(requestedModule))setActiveTab(requestedModule);},[requestedModule,availableModuleIds]);
+  useEffect(()=>{if(!canUseCombos && activeTab==='COMBOS')setActiveTab(isStall?'STOCK_IN':'ATTENDANCE');},[canUseCombos,activeTab,isStall]);
 
   // --- Create Order State ---
   const [productOptions, setProductOptions] = useState([{ label: 'Loading products...', value: '' }]);
@@ -151,54 +155,15 @@ const OutletView = () => {
   }, [outletId]);
 
   const [items, setItems] = useState([]);
-  const [selectedProductGroup, setSelectedProductGroup] = useState('');
-  const [groupSearch, setGroupSearch] = useState('');
   const [selectedProduct, setSelectedProduct] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [customized, setCustomized] = useState(false);
-  const [customSize, setCustomSize] = useState({ length: '', width: '', thickness: '', unit: 'inches' });
+  const [customSize, setCustomSize] = useState({ length: '', width: '', unit: 'inches' });
+  const selectedBaseThickness=baseThickness(productOptions.find(option=>option.value===selectedProduct)?.label);
   const customSizeText = (size) => size ? `${size.length} × ${size.width}${size.thickness ? ` × ${size.thickness}` : ''} ${size.unit}` : '';
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiError, setApiError] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
-
-  const productGroups = useMemo(() => (
-    groupedProductOptions(productOptions).flatMap(main=>main.groups.map(group=>({...group,mainGroupName:main.name})))
-  ), [productOptions]);
-
-  const matchingGroupCategories = useMemo(() => {
-    const query = groupSearch.trim().toLowerCase();
-    return groupedProductOptions(productOptions)
-      .map(main => ({...main, groups: main.groups.map(group => ({...group, options:
-        `${main.name} ${group.label}`.toLowerCase().includes(query) ? group.options :
-          group.options.filter(product => product.label.toLowerCase().includes(query))
-      })).filter(group => group.options.length)}))
-      .filter(main => main.groups.length > 0);
-  }, [productOptions, groupSearch]);
-
-  // An outlet may only order from groups assigned to it by the manager. Keep a
-  // concrete group selected, rather than offering an "all products" view that
-  // can make the outlet's permitted catalogue look unrestricted.
-  useEffect(() => {
-    if (!productGroups.length) {
-      setSelectedProductGroup('');
-      setSelectedProduct('');
-      return;
-    }
-    if (!productGroups.some(group=>group.id===selectedProductGroup)) {
-      setSelectedProductGroup(productGroups[0].id);
-      setSelectedProduct('');
-    }
-  }, [productGroups, selectedProductGroup]);
-
-  const visibleProductOptions = useMemo(() => {
-    const placeholder = productOptions.find(option => !option.value) || { label: 'Select a product...', value: '' };
-    const products = productOptions.filter(option => option.value);
-    return [
-      placeholder,
-      ...products.filter(option => (option.groupId || option.group) === selectedProductGroup)
-    ];
-  }, [productOptions, selectedProductGroup]);
 
   const productNameById = useMemo(() => new Map(
     productOptions
@@ -1063,12 +1028,12 @@ const OutletView = () => {
     let size;
     if (customized) {
       const validDimension = (value) => Number.isFinite(Number(value)) && Number(value) > 0 && Number(value) <= 99999.99 && Math.abs(Number(value) * 100 - Math.round(Number(value) * 100)) < 0.000001;
-      if (!validDimension(customSize.length) || !validDimension(customSize.width) || (customSize.thickness !== '' && !validDimension(customSize.thickness))) {
-        setApiError('Enter positive length and width, and optional thickness, using at most two decimal places.');
+      if (!validDimension(customSize.length) || !validDimension(customSize.width)) {
+        setApiError('Enter positive length and width using at most two decimal places. Thickness stays fixed to the base product.');
         return;
       }
-      size = { length: Number(customSize.length), width: Number(customSize.width), unit: customSize.unit,
-        ...(customSize.thickness !== '' ? { thickness: Number(customSize.thickness) } : {}) };
+      try{size=customOrderSize(productOptions.find(option=>option.value===selectedProduct)?.label,customSize);}
+      catch(error){setApiError(error.message);return;}
     }
     const existingIndex = items.findIndex(item => item.product_id === selectedProduct && JSON.stringify(item.customSize) === JSON.stringify(size));
     if (existingIndex >= 0) {
@@ -1107,9 +1072,9 @@ const OutletView = () => {
       setSuccessMsg(`Order created successfully! Tracking ID: ${data.orderId}`);
       setItems([]); // reset form
       setCustomized(false);
-      setCustomSize({ length: '', width: '', thickness: '', unit: 'inches' });
+      setCustomSize({ length: '', width: '', unit: 'inches' });
     } catch (err) {
-      setApiError(err.response?.data?.error || err.response?.data?.message || err.message || 'Failed to create order.');
+      setApiError(err.response?.data?.error || err.response?.data?.complimentary || err.response?.data?.message || err.message || 'Failed to create order.');
     } finally {
       setIsSubmitting(false);
     }
@@ -1159,13 +1124,14 @@ const OutletView = () => {
       <div className="outlet-current-module"><strong>{tabs.find(tab=>tab.id===activeTab)?.label || 'Outlet Operations'}</strong><small>Switch using the ☰ Modules menu</small></div>
 
       <div>
-        {activeTab === 'COMBOS' && <OutletCombos onChoose={combo=>{setSelectedCombo(combo);setActiveTab('SALES');goToSalesStep(0);}}/>}
+        {canUseCombos && activeTab === 'COMBOS' && <OutletCombos onChoose={combo=>{setSelectedCombo(combo);setActiveTab('SALES');goToSalesStep(0);}}/>}
         {activeTab === 'CUSTOMER_DISPATCH' && <StallCustomerDispatch/>}
         {activeTab === 'AWAITING_DISPATCH' && <OutletAwaitingDispatch key={outletId}/>}
         {activeTab === 'DELIVERY_RETURNS' && <OutletDeliveryReturns key={outletId}/>}
         {activeTab === 'SALES_RECORDS' && <OwnSalesRecords outletId={outletId}/>}
         {activeTab === 'AFTER_SALES' && <AfterSales godownMode={Boolean(isGodown)} />}
         {activeTab === 'ASSIGNED_DISPATCH' && isGodown && <DispatchPlans godownMode />}
+        {activeTab === 'THIRD_PARTY_STOCK_IN' && isGodown===false && !isStall && <OutletStockIn onSaved={()=>setStockReload(value=>value+1)}/>}
         {activeTab === 'PRODUCT_IN' && isGodown && <GodownCustody />}
         {activeTab === 'SALES_OUT' && isGodown && <GodownQuantityStock key="out" direction="OUT" />}
         {activeTab === 'ATTENDANCE' && <EmployeeAttendance />}
@@ -1190,31 +1156,17 @@ const OutletView = () => {
                 </div>
               )}
 
-              {activeOffers.length > 0 && (
-                <section className="sales-builder-offers" aria-label="Current outlet offers">
-                  <Gift size={19} />
-                  <div><strong>Complimentary products and discounts</strong><span>{activeOffers.map(offerSummary).join(' | ')}</span></div>
-                </section>
-              )}
 
-              <div className="order-builder-workspace">
-                <section className="order-builder-groups">
-                  <div className="order-builder-section-label"><span>1</span><div><strong>Production group</strong><small>Start with a collection</small></div></div>
-                  <Input label="Search groups or products" type="search" value={groupSearch} onChange={event=>setGroupSearch(event.target.value)} placeholder="Search group, subgroup or product…" />
-                  <div className="order-builder-categories">
-                    <OrderGroupTree categories={matchingGroupCategories} selectedId={selectedProductGroup} selectedProductId={selectedProduct} onSelectProduct={(groupId,productId)=>{setSelectedProductGroup(groupId);setSelectedProduct(productId);requestAnimationFrame(()=>document.getElementById('order-create-quantity')?.focus());}} search={groupSearch} onSelect={id=>{setSelectedProductGroup(id);setSelectedProduct('');}} />
-                  </div>
-                  {!matchingGroupCategories.length && <p role="status">No products match your search.</p>}
-                </section>
+              <div className="order-builder-workspace" style={{gridTemplateColumns:'minmax(0, 1fr)'}}>
                 <section className="order-builder-selection">
-                  <div className="order-builder-section-label"><span>2</span><div><strong>Product and quantity</strong><small>{selectedProductGroup ? `${productGroups.find(group=>group.id===selectedProductGroup)?.label || ''} products only` : 'Select a production group'}</small></div></div>
-                  <SearchableSelect label="Select product" options={visibleProductOptions} value={selectedProduct} onChange={(val) => setSelectedProduct(val)} placeholder={selectedProductGroup ? `Select a ${productGroups.find(group=>group.id===selectedProductGroup)?.label || ''} product...` : 'Select a production group first'} />
+                  <div className="order-builder-section-label"><span>1</span><div><strong>Product and quantity</strong><small>Select a main group, subgroup and product</small></div></div>
+                  <GroupedProductPicker label="Order product" options={productOptions} value={selectedProduct} onChange={setSelectedProduct} placeholder="Search products in this subgroup…" />
                   <Select label="Size option" value={customized ? 'CUSTOM' : 'STANDARD'} onChange={(event) => setCustomized(event.target.value === 'CUSTOM')} options={[{ value: 'STANDARD', label: 'Standard product size' }, { value: 'CUSTOM', label: 'Customized size' }]} />
                   {customized && <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.75rem' }}>
                     <Input label="Length" type="number" min="0.01" step="0.01" value={customSize.length} onChange={(event) => setCustomSize({ ...customSize, length: event.target.value })} />
                     <Input label="Width" type="number" min="0.01" step="0.01" value={customSize.width} onChange={(event) => setCustomSize({ ...customSize, width: event.target.value })} />
-                    <Input label="Thickness (optional)" type="number" min="0.01" step="0.01" value={customSize.thickness} onChange={(event) => setCustomSize({ ...customSize, thickness: event.target.value })} />
-                    <Select label="Unit" value={customSize.unit} onChange={(event) => setCustomSize({ ...customSize, unit: event.target.value })} options={[{ value: 'inches', label: 'Inches' }, { value: 'cm', label: 'Centimetres' }]} />
+                    <Input label="Base thickness (inches — fixed)" readOnly value={selectedBaseThickness ?? 'Not available for this base product'} />
+                    <Select label="Length / width unit" value={customSize.unit} onChange={(event) => setCustomSize({ ...customSize, unit: event.target.value })} options={[{ value: 'inches', label: 'Inches' }, { value: 'cm', label: 'Centimetres' }]} />
                   </div>}
                   <div className="order-builder-add-row">
                     <Input id="order-create-quantity" label="Quantity" type="number" min="1" value={quantity} onChange={(e) => setQuantity(e.target.value)} />
@@ -1231,17 +1183,17 @@ const OutletView = () => {
                   </div>
                 ) : (
                   <div className="order-builder-items">
-                    {items.map((item, idx) => (
+                    {<ProductListBlocks items={items} renderItem={(item, idx) => (
                       <div key={idx} className="order-builder-item">
                         <span className="order-builder-item-quantity">{item.quantity}</span>
                         <span className="order-builder-item-name">{getProductName(item.product_id)}<ProductMrp item={item}/>{item.customSize && <small style={{ display: 'block' }}>Customized: {customSizeText(item.customSize)}</small>}
-                          {complimentaryForProduct(activeOffers, item.product_id, productOptions.find(product => product.value === item.product_id)?.groupId).map(offer => <small key={offer.offerId} style={{ display: 'block', marginTop: '0.35rem', color: 'var(--color-primary)' }}>Complimentary: {offer.freeProductName || offer.freeProductId} × {offer.freeQuantity}</small>)}
+                          {complimentaryForProduct(activeOffers, item.product_id, productOptions.find(product => product.value === item.product_id)?.groupId,{...(productOptions.find(product=>product.value===item.product_id)||{}),customSize:item.customSize}).map(offer => <small key={offer.offerId} style={{ display: 'block', marginTop: '0.35rem', color: 'var(--color-primary)' }}>Complimentary: {offer.freeProductName || offer.freeProductId} × {offer.freeQuantity}</small>)}
                         </span>
                         <Button variant="secondary" className="order-builder-remove" onClick={() => removeItem(idx)} disabled={isSubmitting} aria-label={`Remove ${getProductName(item.product_id)}`}>
                           <Trash2 size={16} />
                         </Button>
                       </div>
-                    ))}
+                    )}/>}
                   </div>
                 )}
               </div>
@@ -1273,7 +1225,8 @@ const OutletView = () => {
                     { key: 'createdBy', label: 'Created by', render: (row) => row.createdByName || (row.createdBy ? 'Name unavailable' : 'Not recorded') },
                     { key: 'isCustomized', label: 'Order type', render: (row) => row.isCustomized ? 'Customized' : 'Standard' },
                     { key: 'createdAt', label: 'Date', render: (row) => row.createdAt ? new Date(row.createdAt).toLocaleDateString() : '-' },
-                    { key: 'items', label: 'Items Count', align: 'center', render: (row) => row.items?.length || 0 },
+                    {key:'products',label:'Products ordered',render:row=><OrderContentsColumn items={row.items || []}/>},
+                    {key:'complimentary',label:'Complimentary products',render:row=><OrderContentsColumn items={row.items || []} complimentary/>},
                     { key: 'status', label: 'Status', render: (row) => <div style={{display:'flex',gap:'0.4rem',flexWrap:'wrap'}}><Badge status={row.status} />{row.approvalStatus === 'PARTIALLY_APPROVED' && row.status !== row.approvalStatus && <Badge status={row.approvalStatus} />}</div> },
                     { key: 'actions', label: 'Actions', render: (row) => (
                       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -1308,7 +1261,8 @@ const OutletView = () => {
               </div>
               <Table
                 columns={[
-                  { key: 'productName', label: 'Product', render: (item) => <OrderProduct item={item} name={item.productName || getProductName(item.product_id) || item.product_id} /> },
+                  {key:'productName',label:'Products ordered',render:item=><OrderContentsColumn items={[item]}/>},
+                  {key:'complimentary',label:'Complimentary products',render:item=><OrderContentsColumn items={[item]} complimentary/>},
                   { key: 'orderedQty', label: 'Ordered', align: 'center', render: (item) => item.orderedQty ?? item.quantity ?? 0 },
                   { key: 'approvedQty', label: 'Approved', align: 'center', render: (item) => item.approvedQty ?? 0 },
                   { key: 'pendingQty', label: 'Approval pending', align: 'center', render: (item) => item.pendingQty ?? 0 },
@@ -1319,6 +1273,7 @@ const OutletView = () => {
                 data={viewOrderTarget.items || []}
                 emptyStateMessage="This order does not contain any item details."
               />
+              <OrderContentsColumns items={viewOrderTarget.items || []}/>
               <div style={{ display: 'flex', justifyContent: 'flex-end' }}><Button variant="secondary" onClick={() => setViewOrderTarget(null)}>Close</Button></div>
             </div>
           )}
@@ -1341,7 +1296,8 @@ const OutletView = () => {
                     { key: 'createdBy', label: 'Created by', render: (row) => row.createdByName || (row.createdBy ? 'Name unavailable' : 'Not recorded') },
                     { key: 'isCustomized', label: 'Order type', render: (row) => row.isCustomized ? 'Customized' : 'Standard' },
                     { key: 'dispatchedAt', label: 'Dispatched', render: (row) => row.dispatchedAt ? new Date(row.dispatchedAt).toLocaleString() : '—' },
-                    { key: 'receiptItems', label: 'Pending products', align: 'center', render: (row) => row.receiptItems?.length || 0 },
+                    {key:'orderedProducts',label:'Products awaiting receipt',render:row=><OrderContentsColumn items={row.receiptItems || []} receipt/>},
+                    {key:'complimentary',label:'Complimentary awaiting receipt',render:row=><OrderContentsColumn items={row.receiptItems || []} complimentary receipt/>},
                     { key: 'action', label: 'Action', render: (row) => <Button size="sm" onClick={() => openManualReceipt(row)}>Receive manually</Button> },
                   ]}
                   data={myOrders.flatMap(order => order.receiptPlans?.length ? order.receiptPlans.map(plan => ({...order,...plan, id:`${order.orderId}-${plan.loadPlanId}`})) : order.loadPlanId && order.receiptItems?.length ? [order] : [])}
@@ -1360,12 +1316,12 @@ const OutletView = () => {
           <p className="text-muted" style={{ marginTop: 0 }}>Enter quantities only for products that arrived now. Leave the other products blank.</p>
           {receiptError && <div className="order-builder-alert order-builder-alert-error">{receiptError}</div>}
           <div style={{ display: 'grid', gap: '0.85rem' }}>
-            {(receiptTarget?.receiptItems || []).map((item) => (
+            <OrderContentsColumns receipt items={receiptTarget?.receiptItems || []} renderItem={(item) => (
               <div key={item.product_id} className="receipt-product-row">
                 <div><strong>{item.productName || getProductName(item.product_id) || item.product_id}</strong><div className="text-muted" style={{ fontSize: '0.82rem', marginTop: '0.25rem' }}>Pending: {item.remainingQty} of {item.quantity}</div><DispatchSources sources={item.dispatchSources} /></div>
                 <Input label="Received now" type="number" min="1" max={item.remainingQty} placeholder="Leave blank" value={receiptQuantities[item.product_id] ?? ''} onChange={(event) => setReceiptQuantities((current) => ({ ...current, [item.product_id]: event.target.value }))} disabled={receivingStock} />
               </div>
-            ))}
+            )}/>
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.25rem' }}>
             <Button variant="secondary" onClick={() => setReceiptTarget(null)} disabled={receivingStock}>Cancel</Button>
@@ -1418,7 +1374,7 @@ const OutletView = () => {
           </Card>
         )}
 
-        {activeTab === 'STOCK' && isGodown && <GodownCustody stockView />}
+        {activeTab === 'STOCK' && isGodown && <GodownCustody stockView onSaved={()=>setStockReload(value=>value+1)} />}
 
         {activeTab === 'STOCK_IN' && isStall && <StallStockIn/>}
         {activeTab === 'SALES' && isGodown === false && (
@@ -1454,12 +1410,6 @@ const OutletView = () => {
               {editingSalesIndex!==null && <p role="status">Editing product {editingSalesIndex+1}. Update the product or cancel the edit before submitting.</p>}
               {ownedShowroomSales && <nav data-sales-keyboard-skip ref={salesStepTop} className="sales-entry-steps" aria-label="Sales entry steps">{['Products','Payment','Customer','Review'].map((title,index)=><button type="button" key={title} aria-current={salesEntryStep===index?'step':undefined} onClick={()=>navigateSalesStep(index)}><span>{index+1}</span>{title}</button>)}</nav>}
               {ownedShowroomSales && salesEntryStep>0 && <nav data-sales-keyboard-skip className="sales-step-edit-actions" aria-label="Edit earlier sales details"><span>Need to make a change?</span>{['products','payment','customer'].slice(0,salesEntryStep).map((label,index)=><Button key={label} variant="secondary" onClick={()=>navigateSalesStep(index)}>Edit {label}</Button>)}</nav>}
-              {activeOffers.length > 0 && (!ownedShowroomSales || salesEntryStep===0) && (
-                <section className="sales-builder-offers" aria-label="Current outlet offers">
-                  <Gift size={19} />
-                  <div><strong>Current outlet offers</strong><span>{activeOffers.map(offerSummary).join(' | ')}</span></div>
-                </section>
-              )}
 
               {ownedShowroomSales && (
                 <div className="order-builder-alert order-builder-alert-info" hidden={salesEntryStep!==0}>
@@ -1476,7 +1426,7 @@ const OutletView = () => {
                 </section>
                 <section className="sales-builder-entry-card" ref={salesProductSelector} tabIndex={-1} hidden={ownedShowroomSales && salesEntryStep!==0} style={{scrollMarginTop:'7rem'}}>
                   <div className="order-builder-section-label"><span>1</span><div><strong>Sold product</strong><small>{ownedShowroomSales ? 'Choose products and their delivery source' : 'Only products available at this outlet are listed'}</small></div></div>
-                  {ownedShowroomSales && !isStall && <Button variant="secondary" onClick={()=>setComboPickerOpen(true)} disabled={editingSalesIndex!==null}>Choose combo</Button>}
+                  {canUseCombos && ownedShowroomSales && <Button variant="secondary" onClick={()=>setComboPickerOpen(true)} disabled={editingSalesIndex!==null}>Choose combo</Button>}
                   <GroupedProductPicker disabled={Boolean(salesItems[editingSalesIndex]?.comboId)} searchAll searchFirst={false} label="Sale product" options={salesProductOptions.map(option=>option.value ? {...option,label:`${option.label} — ${isStall?(salesFulfillmentMode==='LINKED_OUTLET_STOCK'?'Linked outlet stock':'Stall stock'):'Outlet stock'}: ${availableStockLabel(option.value)}`} : option)} value={salesProduct} onChange={val => { setSalesProduct(val); setShowroomItem(current => showroomItemForProduct(current, salesProductOptions.find(option => option.value === val))); setSalesValidationErrors([]);if(val)requestAnimationFrame(()=>document.getElementById(ownedShowroomSales?'sale-delivery-source':'sale-quantity')?.focus()); }} placeholder={isStall?'Search products and stock…':'Search products and outlet stock…'} />
                   {salesProduct && <div role="status" className="sales-product-mrp" style={{padding:'0.75rem 1rem',marginBottom:'1rem',border:'1px solid var(--color-primary)',borderRadius:'0.75rem'}}><strong>Product MRP</strong><ProductMrp item={salesProductOptions.find(option=>option.value===salesProduct) || {productId:salesProduct}} label={false}/></div>}
                   {ownedShowroomSales && salesProduct && <Select id="sale-delivery-source" error={salesFieldError('sale-delivery-source')} required label="Delivery source for this product" value={salesFulfillmentMode} onChange={e => setSalesFulfillmentMode(e.target.value)} options={[{value:'',label:'Choose delivery option'},{value:'LOCAL_STOCK',label:isStall?'Move from stall stock':'Needed immediately — deliver from outlet stock'},...(isStall?[{value:'LINKED_OUTLET_STOCK',label:'Move from linked outlet stock'}]:[]),{value:'FACTORY_DELIVERY',label:'Factory dispatch directly to customer'}]} />}
@@ -1519,7 +1469,7 @@ const OutletView = () => {
                   </div>
                 ) : (
                   <div className="order-builder-items">
-                    {salesItems.map((item, idx) => (
+                    {<ProductListBlocks items={salesItems} renderItem={(item, idx) => (
                       <div key={idx} className="order-builder-item sales-summary-item">
                         <span className="order-builder-item-quantity" style={{width:'auto',minWidth:'4rem',padding:'.5rem',flexDirection:'column'}}>{item.quantity}<small style={{display:'block',fontSize:'.75rem',fontWeight:400,marginTop:'.35rem'}}>{isStall?(item.fulfillmentMode==='LINKED_OUTLET_STOCK'?'Linked outlet stock':'Stall stock'):'Outlet stock'}: {availableStockLabel(item.product_id,item.fulfillmentMode)}</small></span>
                         <span className="order-builder-item-name">{saleProductName(salesProductOptions.find(o => o.value === item.product_id)?.label || item.product_id,item.size)}<ProductMrp item={item}/>{item.comboName&&<small>Combo: {item.comboName} · {item.comboCount} bundle(s)</small>}{ownedShowroomSales && <span className="showroom-item-details">{item.brand} · {item.colour} · {item.size}<br />MRP {formatCurrency(Number(item.mrpSticker))} − {formatCurrency(showroomPrice(item)?.discountAmount || 0)} ({showroomPrice(item)?.discountPercent ?? item.discountPercent}%) · Unit {formatCurrency(showroomPrice(item)?.value || 0)}<br /><strong>Delivery: {item.fulfillmentMode === 'LOCAL_STOCK' ? (isStall?'Stall stock → customer':'Outlet stock → customer') : item.fulfillmentMode==='LINKED_OUTLET_STOCK'?'Linked outlet → customer':'Factory → customer'}</strong><br /><strong>Total {formatCurrency(showroomPrice(item)?.totalSalesValue || 0)}</strong> · Tax included ({item.taxPercent}%){item.scheme && <><br />Scheme: {item.scheme}</>}</span>}</span>
@@ -1528,7 +1478,7 @@ const OutletView = () => {
                           <Trash2 size={16} />
                         </Button></div>
                       </div>
-                    ))}
+                    )}/>}
                   </div>
                 )}
               </div>
@@ -1548,7 +1498,7 @@ const OutletView = () => {
           <Table columns={[
             {key:'customerName',label:'Customer',render:r=><div><strong>{r.customerName || 'Not recorded'}</strong><br/>{r.customerPhone}<br/>{r.customerAddress}</div>},
             {key:'billNo',label:'Invoice / Work order',render:r=><div>{r.billNo || r.saleReferenceId || r.saleId}<br/>{r.workOrderNo || ''}<br/>{r.saleTimestamp ? new Date(r.saleTimestamp).toLocaleDateString() : ''}</div>},
-            {key:'products',label:'Products',render:r=><div>{(r.products || []).map((p,i)=><div key={i}>{p.productName} × {p.quantity}</div>)}</div>},
+            {key:'products',label:'Products',render:r=><div><ProductListBlocks items={r.products || []} renderItem={(p,i)=><div key={i}>{p.productName} × {p.quantity}</div>}/></div>},
             {key:'paymentMethod',label:'Payment method'},
             {key:'billAmount',label:'Bill total',render:r=>formatCurrency(Number(r.billAmount || 0))},
             {key:'amountReceived',label:'Received',render:r=>formatCurrency(Number(r.amountReceived || 0))},
@@ -1573,11 +1523,11 @@ const OutletView = () => {
                     { key: 'customerAddress', label: 'Address', render: (row) => row.customerAddress || '-' }] : []),
                     { key: 'products', label: 'Products', render: (row) => (
                       <div className="pending-payment-products">
-                        {(row.products || []).map((product) => (
+                        <ProductListBlocks items={row.products || []} renderItem={(product) => (
                           <div key={product.productId || product.productName}>
                             {product.productName || product.productId}<ProductMrp item={product}/> <strong>× {product.quantity}</strong>
                           </div>
-                        ))}
+                        )}/>
                       </div>
                     ) },
                     { key: 'saleDate', label: 'Invoice date', render: (row) => row.saleDate ? new Date(row.saleDate).toLocaleDateString() : '-' },
@@ -1594,9 +1544,9 @@ const OutletView = () => {
           </Card>
         )}
 
-        <Modal isOpen={comboPickerOpen} onClose={()=>setComboPickerOpen(false)} title="Available outlet combos"><OutletCombos compact onChoose={combo=>{setSelectedCombo(combo);setComboPickerOpen(false);}}/></Modal>
-        <Modal isOpen={Boolean(selectedCombo)&&!selectedCombo.saleItems.every(item=>salesProductOptions.some(p=>p.value===item.product_id))} onClose={()=>setSelectedCombo(null)} title="Load combo products"><p>{salesCatalogueStatus==='ready'?'Some combo products are unavailable in this outlet’s catalogue. Close this window and refresh the combos.':'Loading product details…'}</p></Modal>
-        {selectedCombo&&selectedCombo.saleItems.every(item=>salesProductOptions.some(p=>p.value===item.product_id))&&<ComboSaleDialog combo={selectedCombo} onClose={()=>setSelectedCombo(null)} products={salesProductOptions} stockLabel={availableStockLabel} onAdd={rows=>{setSalesItems(current=>[...current,...rows]);setSalesSuccess('Combo added. Confirm payment and customer details.');setSalesValidationErrors([]);setActiveTab('SALES');goToSalesStep(0);}}/>}
+        <Modal isOpen={canUseCombos && comboPickerOpen} onClose={()=>setComboPickerOpen(false)} title="Available outlet combos"><OutletCombos compact onChoose={combo=>{setSelectedCombo(combo);setComboPickerOpen(false);}}/></Modal>
+        <Modal isOpen={canUseCombos&&Boolean(selectedCombo)&&!selectedCombo.saleItems.every(item=>salesProductOptions.some(p=>p.value===item.product_id))} onClose={()=>setSelectedCombo(null)} title="Load combo products"><p>{salesCatalogueStatus==='ready'?'Some combo products are unavailable in this outlet’s catalogue. Close this window and refresh the combos.':'Loading product details…'}</p></Modal>
+        {canUseCombos&&selectedCombo&&selectedCombo.saleItems.every(item=>salesProductOptions.some(p=>p.value===item.product_id))&&<ComboSaleDialog combo={selectedCombo} onClose={()=>setSelectedCombo(null)} products={salesProductOptions} stockLabel={availableStockLabel} onAdd={rows=>{setSalesItems(current=>[...current,...rows]);setSalesSuccess('Combo added. Confirm payment and customer details.');setSalesValidationErrors([]);setActiveTab('SALES');goToSalesStep(0);}}/>}
         <Modal className="sales-invoice-dialog" isOpen={Boolean(receipt)} onClose={() => setReceipt(null)} title="Sales invoice">
           {receipt && (
             <SalesBill receipt={receipt} offerSummary={offerSummary}/>

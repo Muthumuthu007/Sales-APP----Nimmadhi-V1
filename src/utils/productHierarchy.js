@@ -39,3 +39,18 @@ export function orderGroupTree(categories) {
   count(root);return root;
  });
 }
+
+export function enrichProductOptions(options,catalogue=[]){
+ const byId=new Map(catalogue.map(product=>[String(product.value),product]));
+ return options.map(option=>{
+  const product=byId.get(String(option.productId || option.product_id || option.value)) || byId.get(String(option.baseProductId || ''));
+  if(!product)return option;
+  return {...product,...option,groupId:option.groupAncestors?.length?option.groupId:(product.groupId || option.groupId),group:option.groupAncestors?.length?option.group:product.group,mainGroupName:option.groupAncestors?.length?option.mainGroupName:product.mainGroupName,groupAncestors:option.groupAncestors?.length?option.groupAncestors:product.groupAncestors};
+ });
+}
+export function productListEntries(options){
+ const result=[];
+ const visit=(node,depth)=>{result.push({kind:'group',id:node.id,label:node.label,depth});for(const group of node.groups)for(const option of group.options)result.push({kind:'product',option,depth:depth+1});for(const child of node.children)visit(child,depth+1);};
+ for(const root of orderGroupTree(groupedProductOptions(options)))visit(root,0);
+ return result;
+}

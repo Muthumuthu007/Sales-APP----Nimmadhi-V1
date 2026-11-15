@@ -1,3 +1,4 @@
+import {isReadOnlyAdmin,isAdminReadRequest,savedAdminAccess} from '../auth/adminAccess.js';
 import axios from 'axios';
 
 const api = axios.create({
@@ -16,6 +17,10 @@ api.interceptors.request.use(
       if (config.headers.delete) config.headers.delete('Authorization');
       else { delete config.headers.Authorization; delete config.headers.authorization; }
       return config;
+    }
+    if(isReadOnlyAdmin(savedAdminAccess(sessionStorage)) && !isAdminReadRequest(config.method,config.url)) {
+      const message='This admin account is view only. You cannot create, edit, approve, dispatch or delete records.';
+      return Promise.reject(Object.assign(new Error(message),{response:{status:403,data:{error:message,detail:message}},config}));
     }
     const token = sessionStorage.getItem('token');
     const location = sessionStorage.getItem('managerLocationFilter');

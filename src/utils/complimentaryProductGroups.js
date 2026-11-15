@@ -7,7 +7,7 @@ export function complimentaryProductGroups(products, offers) {
  for(const product of products){
   if(seen.has(product.productId))continue;
   seen.add(product.productId);
-  const rules=complimentaryForProduct(active,product.productId,product.groupId);
+  const rules=complimentaryForProduct(active,product.productId,product.groupId,product);
   if(!rules.length)continue;
   for(const rule of rules)used.add(rule.offerId);
   grouped.push({...product,offers:rules});

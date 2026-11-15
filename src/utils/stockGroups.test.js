@@ -10,3 +10,10 @@ test('stock joins saved product IDs to production groups despite identical names
  assert.equal(grouped[2].name,'Needs classification');
  assert.equal(grouped.flatMap(m=>m.groups.flatMap(g=>g.options)).length,3);
 });
+
+test('custom stock and free items use product links without merging row quantities',()=>{
+ const catalogue=[{value:'bed',label:'Standard',mainGroupName:'Mattress',groupId:'g',group:'Mattress → Foam',groupAncestors:[{id:'m',name:'Mattress'},{id:'g',name:'Foam'}]}];
+ const rows=[{product_id:'custom',baseProductId:'bed',quantity:2},{freeProductId:'bed',quantity:1},{product_id:'unknown',productName:'Looks like Foam',quantity:3}];
+ const result=stockGroups(rows,catalogue);
+ assert.equal(result[0].name,'Mattress');assert.equal(result[0].groups[0].options.length,2);assert.equal(result[0].groups[0].options[0].stock,rows[0]);assert.equal(result[1].name,'Needs classification');
+});

@@ -1,5 +1,7 @@
+import OrderContentsColumn from '../components/OrderContentsColumn';
+import VehicleLoads from '../components/VehicleLoads';
+import {customProductName} from '../utils/saleProductName';
 import api from '../api/axios';
-import OrderProduct from '../components/OrderProduct';
 import React, { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, Factory, MapPin, RefreshCw, Truck, Warehouse } from 'lucide-react';
 import { fetchDispatchPlans, fetchGodowns, fetchOutlets, manuallyDispatchFulfillment } from '../api/manager';
@@ -59,13 +61,15 @@ export default function DispatchPlans({ pendingOnly = false, outletFilter = '', 
     { key: 'isCustomized', label: 'Order type', render: (row) => row.isCustomized ? <strong style={{ color: 'var(--color-primary)' }}>Customized</strong> : 'Standard' },
     { key: 'source', label: 'Dispatch from', render: (line) => <span className={`dispatch-source dispatch-source--${line.sourceType?.toLowerCase()}`}>{line.sourceType === 'FACTORY' ? <Factory size={15} /> : <Warehouse size={15} />}{sourceLabel(line, godowns)}</span> },
     { key: 'destinationOutletId', label: 'Destination outlet', render: (line) => line.destinationOutletName || outletLabel(line.destinationOutletId, outlets) },
-    { key: 'productName', label: 'Product', render: (line) => <OrderProduct item={line} /> },
+    {key:'productName',label:'Products ordered',render:line=><OrderContentsColumn items={[line]}/>},
+    {key:'complimentary',label:'Complimentary products',render:line=><OrderContentsColumn items={[line]} complimentary/>},
     { key: 'quantity', label: 'Progress', align: 'center', render: (line) => `${line.dispatchedQty || 0} / ${line.quantity || 0}` },
     { key: 'dispatchPendingQty', label: 'Dispatch Pending', align: 'center', render: (line) => Number(line.quantity || 0) - Number(line.dispatchedQty || 0) },
     { key: 'action', label: 'Action', align: 'right', render: (line) => <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+      {!godownMode && line.sourceType === 'FACTORY' && !line.vehicleLoadId && !Number(line.dispatchedQty || 0) && !pendingOnly && <span>Add this plan in Create Load</span>}
       {!godownMode && line.sourceType === 'GODOWN' && <span>Assigned to godown</span>}
-      {(godownMode || line.sourceType === 'FACTORY') && Number(line.dispatchedQty || 0) < Number(line.quantity || 0) && <Button variant="primary" onClick={() => { setDispatchError(''); setDispatchQuantity(String(Number(line.quantity || 0) - Number(line.dispatchedQty || 0))); setSelectedLine(line); }}><Truck size={17} /> Mark dispatched</Button>}
-      {!godownMode && line.sourceType === 'FACTORY' && Number(line.dispatchedQty || 0) > 0 && <UndoPlanButton plan={line} action="dispatch" onUndone={load} />}
+      {(godownMode || (!line.vehicleLoadId && line.sourceType==='FACTORY' && (pendingOnly || lines.some(other=>other.orderId===line.orderId && other.loadPlanId===line.loadPlanId && Number(other.dispatchedQty || 0)>0)))) && Number(line.dispatchedQty || 0) < Number(line.quantity || 0) && <Button writeAction variant="primary" onClick={() => { setDispatchError(''); setDispatchQuantity(String(Number(line.quantity || 0) - Number(line.dispatchedQty || 0))); setSelectedLine(line); }}><Truck size={17} /> Mark dispatched</Button>}
+      {!godownMode && !line.vehicleLoadId && line.sourceType === 'FACTORY' && Number(line.dispatchedQty || 0) > 0 && <UndoPlanButton plan={line} action="dispatch" onUndone={load} />}
     </div> },
   ];
 
@@ -89,6 +93,7 @@ export default function DispatchPlans({ pendingOnly = false, outletFilter = '', 
   };
 
   return <main className="dispatch-plans-page">
+    {!godownMode && <VehicleLoads history={showCompleted} onChanged={load}/>}
     <section className="dispatch-plans-hero"><Truck size={29} /><div><p>FULFILLMENT CONTROL</p><h2>{godownMode ? 'Dispatch Assigned Orders' : pendingOnly ? 'Dispatch Pending' : 'Dispatch Plans'}</h2><span>Factory dispatch is confirmed by admin. Godown dispatch is confirmed by the assigned godown.</span></div></section>
     <Card>
       <CardHeader title={showCompleted ? "Assigned products" : "Assigned products awaiting dispatch"} action={<Button variant="secondary" onClick={load} disabled={loading}><RefreshCw size={16} /> Refresh</Button>} />
@@ -102,7 +107,7 @@ export default function DispatchPlans({ pendingOnly = false, outletFilter = '', 
         {loading ? <LoadingState message="Loading assigned dispatch plans..." /> : error ? <ErrorState error={error} onRetry={load} /> : <Table columns={columns} data={visibleLines} emptyStateMessage="No assigned product lines are awaiting dispatch for this filter." />}
       </CardContent>
     </Card>
-    <Modal isOpen={Boolean(selectedLine)} onClose={() => !dispatching && setSelectedLine(null)} title={`Mark dispatched — ${selectedLine?.productName || 'Product'}`}>
+    <Modal isOpen={Boolean(selectedLine)} onClose={() => !dispatching && setSelectedLine(null)} title={`Mark dispatched — ${customProductName(selectedLine?.productName || 'Product',selectedLine?.customSize)}`}>
       {selectedLine && <div className="manual-dispatch-confirmation">
         <CheckCircle2 size={28} />
         <p>There are <strong>{Number(selectedLine.quantity || 0) - Number(selectedLine.dispatchedQty || 0)} unit(s)</strong> awaiting dispatch from <strong>{godownMode ? 'your godown' : sourceLabel(selectedLine, godowns)}</strong> to <strong>{selectedLine.destinationOutletName || outletLabel(selectedLine.destinationOutletId, outlets)}</strong>.</p>
@@ -110,7 +115,7 @@ export default function DispatchPlans({ pendingOnly = false, outletFilter = '', 
         <p>Any remaining quantity will stay in Orders → Dispatch Pending.</p>
         {selectedLine.sourceType === 'GODOWN' && <small>The same quantity will be deducted from this godown&apos;s reserved stock.</small>}
         {dispatchError && <div className="manual-dispatch-error">{dispatchError}</div>}
-        <div className="manual-dispatch-actions"><Button variant="secondary" onClick={() => setSelectedLine(null)} disabled={dispatching}>Cancel</Button><Button variant="primary" onClick={confirmDispatch} disabled={dispatching}><Truck size={17} />{dispatching ? 'Marking…' : 'Confirm dispatch'}</Button></div>
+        <div className="manual-dispatch-actions"><Button variant="secondary" onClick={() => setSelectedLine(null)} disabled={dispatching}>Cancel</Button><Button writeAction variant="primary" onClick={confirmDispatch} disabled={dispatching}><Truck size={17} />{dispatching ? 'Marking…' : 'Confirm dispatch'}</Button></div>
       </div>}
     </Modal>
   </main>;

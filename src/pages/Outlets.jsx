@@ -1,3 +1,4 @@
+import {outletGroupSelection} from '../utils/outletGroupSelection';
 import {isLocationCreateDisabled} from '../utils/locationCreation';
 import ProductionGroupChoices from '../components/ProductionGroupChoices';
 import {useManagerLocation} from '../context/LocationContext';
@@ -70,17 +71,20 @@ const Outlets = () => {
   const [groupError, setGroupError] = useState('');
   const openGroupAssignment = async (outlet) => {
     setGroupOutlet(outlet); setGroupAccess(null); setNewGroupIds([]); setGroupError(''); setGroupBusy(true);
-    try { const access=await fetchOutletProductGroups(outlet.outletId); setGroupAccess(access);setNewGroupIds(access.allowedGroupIds || []); }
+    try { const access=await fetchOutletProductGroups(outlet.outletId); setGroupAccess(access);setNewGroupIds(outletGroupSelection(access)); }
     catch (err) { setGroupError(err.response?.data?.error || 'Unable to load product groups. Please reopen and try again.'); }
     finally { setGroupBusy(false); }
   };
   const saveGroupAssignment = async () => {
+    if(!groupAccess){setGroupError('Reopen this outlet to load its product groups before saving.');return;}
+    const selected=outletGroupSelection(groupAccess,newGroupIds);
+    if(!selected.length){setGroupError('Keep at least one product group selected.');return;}
     setGroupBusy(true); setGroupError('');
     try {
-      await assignOutletProductGroups(groupOutlet.outletId, newGroupIds, groupAccess.productAccessVersion);
+      await assignOutletProductGroups(groupOutlet.outletId, selected, groupAccess.productAccessVersion);
       setSuccess(`Product groups assigned to ${groupOutlet.outletName || groupOutlet.outletId}.`);
       setGroupOutlet(null); await loadOutlets();
-    } catch (err) { setGroupError(err.response?.data?.error || 'Unable to assign product groups.'); }
+    } catch (err) { setGroupError(err.response?.data?.error || err.message || 'Unable to save product group assignments.'); }
     finally { setGroupBusy(false); }
   };
   const {refreshLocations}=useManagerLocation();

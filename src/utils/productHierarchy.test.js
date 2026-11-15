@@ -34,3 +34,12 @@ test('ancestor IDs keep equally named branches distinct within one category',asy
  assert.deepEqual(tree[0].children.map(node=>node.id),['a','b']);
  assert.equal(tree[0].children[1].groups[0].options[0].value,'p-b');
 });
+
+test('product search entries keep each level and original option identity',async()=>{
+ const {productListEntries,enrichProductOptions}=await import('./productHierarchy.js');
+ const catalogue=[productionOption({productId:'bed',productName:'Standard',mainGroupName:'Mattress',groupId:'leaf',groupPath:'Mattress → Foam → Premium',groupAncestors:[{id:'m',name:'Mattress'},{id:'f',name:'Foam'},{id:'leaf',name:'Premium'}]})];
+ const supplied={value:'sale-line-1',productId:'bed',label:'Custom 75X36X6 · 2 available',quantity:2};
+ const options=enrichProductOptions([supplied],catalogue);const entries=productListEntries(options);
+ assert.deepEqual(entries.filter(e=>e.kind==='group').map(e=>e.label),['Mattress','Foam','Premium']);
+ assert.equal(entries.at(-1).option.value,'sale-line-1');assert.equal(entries.at(-1).option.quantity,2);assert.equal(entries.at(-1).option.label,supplied.label);assert.equal(supplied.groupId,undefined);
+});

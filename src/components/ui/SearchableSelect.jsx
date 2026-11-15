@@ -1,9 +1,13 @@
+import {ProductMrpContext} from '../../context/ProductMrpContext';
+import {enrichProductOptions,productListEntries} from '../../utils/productHierarchy';
 import ProductMrp from '../ProductMrp';
-import React, { useState, useRef, useEffect, useId } from 'react';
+import React, { useState, useRef, useEffect, useId, useContext } from 'react';
 import { ChevronDown } from 'lucide-react';
 import './SearchableSelect.css';
 
 export const SearchableSelect = ({ label, options, value, onChange, error, placeholder }) => {
+  const {catalogue=[]}=useContext(ProductMrpContext);
+  options=enrichProductOptions(options,catalogue);
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [activeIndex,setActiveIndex]=useState(0);
@@ -21,18 +25,10 @@ export const SearchableSelect = ({ label, options, value, onChange, error, place
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const filteredOptions = options.filter(opt => 
-    opt.label.toLowerCase().includes(search.toLowerCase())
-  );
-
-  const groupedOptions = filteredOptions.reduce((groups, option) => {
-    const group = option.group || 'Other products';
-    if (!groups[group]) groups[group] = [];
-    groups[group].push(option);
-    return groups;
-  }, {});
-
-  const navigableOptions=Object.values(groupedOptions).flat();
+  const term=search.toLowerCase();
+  const filteredOptions=options.filter(opt=>`${opt.label} ${opt.group || ''} ${opt.mainGroupName || ''}`.toLowerCase().includes(term));
+  const entries=productListEntries(filteredOptions.filter(option=>option.value));
+  const navigableOptions=entries.filter(entry=>entry.kind==='product').map(entry=>entry.option);
   const activeOption=navigableOptions[Math.min(activeIndex,Math.max(0,navigableOptions.length-1))];
   const choose=option=>{if(!option)return;onChange(option.value);setIsOpen(false);setSearch('');setActiveIndex(0);document.getElementById(`${listId}-trigger`)?.focus();};
   const searchKeys=event=>{
@@ -77,29 +73,8 @@ export const SearchableSelect = ({ label, options, value, onChange, error, place
               />
             </div>
             <ul id={listId} className="select-options-list" role="listbox" aria-label={label || 'Products'}>
-              {filteredOptions.length > 0 ? (
-                Object.entries(groupedOptions).map(([group, groupOptions]) => (
-                  <React.Fragment key={group}>
-                    {groupOptions.some(option => option.group) && (
-                      <li className="select-group-label" aria-hidden="true">{group}</li>
-                    )}
-                    {groupOptions.map((opt, i) => (
-                      <li 
-                        key={`${group}-${opt.value}-${i}`} 
-                        id={`${listId}-option-${navigableOptions.indexOf(opt)}`}
-                        className={`select-option ${value === opt.value ? 'selected' : ''} ${activeOption===opt?'keyboard-active':''}`}
-                        role="option" aria-selected={value === opt.value} tabIndex={-1}
-                        onKeyDown={event=>{if(event.key==='Enter' || event.key===' '){event.preventDefault();event.stopPropagation();choose(opt);}}}
-                        onClick={()=>choose(opt)}
-                      >
-                        {opt.label}{opt.group && opt.value && <ProductMrp item={opt}/>}
-                      </li>
-                    ))}
-                  </React.Fragment>
-                ))
-              ) : (
-                <li className="select-no-results">No products match your search</li>
-              )}
+              {entries.length?entries.map((entry,index)=>entry.kind==='group'?<li key={`group-${entry.id}-${index}`} className="select-group-label" role="presentation" style={{paddingLeft:`${.75+entry.depth*.65}rem`}}>{entry.label}</li>:<li key={`${entry.option.value}-${index}`} id={`${listId}-option-${navigableOptions.indexOf(entry.option)}`} className={`select-option ${value===entry.option.value?'selected':''} ${activeOption===entry.option?'keyboard-active':''}`} role="option" aria-selected={value===entry.option.value} tabIndex={-1} style={{paddingLeft:`${.75+entry.depth*.65}rem`}} onKeyDown={event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();choose(entry.option);}}} onClick={()=>choose(entry.option)}>{entry.option.label}<ProductMrp item={entry.option}/></li>):<li className="select-no-results">No products match your search</li>}
+
             </ul>
           </div>
         )}

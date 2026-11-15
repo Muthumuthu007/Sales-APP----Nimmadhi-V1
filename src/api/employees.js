@@ -62,7 +62,7 @@ export async function fetchOutletIncentives(outletId, month) {
 }
 
 export async function fetchManagerAttendance(outletId, period, date) {
-  return api.get('/manager/attendance', { params: { outletId, period, date } });
+  return api.get('/manager/attendance', { params: { outletId, period, date }, ignoreLocationScope:true });
 }
 
 export async function reassignEmployee(empId, fromOutletId, toOutletId) {

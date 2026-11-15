@@ -286,7 +286,7 @@ const Salary = () => {
           <Input label="Note" value={advanceForm.note} onChange={e => setAdvanceForm({...advanceForm,note:e.target.value})} disabled={advanceSaving} />
           {advanceForm.kind === 'RECOVERY' && <label><input type="checkbox" checked={advanceForm.employeeConfirmed} onChange={e => setAdvanceForm({...advanceForm,employeeConfirmed:e.target.checked})} disabled={advanceSaving} /> Employee agreed to this salary deduction</label>}
           {advanceError && <p role="alert">{advanceError}</p>}
-          <Button onClick={saveAdvance} disabled={advanceSaving || !advanceForm.amount || !advanceForm.month || (advanceForm.kind === 'RECOVERY' && !advanceForm.employeeConfirmed)}>{advanceSaving ? 'Saving…' : 'Record entry'}</Button>
+          <Button writeAction onClick={saveAdvance} disabled={advanceSaving || !advanceForm.amount || !advanceForm.month || (advanceForm.kind === 'RECOVERY' && !advanceForm.employeeConfirmed)}>{advanceSaving ? 'Saving…' : 'Record entry'}</Button>
           <h4>Advance and recovery history</h4>
           {(advanceUser.entries || []).length === 0 && <p>No advances recorded.</p>}
           {(advanceUser.entries || []).map(entry => <div key={entry.entryId}><strong>{entry.month}</strong> · {money(entry.amount)} {entry.kind === 'RECOVERY' ? 'deducted from salary' : 'advance received'}{entry.note && ` · ${entry.note}`}</div>)}

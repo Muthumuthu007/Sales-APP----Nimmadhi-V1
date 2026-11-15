@@ -1,4 +1,5 @@
-import OrderProduct from '../components/OrderProduct';
+import OrderContentsColumn,{OrderContentsColumns} from '../components/OrderContentsColumn';
+import VehicleLoads from '../components/VehicleLoads';
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '../components/ui/Card';
 import { Table } from '../components/ui/Table';
@@ -61,6 +62,8 @@ const Dispatch = () => {
     },
     { key: 'createdBy', label: 'Created by', render: (row) => row.createdByName || (row.createdBy ? 'Name unavailable' : 'Not recorded') },
     { key: 'isCustomized', label: 'Order type', render: (row) => row.isCustomized ? <strong style={{ color: 'var(--color-primary)' }}>Customized</strong> : 'Standard' },
+    {key:'products',label:'Products ordered',render:row=><OrderContentsColumn items={row.items || []}/>},
+    {key:'complimentary',label:'Complimentary products',render:row=><OrderContentsColumn items={row.items || []} complimentary/>},
     { key: 'outletId', label: 'Destination Outlet', render: (row) => outletLabel(row.outletId, outlets) },
     {
       key: 'createdAt',
@@ -96,7 +99,8 @@ const Dispatch = () => {
     { key: 'orderDisplayId', label: 'Order Ref', render: row => row.orderDisplayId || row.orderId },
     { key: 'loadPlanId', label: 'Load plan', render: row => <span title={row.loadPlanId}>{row.planDisplayId || row.loadPlanId?.slice(0, 8) || '—'}</span> },
     { key: 'outletId', label: 'Destination outlet', render: row => outletLabel(row.outletId, outlets) },
-    { key: 'productName', label: 'Product', className: 'dispatch-batch-product', render: row => <OrderProduct item={row} /> },
+    {key:'productName',label:'Products ordered',render:row=><OrderContentsColumn items={[row]}/>},
+    {key:'complimentary',label:'Complimentary products',render:row=><OrderContentsColumn items={[row]} complimentary/>},
     { key: 'quantity', label: 'Batch quantity', align: 'center' },
     { key: 'sourceType', label: 'Dispatch source', render: row => row.sourceType === 'FACTORY' ? 'Factory' : `Godown · ${row.sourceLocationId}` },
     { key: 'dispatchOrigin', label: 'Dispatch type', render: row => <span className={`dispatch-batch-tag ${row.dispatchOrigin === 'PENDING' ? 'dispatch-batch-tag--pending' : ''}`}>{row.dispatchOrigin === 'PENDING' ? 'From Dispatch Pending' : 'Original dispatch'}</span> },
@@ -144,6 +148,9 @@ const Dispatch = () => {
   };
 
   return (
+    <>
+    <VehicleLoads onChanged={loadDispatchedHistory}/>
+    <VehicleLoads history/>
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       <div className="dispatch-toolbar">
         <div>
@@ -198,19 +205,11 @@ const Dispatch = () => {
         </div>
         <div className="dispatch-detail-items">
           <h4>Products dispatched</h4>
-          <Table
-            columns={[
-              { key: 'productName', label: 'Product', render: (item) => <OrderProduct item={item} /> },
-              { key: 'quantity', label: 'Quantity', align: 'center', render: (item) => item.quantity ?? '—' },
-              ...(!detailsPlan?.isBatch ? [{ key: 'maxProduce', label: 'Capacity', align: 'center', render: (item) => item.maxProduce ?? '—' }] : []),
-              { key: 'isFree', label: 'Type', render: (item) => item.isFree ? 'Free item' : 'Ordered item' },
-            ]}
-            data={detailsPlan?.items || []}
-            emptyStateMessage="No product details are available for this dispatched load plan."
-          />
+          <OrderContentsColumns items={detailsPlan?.items || []}/>
         </div>
       </Modal>
     </div>
+    </>
   );
 };
 

@@ -4,7 +4,7 @@ import './TopBar.css';
 import { User, Bell, LogOut, Menu } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-const TopBar = ({ onMenuClick, menuOpen = false }) => {
+const TopBar = ({ onMenuClick, onMenuPointerEnter, onMenuPointerLeave, menuOpen = false }) => {
   const { adminAccess, role, logout, username, outletId, outletName, empId, empName } = useContext(AuthContext);
   const navigate = useNavigate();
 
@@ -20,6 +20,8 @@ const TopBar = ({ onMenuClick, menuOpen = false }) => {
         <button
           className="hamburger-btn"
           onClick={onMenuClick}
+          onPointerEnter={onMenuPointerEnter}
+          onPointerLeave={onMenuPointerLeave}
           aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}
           aria-expanded={menuOpen}
           aria-controls="main-navigation"

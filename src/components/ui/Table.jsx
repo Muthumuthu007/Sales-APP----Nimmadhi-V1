@@ -1,15 +1,17 @@
+import GroupedStockTable from '../GroupedStockTable';
 import ProductMrp from '../ProductMrp';
 import {MrpColumnContext} from '../../context/ProductMrpContext';
 import React from 'react';
 import { EmptyState } from './StateContainers';
 import './Table.css';
 
-export const Table = ({ columns, data, onRowClick, emptyStateMessage = "No records found.", className = '' }) => {
+export const Table = ({ columns, data, onRowClick, emptyStateMessage = "No records found.", className = '', hierarchy = true }) => {
   if (!data || data.length === 0) {
     return <EmptyState title={emptyStateMessage} />;
   }
 
   const productColumn=columns.findIndex(col=>['productName','product_name','product','products'].includes(col.key) || (col.key==='name' && data.some(row=>row.product_id || row.productId)));
+  if(hierarchy && productColumn>=0 && data.some(row=>row.productId || row.product_id || row.baseProductId))return <GroupedStockTable data={data} onRowClick={onRowClick} className={className} columns={columns.map(col=>col.render?{...col,render:row=>col.render(row,data.indexOf(row))}:col)} emptyStateMessage={emptyStateMessage}/>;
   const hasMrp=columns.some(col=>/mrp/i.test(`${col.key} ${col.label}`));
   const displayColumns=[...columns];
   if(productColumn>=0 && !hasMrp)displayColumns.splice(productColumn+1,0,{key:'mappedMrp',label:'MRP',className:'mrp-column',render:row=>{

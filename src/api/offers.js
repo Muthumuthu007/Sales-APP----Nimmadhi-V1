@@ -8,3 +8,5 @@ export const fetchActiveOutletOffers = () => api.get('/outlet/offers');
 export const copyOutletOffers = payload => api.post('/manager/outlet-offers/copy', payload);
 
 export const saveComplimentaryBundle = payload => api.post('/manager/outlet-offers/bundle', payload);
+export const fetchSizeComplimentaryMappings=()=>api.get('/manager/size-complimentary-mappings');
+export const saveSizeComplimentaryMappings=payload=>api.post('/manager/size-complimentary-mappings',payload);

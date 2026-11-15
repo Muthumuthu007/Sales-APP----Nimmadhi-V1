@@ -42,7 +42,7 @@
 
 .attendance-filters {
   display: grid;
-  grid-template-columns: minmax(230px, 1.7fr) minmax(145px, 0.8fr) minmax(165px, 0.85fr) auto;
+  grid-template-columns: minmax(150px, 1fr) minmax(190px, 1.3fr) minmax(130px, .8fr) minmax(155px, .9fr) auto;
   align-items: end;
   gap: var(--space-4);
 }
@@ -204,7 +204,7 @@
 .attendance-selfie-meta { display: grid; gap: 0.5rem; margin-top: 1rem; color: var(--color-text-muted); font-size: 0.85rem; }
 .attendance-selfie-meta span { display: flex; align-items: center; gap: 0.4rem; }
 
-@media (max-width: 1050px) {
+@media (max-width: 1200px) {
   .attendance-filters { grid-template-columns: minmax(220px, 1fr) minmax(155px, 0.7fr); }
   .attendance-filter-action { justify-content: flex-start; }
   .attendance-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }

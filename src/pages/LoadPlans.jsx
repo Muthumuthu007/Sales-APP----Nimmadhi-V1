@@ -1,3 +1,6 @@
+import OrderContentsColumn,{OrderContentsColumns} from '../components/OrderContentsColumn';
+import {customProductName} from '../utils/saleProductName';
+import ProductListBlocks from '../components/ProductListBlocks';
 import ProductMrp from '../components/ProductMrp';
 import {businessDate} from '../utils/businessDate';
 import {splitAllocation, allocationPayload} from '../utils/loadPlanAllocations';
@@ -124,17 +127,22 @@ const LoadPlans = () => {
     try {
       const existing = await fetchLoadPlanFulfillment(plan.loadPlanId || plan.id, plan.orderId);
       if (requestId !== allocationRequest.current) return;
+      const resolvedPlan={...plan,items:existing?.items?.length?existing.items:plan.items,independentComplimentarySources:existing?.independentComplimentarySources};
+      const resolvedItems=planItems(resolvedPlan);
+      setAllocationPlan(resolvedPlan);
+      setAllocationRows(resolvedItems.map(item=>({...item,sourceType:'FACTORY',sourceLocationId:'FACTORY'})));
       const lines = existing?.fulfillments || [];
       if (lines.length) {
-        setAllocationRows(lines.map((line, index) => ({
-          ...items.find(item => item.productId === line.productId),
+        setAllocationRows([...lines.map((line, index) => ({
+          ...resolvedItems.find(item => item.productId === line.productId),
+          ...line,
           id: `${line.productId}-${index}`,
           productId: line.productId,
           productName: line.productName || line.productId,
           quantity: Number(line.quantity || 0),
           sourceType: line.sourceType,
           sourceLocationId: line.sourceLocationId || 'FACTORY',
-        })));
+        })),...resolvedItems.filter(item=>!lines.some(line=>line.productId===item.productId)).map(item=>({...item,sourceType:'FACTORY',sourceLocationId:'FACTORY'}))]);
       }
     } catch {
       if (requestId === allocationRequest.current) { setAllocationLoadFailed(true); setAllocationError('Unable to load saved assignments. Close and retry before changing sources.'); }
@@ -203,8 +211,9 @@ const LoadPlans = () => {
     { key: 'outletId', label: 'Outlet', className: 'outlet-column', render: (row) => outletLabel(row.outletId, outlets) },
     { key: 'createdBy', label: 'Created by', className: 'creator-column', render: (row) => <span title={row.createdByName || (row.createdBy ? 'Name unavailable' : 'Not recorded')}>{row.createdByName || (row.createdBy ? 'Name unavailable' : 'Not recorded')}</span> },
     { key: 'isCustomized', label: 'Order type', className: 'type-column', render: (row) => row.isCustomized ? <strong style={{ color: 'var(--color-primary)' }}>Customized</strong> : 'Standard' },
-    { key: 'productName', label: 'Product', className: 'product-column', render: (row) => <div>{(row.items?.length ? row.items : [row]).map((item, index) => <OrderProduct key={index} item={item} />)}</div> },
-    { key: 'quantity', label: 'Qty', className: 'quantity-column', align: 'center', render: (row) => row.quantity ?? (row.items && row.items[0]?.quantity) ?? '—' },
+    {key:'productName',label:'Products ordered',className:'product-column',render:row=><OrderContentsColumn items={row.items?.length?row.items:[row]}/>},
+    {key:'complimentary',label:'Complimentary products',render:row=><OrderContentsColumn items={row.items?.length?row.items:[row]} complimentary/>},
+    { key: 'quantity', label: 'Total pieces', className: 'quantity-column', align: 'center', render: row => row.items?.length?row.items.reduce((sum,item)=>sum+Number(item.quantity || 0),0):row.quantity ?? '—' },
     { key: 'createdAt', label: 'Created', className: 'created-column', render: (row) => <span title={row.createdAt}>{formatDateTime(row.createdAt)}</span> },
     { key: 'actions', label: 'Action', className: 'action-column', align: 'right', render: (row) => (
       <div className="load-plan-actions">
@@ -217,7 +226,7 @@ const LoadPlans = () => {
         </Button>
         {activeTab === 'APPROVED' ? (
           <>
-            <Button variant="secondary" className="assign-source-button" onClick={() => openAllocation(row)}>
+            <Button writeAction variant="secondary" className="assign-source-button" onClick={() => openAllocation(row)}>
               Assign source
             </Button>
             <UndoPlanButton plan={row} action="assignment" onUndone={() => setReloadKey((key) => key + 1)} />
@@ -318,17 +327,17 @@ const LoadPlans = () => {
         onClose={() => { if (!savingAllocation) { allocationRequest.current++; setAllocationPlan(null); } }}
         title={`Assign fulfillment source — ${allocationPlan?.displayId || compactId(allocationPlan?.loadPlanId)}`}
       >
-        <p className="allocation-help">Split an approved product between Factory and Godown. For example, assign 10 to Factory and 10 to Godown for an approved quantity of 20. Godown quantities are reserved when saved.</p>
+        <p className="allocation-help">{allocationPlan?.independentComplimentarySources?'Assign the main product and each complimentary product independently. For example, send the bed from Factory and pillows from Godown, or choose the same source for both. Godown quantities are reserved when saved.':'Split an approved product between Factory and Godown. Source quantities must match the approved quantity. Godown quantities are reserved when saved.'}</p>
         {allocationError && <div role="alert" className="allocation-error">{allocationError}</div>}
         {allocationLoading && <p role="status">Loading source assignments…</p>}
         <div className="allocation-totals">{planItems(allocationPlan).filter((item,index,items)=>items.findIndex(product=>product.productId===item.productId)===index).map(item => {
           const expected=planItems(allocationPlan).filter(product=>product.productId===item.productId).reduce((sum,product)=>sum+product.quantity,0);
           const assigned=allocationRows.filter(row=>row.productId===item.productId).reduce((sum,row)=>sum+Number(row.quantity||0),0);
-          return <div key={item.id}><strong>{item.productName}</strong><ProductMrp item={item}/><span style={{color:assigned===expected?'var(--color-green)':'var(--color-red)'}}>{assigned} / {expected} units assigned</span></div>;
+          return <div key={item.id}><strong>{customProductName(item.productName,item.customSize)}{allocationPlan?.independentComplimentarySources && item.isFree?' · Complimentary':''}</strong><ProductMrp item={item}/><span style={{color:assigned===expected?'var(--color-green)':'var(--color-red)'}}>{assigned} / {expected} units assigned</span></div>;
         })}</div>
         <fieldset className="allocation-fields" disabled={savingAllocation || allocationLoading}>
         <div className="allocation-list">
-          {allocationRows.map((row, index) => (
+          <ProductListBlocks items={allocationRows} renderItem={(row, index) => (
             <div className="allocation-row" key={row.id}>
               <div className="allocation-product"><OrderProduct item={row} /><div className="allocation-row-actions"><Button size="sm" variant="secondary" disabled={Number(row.quantity)<2} onClick={() => setAllocationRows(rows=>splitAllocation(rows,index,crypto.randomUUID()))}>Split quantity</Button>{allocationRows.filter(item=>item.productId===row.productId).length>1 && <Button size="sm" variant="secondary" onClick={()=>setAllocationRows(rows=>rows.filter((_,rowIndex)=>rowIndex!==index))}>Remove source</Button>}</div></div>
               <Input label={`Quantity — source ${index+1}`} type="number" min="1" step="1" value={row.quantity} onChange={event=>updateAllocationRow(index,{quantity:event.target.value})} />
@@ -350,12 +359,12 @@ const LoadPlans = () => {
                 />
               )}
             </div>
-          ))}
+          )}/>
         </div>
         </fieldset>
         <div className="allocation-actions">
           <Button variant="secondary" onClick={() => setAllocationPlan(null)} disabled={savingAllocation}>Cancel</Button>
-          <Button variant="primary" onClick={saveAllocation} disabled={savingAllocation || allocationLoading || allocationLoadFailed || allocationRows.length === 0}>{savingAllocation ? 'Saving...' : 'Save source assignments'}</Button>
+          <Button writeAction variant="primary" onClick={saveAllocation} disabled={savingAllocation || allocationLoading || allocationLoadFailed || allocationRows.length === 0}>{savingAllocation ? 'Saving...' : 'Save source assignments'}</Button>
         </div>
       </Modal>
 
@@ -372,15 +381,7 @@ const LoadPlans = () => {
         </div>
         <div className="load-plan-detail-items">
           <h4>Items in this load plan</h4>
-          <Table
-            columns={[
-              { key: 'productName', label: 'Product', render: (item) => <OrderProduct item={item} /> },
-              { key: 'quantity', label: 'Quantity', align: 'center', render: (item) => item.quantity ?? '—' },
-              { key: 'isFree', label: 'Type', render: (item) => item.isFree ? 'Free item' : 'Ordered item' },
-            ]}
-            data={detailsPlan?.items || []}
-            emptyStateMessage="This load plan has no items."
-          />
+<OrderContentsColumns items={detailsPlan?.items || []}/>
         </div>
       </Modal>
     </div>

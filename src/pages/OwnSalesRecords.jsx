@@ -1,3 +1,4 @@
+import ProductListBlocks from '../components/ProductListBlocks';
 import SaleEditHistory from '../components/SaleEditHistory';
 import PaymentSplitInput from '../components/PaymentSplitInput';
 import {splitPayments} from '../utils/paymentSplits';
@@ -35,7 +36,7 @@ export default function OwnSalesRecords({outletId,readOnly=false,outlets=noOutle
  ...(readOnly?[{key:'outletId',label:'Own outlet',render:r=>{const outlet=outlets.find(item=>item.outletId===r.outletId);return outlet?.outletName || outlet?.name || r.outletId;}}]:[]),
  {key:'workOrderNo',label:'Work order / Bill',render:r=><>{r.workOrderNo || r.saleReferenceId}<br/>{r.billNo}{(Number(r.editVersion || 0)>0 || r.corrections?.length>0)&&<strong className="sale-edited-badge" style={{display:'block',marginTop:'.4rem'}}>Edited</strong>}</>},
  {key:'customerName',label:'Customer',render:r=><><strong>{r.customerName}</strong><br/>{r.customerPhone}<br/>{r.customerAddress}</>},
- {key:'items',label:'Products / Delivery',render:r=>r.items.map((item,index)=><p key={index}>{item.productName} × {item.quantity}<br/><small>{item.fulfillmentMode==='LOCAL_STOCK'?'Outlet stock → Customer':'Factory → Customer'}</small></p>)},
+ {key:'items',label:'Products / Delivery',render:r=><ProductListBlocks items={r.items} renderItem={(item,index)=><p key={index}>{item.productName} × {item.quantity}<br/><small>{item.fulfillmentMode==='LOCAL_STOCK'?'Outlet stock → Customer':'Factory → Customer'}</small></p>}/>},
  {key:'billAmount',label:'Bill',render:r=>money(r.billAmount)}, {key:'advanceAmount',label:'Received',render:r=><>{money(r.advanceAmount)}<PaymentBreakdown amounts={r.paymentBreakdown}/></>},{key:'balanceDue',label:'Pending',render:r=>money(r.balanceDue)},
  {key:'corrections',label:showDeleted?'Deletion audit':'Edit history',render:r=>r.recordStatus==='DELETED'?<><strong>Deleted · Excluded from totals</strong><p>{r.deletionReason}</p><small>{r.deletedBy} · {r.deletedAt}</small></>:<SaleEditHistory invoice={r}/>},
  {key:'edit',label:'Action',render:r=><><Button variant="secondary" onClick={()=>setBill(r)}>View bill</Button>{readOnly && !showDeleted && <><Button variant="secondary" disabled={!r.canDelete} onClick={()=>{setDeleteTarget(r);setDeleteReason('');setDeleteError('');}}>Delete sale</Button>{!r.canDelete&&<small style={{display:'block',maxWidth:200}}>{r.deleteBlockedReason}</small>}</>}{!readOnly && <Button variant="secondary" disabled={!r.canEdit} onClick={()=>{setTarget(r);setForm(editor(r));setEditError('');}}>Edit sale</Button>}{!readOnly && !r.canEdit&&<small style={{display:'block',maxWidth:200}}>{r.editBlockedReason}</small>}</>}

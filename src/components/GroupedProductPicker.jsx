@@ -1,9 +1,12 @@
+import {ProductMrpContext} from '../context/ProductMrpContext';
 import './GroupedProductPicker.css';
-import React,{useMemo,useState} from 'react';
+import React,{useMemo,useState,useContext} from 'react';
 import {Select} from './ui/Input';
 import {SearchableSelect} from './ui/SearchableSelect';
-import {groupedProductOptions} from '../utils/productHierarchy';
+import {groupedProductOptions,enrichProductOptions} from '../utils/productHierarchy';
 export default function GroupedProductPicker({options,value,onChange,label='Product',placeholder,disabled=false,searchAll=false,searchFirst=true}){
+ const {catalogue=[]}=useContext(ProductMrpContext);
+ options=useMemo(()=>enrichProductOptions(options,catalogue),[options,catalogue]);
  const categories=useMemo(()=>groupedProductOptions(options),[options]);
  const [chosenMain,setMain]=useState(''),[chosenGroup,setGroup]=useState('');
  const selected=options.find(option=>option.value===value&&value);

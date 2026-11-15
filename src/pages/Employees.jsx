@@ -4,7 +4,7 @@ import EmployeePasswordReset from '../components/EmployeePasswordReset';
 import EmployeeBankEditor from '../components/EmployeeBankEditor';
 import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { Card, CardContent, CardHeader } from '../components/ui/Card';
-import { Table } from '../components/ui/Table';
+import './Employees.css';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 import { Select } from '../components/ui/Input';
@@ -62,25 +62,18 @@ const Employees = () => {
   useEffect(()=>{const tracker=loadSequence;load();return()=>{tracker.current++;};},[load]);
 
   const outletOptions = [{ value: '', label: 'All outlets' }, ...employeeOutlets(outlets,location).map((outlet) => ({ value: outlet.outletId || outlet.id, label: `${outlet.outletName || outlet.name || 'Outlet'} (${outlet.outletId || outlet.id})` }))];
-  const columns = [
-    { key: 'name', label: 'Employee' },
-    {key:'locationName',label:'Location'},
-    {key:'outletName',label:'Outlet',render:row=>`${row.outletName} (${row.outletId})`},
-    { key: 'phone', label: 'Login username' },
-    { key: 'role', label: 'Role' },
-    { key: 'workType', label: 'Work type', render: (row) => row.workType === 'FIELD' ? 'Field work' : 'Demonstrative employee' },
-    { key: 'salaryModel', label: 'Salary model', render: (row) => row.salary?.salaryModel || row.salaryModel || '-' },
-    { key: 'status', label: 'Status', render: (row) => row.isActive === false ? 'Inactive' : 'Active' },
-    { key: 'actions', label: 'Actions', render: (row) => <div style={{display:'flex',gap:'.5rem',flexWrap:'wrap'}}><Button variant="secondary" onClick={()=>setPasswordEmployee(row)}>Reset password</Button><Button variant="secondary" onClick={()=>setBankEmployee(row)}>Edit bank details</Button><Button variant="secondary" onClick={() => { setTransferError(''); setDestination(''); setTransferEmployee(row); }}>Reassign outlet</Button></div> },
-    { key: 'createdAt', label: 'Created', render: (row) => row.createdAt ? new Date(row.createdAt).toLocaleDateString() : '-' },
-  ];
   return <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
     <div><p className="create-user-eyebrow">Team management</p><h2 style={{ margin: 0 }}>Employees by location</h2><p className="text-muted">View all employees or filter by location and outlet.</p></div>
     {success && <p role="status">{success}</p>}
     <Card><CardHeader title="Employee directory" /><CardContent>
       <div style={{ display: 'flex', gap: '1rem', alignItems: 'end', flexWrap: 'wrap', marginBottom: '1.25rem' }}><div style={{ minWidth: '280px' }}><Select label="Location" value={location} onChange={event=>{setLocation(event.target.value);setOutletId('');}} options={locationOptions(outlets)}/><Select label="Outlet" value={outletId} onChange={(event) => setOutletId(event.target.value)} options={outletOptions} /></div><Button onClick={() => load()} disabled={!outletsReady || loading}>{loading ? 'Loading…' : 'Refresh'}</Button></div>
       {!loading && !error && <p>{employees.length} employees · {locationOptions(outlets).find(option=>option.value===location)?.label}</p>}
-      {loading ? <LoadingState message="Loading employees…" /> : error ? <ErrorState error={error} onRetry={() => load()} /> : <Table columns={columns} data={employees} emptyStateMessage="No employees found for the selected location and outlet." />}
+      {loading ? <LoadingState message="Loading employees…" /> : error ? <ErrorState error={error} onRetry={() => load()} /> : employees.length?<div className="employee-directory-grid">{employees.map(row=><article className="employee-directory-card" key={`${row.outletId}-${row.empId}`}>
+        <header><h3>{row.name || 'Unnamed employee'}</h3><span className={`employee-directory-status ${row.isActive===false?'is-inactive':''}`}>{row.isActive===false?'Inactive':'Active'}</span></header>
+        <p className="employee-directory-location">{row.locationName} · {row.outletName} ({row.outletId})</p>
+        <dl><div><dt>Login username</dt><dd>{row.phone || '—'}</dd></div><div><dt>Role</dt><dd>{row.role || '—'}</dd></div><div><dt>Work type</dt><dd>{row.workType==='FIELD'?'Field work':'Demonstrative employee'}</dd></div><div><dt>Salary model</dt><dd>{row.salary?.salaryModel || row.salaryModel || '—'}</dd></div><div><dt>Created</dt><dd>{row.createdAt?new Date(row.createdAt).toLocaleDateString():'—'}</dd></div></dl>
+        <footer><Button variant="secondary" onClick={()=>setPasswordEmployee(row)}>Reset password</Button><Button variant="secondary" onClick={()=>setBankEmployee(row)}>Edit bank details</Button><Button variant="secondary" onClick={()=>{setTransferError('');setDestination('');setTransferEmployee(row);}}>Reassign outlet</Button></footer>
+      </article>)}</div>:<p>No employees found for the selected location and outlet.</p>}
     </CardContent></Card>
     {passwordEmployee&&<EmployeePasswordReset employee={passwordEmployee} onClose={()=>setPasswordEmployee(null)} onSaved={message=>{setSuccess(message);setPasswordEmployee(null);}}/>}
     <EmployeeBankEditor employee={bankEmployee} onClose={()=>setBankEmployee(null)} onSaved={message=>{setSuccess(message);setBankEmployee(null);load();}}/>

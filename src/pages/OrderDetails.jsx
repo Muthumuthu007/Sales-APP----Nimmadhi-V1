@@ -1,3 +1,7 @@
+import {OrderContentsColumns} from '../components/OrderContentsColumn';
+import {AuthContext} from '../context/AuthContext';
+import {isReadOnlyAdmin} from '../auth/adminAccess';
+import ProductListBlocks from '../components/ProductListBlocks';
 import ProductMrp from '../components/ProductMrp';
 import OrderFreeItems from '../components/OrderFreeItems';
 import GroupedProductPicker from '../components/GroupedProductPicker';
@@ -18,6 +22,8 @@ import UndoPlanButton from '../components/UndoPlanButton';
 import { outletLabel } from '../utils/outlets';
 
 const OrderDetails = () => {
+  const {adminAccess}=React.useContext(AuthContext);
+  const viewOnly=isReadOnlyAdmin(adminAccess);
   const { id } = useParams(); // refers to orderId
   const navigate = useNavigate();
   const location = useLocation();
@@ -249,7 +255,7 @@ const OrderDetails = () => {
   if (error && !order) return <ErrorState error={error} />;
   if (!order) return <ErrorState error="Critical data missing." />;
 
-  const isEditable = order.status === 'PENDING' || order.status === 'PARTIALLY_APPROVED' || order.status === 'PARTIAL';
+  const isEditable = !viewOnly && (order.status === 'PENDING' || order.status === 'PARTIALLY_APPROVED' || order.status === 'PARTIAL');
 
   return (
     <div className="page-stack">
@@ -309,14 +315,14 @@ const OrderDetails = () => {
               <table className="approval-table">
                 <thead>
                   <tr>
-                    <th>Product</th><th>MRP</th>
+                    <th>Products ordered</th><th>MRP</th>
                     <th style={{ textAlign: 'center' }}>Ordered / Pending</th>
                     {isEditable && <th style={{ textAlign: 'center' }}>Approve Qty</th>}
-                    <th>Free Items</th>
+                    <th>Complimentary products</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {approvalItems.map((item, idx) => (
+                  <ProductListBlocks tableColumns={isEditable?5:4} items={approvalItems} renderItem={(item, idx) => (
                     <tr key={idx}>
                       <td data-label="Product">
                         <OrderProduct hideMrp item={{...item,freeItems:[],complimentaryOffers:[]}} />
@@ -369,7 +375,7 @@ const OrderDetails = () => {
                         <OrderFreeItems item={item} />
                         {isEditable && item.freeItems.length > 0 && (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                            {item.freeItems.map((fItem, fIdx) => (
+                            {<ProductListBlocks items={item.freeItems} renderItem={(fItem, fIdx) => (
                               <div key={fIdx} className="complimentary-item-editor">
                                 <GroupedProductPicker label="Complimentary accessory"
                                   options={productOptions}
@@ -393,7 +399,7 @@ const OrderDetails = () => {
                                   <X size={16} />
                                 </button>
                               </div>
-                            ))}
+                            )}/>}
                           </div>
                         )}
                         {isEditable && (
@@ -408,7 +414,7 @@ const OrderDetails = () => {
                         )}
                       </td>
                     </tr>
-                  ))}
+                  )}/>
                   {approvalItems.length === 0 && (
                     <tr>
                       <td colSpan={isEditable ? "5" : "4"} style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
@@ -419,6 +425,7 @@ const OrderDetails = () => {
                 </tbody>
               </table>
             </div>
+            <OrderContentsColumns items={approvalItems}/>
           </CardContent>
           {isEditable && (
             <div className="order-approval-actions" style={{ padding: '1rem', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--color-secondary)' }}>

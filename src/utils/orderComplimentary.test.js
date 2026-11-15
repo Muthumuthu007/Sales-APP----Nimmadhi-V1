@@ -28,3 +28,10 @@ test('two offers in the same group apply only to their assigned products', () =>
  offers[0].includedProductIds=['B'];offers[1].includedProductIds.push('A');
  assert.deepEqual(complimentaryForProduct(offers,'A','G').map(offer=>offer.freeQuantity),[1]);
 });
+
+test('size-matched gifts resolve actual dimensions while retaining the editable rule category',()=>{
+ const rule={offerId:'protector',scope:'PRODUCT',productId:'bed',freeProductId:'@SIZE:PROTECTOR',freeQuantity:1,sizeMappings:[{size:'72X36',freeProductId:'P72',freeProductName:'72X36X12 Protector'},{size:'75X36',freeProductId:'P75',freeProductName:'75X36X12 Protector'}]};
+ const base=complimentaryForProduct([rule],'bed',null,{productName:'72X36X6 BED'})[0];assert.equal(base.freeProductId,'P72');assert.equal(base.sizeRuleProductId,'@SIZE:PROTECTOR');
+ const custom=complimentaryForProduct([rule],'bed',null,{productName:'72X36X6 BED',customSize:{length:75,width:36,unit:'inches'}})[0];assert.equal(custom.freeProductId,'P75');assert.equal(custom.freeQuantity,1);
+ const unmapped=complimentaryForProduct([rule],'bed',null,{productName:'72X38X6 BED'})[0];assert.match(unmapped.mappingError,/72X38/);assert.notEqual(unmapped.freeProductId,'P72');
+});

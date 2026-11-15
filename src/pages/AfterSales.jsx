@@ -1,3 +1,6 @@
+import ProductListBlocks from '../components/ProductListBlocks';
+import GroupedProductPicker from '../components/GroupedProductPicker';
+import {productionOption} from '../utils/productHierarchy';
 import React, {useCallback, useContext, useEffect, useMemo, useState} from 'react';
 import api from '../api/axios';
 import {AuthContext} from '../context/AuthContext';
@@ -44,23 +47,23 @@ export default function AfterSales({godownMode=false, factoryMode=false}) {
    {!admin && !godownMode && <Button onClick={()=>{setForm({...empty,caseType:'REFURBISHMENT',godownId:''});setCreating(true);setError('');setRequestId(crypto.randomUUID());}}>Inspect bed / Create after-sales case</Button>}
   </CardContent></Card>
   {error && <p role="alert" className="after-sales-error">{error}</p>}
-  {loading?<p>Loading after-sales cases…</p>:filtered.length===0?<p>No after-sales cases found.</p>:<div className="after-sales-list">{filtered.map(r=><Card key={r.caseId}><CardContent>
+  {loading?<p>Loading after-sales cases…</p>:filtered.length===0?<p>No after-sales cases found.</p>:<div className="after-sales-list"><ProductListBlocks items={filtered} renderItem={r=><Card key={r.caseId}><CardContent>
     <span className="after-sales-tag">{r.label} bed</span><h3>{r.productName}</h3><ProductMrp item={{productId:r.productId}}/>
     {r.replacementProductName && <p><strong>{r.replacementProductName}</strong> replaces <strong>{r.productName}</strong> · Quantity: 1{r.replacementOrderId && <><br/>Order: {r.replacementOrderId}</>}</p>}
     <p>{r.customerName} · {r.customerPhone}</p><p>{label(r.status)} · {r.outletId} → {r.godownId}</p>
     {r.caseType==='REPLACEMENT' && <p>Original bed: {label(r.returnStatus)}</p>}
     <Button variant="secondary" onClick={()=>{setSelectedId(r.caseId);setAction('');setMovementNotes('');setRequestId(crypto.randomUUID());setError('');}}>View case / Record movement</Button>
-  </CardContent></Card>)}</div>}
+  </CardContent></Card>}/></div>}
   <Modal isOpen={creating || Boolean(selected)} onClose={()=>{if(!saving){setCreating(false);setSelectedId('');setAction('');}}} title={creating?'Submit after-sales inspection':`${selected?.label || ''} · Case details`}>
    {error && <p role="alert" className="after-sales-error">{error}</p>}
    {creating?<div className="after-sales-form">
     <Select label="Service type" options={['REFURBISHMENT','REPLACEMENT'].map(value=>({value,label:label(value)}))} value={form.caseType} onChange={e=>change('caseType',e.target.value)}/>
-    <Select label="Original sold product / customer / invoice" value={form.saleId} onChange={e=>{change('saleId',e.target.value);change('unitNumber','1');}} options={[{value:'',label:'Choose the original sale'},...sales.map(r=>({value:r.saleId,label:`${r.customerName || 'Customer details needed'} · ${r.productName} · ${r.billNo || r.saleReferenceId} · ${r.saleDate}`}))]}/>
+    <GroupedProductPicker label="Original sold product / customer / invoice" value={form.saleId} onChange={value=>{change('saleId',value);change('unitNumber','1');}} options={[{value:'',label:'Choose the original sale'},...sales.map(r=>({...productionOption(r),productId:r.productId,value:r.saleId,label:`${r.customerName || 'Customer details needed'} · ${r.productName} · ${r.billNo || r.saleReferenceId} · ${r.saleDate}`}))]}/>
     {sale && <p>{sale.customerName} · {sale.customerPhone}<br/>{sale.customerAddress}<br/>{sale.productName} · Sold quantity: {sale.quantity}</p>}
     {sale && ['customerName','customerPhone','customerAddress'].filter(field=>!sale[field]).map(field=><Input key={field} label={label(field.replace(/([A-Z])/g,' $1'))} value={form[field]} onChange={e=>change(field,e.target.value)}/>)}
     <Input label="Sold unit number (one case per bed)" type="number" min="1" max={sale?.quantity || 1} step="1" value={form.unitNumber} onChange={e=>change('unitNumber',e.target.value)}/>
     {!godownMode && <Select label="Assigned godown" options={[{value:'',label:'Choose godown'},...godowns]} value={form.godownId} onChange={e=>change('godownId',e.target.value)}/>}
-    {form.caseType==='REPLACEMENT' && <><Select label="New product B replacing the original product A" value={form.replacementProductId || ''} onChange={e=>change('replacementProductId',e.target.value)} options={[{value:'',label:'Choose the requested replacement bed'},...products.map(p=>({value:p.product_id || p.productId,label:p.product_name || p.productName}))]}/>{sale && form.replacementProductId && <p><strong>{products.find(p=>(p.product_id || p.productId)===form.replacementProductId)?.product_name}</strong> replaces <strong>{sale.productName}</strong> · Quantity: 1</p>}</>}
+    {form.caseType==='REPLACEMENT' && <><GroupedProductPicker label="New product B replacing the original product A" value={form.replacementProductId || ''} onChange={value=>change('replacementProductId',value)} options={products.map(productionOption)}/>{sale && form.replacementProductId && <p><strong>{products.find(p=>(p.product_id || p.productId)===form.replacementProductId)?.product_name}</strong> replaces <strong>{sale.productName}</strong> · Quantity: 1</p>}</>}
     {form.caseType==='REPLACEMENT' && sale && !sale.dispatchDate && <Input label="Verified original dispatch date" type="date" value={form.originalDispatchDate} onChange={e=>change('originalDispatchDate',e.target.value)}/>}
     <Input label="Customer request / reason" value={form.reason} onChange={e=>change('reason',e.target.value)}/>
     <Input label="Inspection findings and inspecting officer" value={form.inspectionNotes} onChange={e=>change('inspectionNotes',e.target.value)}/>
@@ -90,7 +93,7 @@ export default function AfterSales({godownMode=false, factoryMode=false}) {
     <div className="after-sales-actions">{(selected.availableActions || []).map(value=><Button key={value} variant={action===value?'primary':'secondary'} disabled={saving} onClick={()=>needsDetails(value)?openAction(value):recordMovement(value)}>{label(value)}</Button>)}</div>
     {action && <div className="after-sales-form"><h4>{label(action)}</h4>
       {action==='APPROVE' && selected.caseType==='REPLACEMENT' && <>
-       {!selected.replacementProductId && <Select label="Replacement product" value={details.replacementProductId} onChange={e=>changeDetails('replacementProductId',e.target.value)} options={[{value:'',label:'Choose the requested new bed'},...products.map(p=>({value:p.product_id || p.productId,label:p.product_name || p.productName}))]}/>}
+       {!selected.replacementProductId && <GroupedProductPicker label="Replacement product" value={details.replacementProductId} onChange={value=>changeDetails('replacementProductId',value)} options={products.map(productionOption)}/>}
        <p>Replacement eligibility: six months from the original dispatch date{selected.originalDispatchDate ? ` (${selected.originalDispatchDate})` : ''}.</p>
        {!selected.originalDispatchDate && <Input label="Verified original dispatch date (only if missing from the original sale)" type="date" value={details.originalDispatchDate} onChange={e=>changeDetails('originalDispatchDate',e.target.value)}/>}
 

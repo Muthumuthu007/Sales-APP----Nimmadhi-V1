@@ -138,3 +138,7 @@
 .sidebar .sidebar-nav{padding:1rem;gap:.3rem;padding-bottom:max(1rem,env(safe-area-inset-bottom));overscroll-behavior:contain}
 .sidebar .nav-item{padding:.65rem .8rem;min-height:44px;font-size:.9rem;gap:.75rem}
 @media(prefers-reduced-motion:reduce){.sidebar{transition:none}}
+
+/* Hover preview leaves the Modules trigger visible and clickable. */
+.sidebar.sidebar--hover{top:60px;height:calc(100dvh - 60px)}
+@media(max-width:768px){.sidebar.sidebar--hover{top:56px;height:calc(100dvh - 56px)}}

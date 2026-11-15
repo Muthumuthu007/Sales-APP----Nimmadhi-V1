@@ -1,4 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import {locationOptions} from '../utils/locationScope';
+import {employeeOutlets,mapEmployeeLocations,locationId} from '../utils/employeeLocations';
+import {combineAttendanceReports} from '../utils/attendanceLocations';
+import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { CalendarDays, Camera, CheckCircle2, Clock3, ImageOff, MapPin, UsersRound, XCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -11,6 +14,8 @@ import './ManagerAttendance.css';
 const today = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 
 const ManagerAttendance = () => {
+  const [location,setLocation]=useState(''),[outletsReady,setOutletsReady]=useState(false);
+  const loadSequence=useRef(0);
   const [outlets, setOutlets] = useState([]);
   const [outletId, setOutletId] = useState('');
   const [period, setPeriod] = useState('daily');
@@ -20,43 +25,36 @@ const ManagerAttendance = () => {
   const [error, setError] = useState(null);
   const [selectedRecord, setSelectedRecord] = useState(null);
 
-  const loadReport = async (targetOutletId = outletId) => {
-    if (!targetOutletId) return;
-    setLoading(true);
-    setError(null);
-    try {
-      setReport(await fetchManagerAttendance(targetOutletId, period, date));
-    } catch (requestError) {
-      setError(requestError.response?.data?.error || requestError.message || 'Unable to load attendance.');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const loadReport = useCallback(async () => {
+    if(!outletsReady || !date)return;
+    const sequence=++loadSequence.current;setLoading(true);setError(null);setReport(null);setSelectedRecord(null);
+    try{
+      const results=await mapEmployeeLocations(employeeOutlets(outlets,location,outletId),async outlet=>({outlet,report:await fetchManagerAttendance(locationId(outlet),period,date)}));
+      if(sequence===loadSequence.current)setReport(combineAttendanceReports(results,period,date));
+    }catch(err){if(sequence===loadSequence.current)setError(err.response?.data?.error || 'Unable to load attendance for every selected outlet. Please retry.');}
+    finally{if(sequence===loadSequence.current)setLoading(false);}
+  },[outletsReady,outlets,location,outletId,period,date]);
 
   useEffect(() => {
     let active = true;
-    fetchOutlets().then((response) => {
+    fetchOutlets({ignoreLocationScope:true}).then((response) => {
       if (!active) return;
       const list = response?.outlets || [];
       setOutlets(list);
-      if (list.length) setOutletId(list[0].outletId || list[0].id);
+      setOutletsReady(true);
     }).catch(() => active && setError('Unable to load registered outlets.'));
     return () => { active = false; };
   }, []);
 
-  useEffect(() => {
-    if (outletId) loadReport(outletId);
-  // Loading follows the selected filter values.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [outletId, period, date]);
+  useEffect(()=>{const tracker=loadSequence;loadReport();return()=>{tracker.current++;};},[loadReport]);
 
   const outletOptions = useMemo(() => [
-    { value: '', label: outlets.length ? 'Select outlet' : 'No outlets available' },
-    ...outlets.map((outlet) => ({
+    { value: '', label: 'All outlets' },
+    ...employeeOutlets(outlets,location).map((outlet) => ({
       value: outlet.outletId || outlet.id,
       label: outletLabel(outlet.outletId || outlet.id, outlets),
     })),
-  ], [outlets]);
+  ], [outlets,location]);
 
   const summary = report?.summary || {};
   const rangeLabel = report ? (report.period === 'daily' ? report.selectedDate : `${report.startDate} to ${report.endDate}`) : '—';
@@ -67,18 +65,19 @@ const ManagerAttendance = () => {
         <div>
           <span className="attendance-eyebrow">Workforce operations</span>
           <h2>Attendance review</h2>
-          <p>Review employee attendance and verified selfie evidence by outlet.</p>
+          <p>View all employee attendance or filter by location and outlet.</p>
         </div>
       </div>
 
       <Card className="attendance-filters-card">
-        <CardHeader title="Attendance report filters" action={<span className="attendance-filter-hint">Choose an outlet, period and date</span>} />
+        <CardHeader title="Attendance report filters" action={<span className="attendance-filter-hint">Choose locations, a period and a date</span>} />
         <CardContent>
           <div className="attendance-filters">
+            <Select label="Location" value={location} onChange={event=>{setLocation(event.target.value);setOutletId('');}} options={locationOptions(outlets)} disabled={!outletsReady || loading}/>
             <Select label="Outlet" value={outletId} onChange={(event) => setOutletId(event.target.value)} options={outletOptions} disabled={!outlets.length || loading} />
             <Select label="Report period" value={period} onChange={(event) => setPeriod(event.target.value)} options={[{ value: 'daily', label: 'Daily' }, { value: 'weekly', label: 'Weekly' }, { value: 'monthly', label: 'Monthly' }]} disabled={loading} />
             <Input label={period === 'monthly' ? 'Any date in month' : 'Date'} type="date" value={date} onChange={(event) => setDate(event.target.value)} disabled={loading} />
-            <div className="attendance-filter-action"><Button onClick={() => loadReport()} disabled={loading || !outletId}>{loading ? 'Loading…' : 'Generate report'}</Button></div>
+            <div className="attendance-filter-action"><Button onClick={() => loadReport()} disabled={loading || !outletsReady || !date}>{loading ? 'Loading…' : 'Generate report'}</Button></div>
           </div>
         </CardContent>
       </Card>
@@ -87,7 +86,7 @@ const ManagerAttendance = () => {
       {loading && !report ? <LoadingState message="Loading attendance records…" /> : report && (
         <>
           <Card className="attendance-overview-card">
-            <CardHeader title={<><span className="attendance-card-kicker">Attendance overview</span>{`${period[0].toUpperCase() + period.slice(1)} attendance — ${rangeLabel}`}</>} action={<span className="attendance-outlet-label">{outletLabel(outletId, outlets)}</span>} />
+            <CardHeader title={<><span className="attendance-card-kicker">Attendance overview</span>{`${period[0].toUpperCase() + period.slice(1)} attendance — ${rangeLabel}`}</>} action={<span className="attendance-outlet-label">{outletId?outletLabel(outletId,outlets):locationOptions(outlets).find(option=>option.value===location)?.label}</span>} />
             <CardContent>
               <div className="attendance-metrics">
                 <Metric icon={<UsersRound size={20} />} label="Employees" value={summary.employeeCount || 0} />
@@ -102,8 +101,8 @@ const ManagerAttendance = () => {
             <CardHeader title="Employee summary" />
             <CardContent className="attendance-table-wrap">
               <table className="attendance-table attendance-summary-table">
-                <thead><tr><th>Employee</th><th>Role</th><th>Work type</th><th>Present</th><th>Absent</th><th>Recorded days</th><th>Hours worked</th></tr></thead>
-                <tbody>{report.employees?.length ? report.employees.map((employee) => <tr key={employee.empId}><td className="attendance-employee-name">{employee.employeeName}</td><td>{employee.role || '—'}</td><td><span className="attendance-work-type">{employee.workType === 'FIELD' ? 'Field work' : 'Demonstrative employee'}</span></td><td className="attendance-positive-value">{employee.presentDays}</td><td className="attendance-negative-value">{employee.absentDays}</td><td>{employee.records}</td><td>{formatHours(employee.workedSeconds || 0)}</td></tr>) : <tr><td colSpan="7" className="attendance-empty-cell">No employees found for this outlet.</td></tr>}</tbody>
+                <thead><tr><th>Employee</th><th>Location</th><th>Outlet</th><th>Role</th><th>Work type</th><th>Present</th><th>Absent</th><th>Recorded days</th><th>Hours worked</th></tr></thead>
+                <tbody>{report.employees?.length ? report.employees.map((employee) => <tr key={`${employee.outletId}-${employee.empId}`}><td className="attendance-employee-name">{employee.employeeName}</td><td>{employee.locationName}</td><td>{employee.outletName} ({employee.outletId})</td><td>{employee.role || '—'}</td><td><span className="attendance-work-type">{employee.workType === 'FIELD' ? 'Field work' : 'Demonstrative employee'}</span></td><td className="attendance-positive-value">{employee.presentDays}</td><td className="attendance-negative-value">{employee.absentDays}</td><td>{employee.records}</td><td>{formatHours(employee.workedSeconds || 0)}</td></tr>) : <tr><td colSpan="9" className="attendance-empty-cell">No employees found for the selected locations.</td></tr>}</tbody>
               </table>
             </CardContent>
           </Card>
@@ -112,15 +111,15 @@ const ManagerAttendance = () => {
             <CardHeader title="Attendance records and selfie evidence" action={<span className="text-muted">{report.attendance?.length || 0} record(s)</span>} />
             <CardContent className="attendance-table-wrap">
               <table className="attendance-table attendance-records-table">
-                <thead><tr><th>Date</th><th>Employee</th><th>Presence</th><th>Status</th><th>Opening</th><th>Closing</th><th>Hours worked</th><th>Mode</th><th>Distance</th><th>Selfie</th></tr></thead>
-                <tbody>{report.attendance?.length ? report.attendance.map((record, index) => <tr key={`${record.empId}-${record.date}-${index}`}><td className="attendance-date-cell">{record.date}</td><td><strong>{record.employeeName}</strong><span className="attendance-role">{record.role || (record.workType === 'FIELD' ? 'Field work' : 'Demonstrative employee')}</span></td><td><span className={`attendance-status ${record.present ? 'is-present' : 'is-absent'}`}>{record.present ? 'Present' : 'Absent'}</span></td><td><span className={`attendance-status ${record.attendanceStatus === 'ACTIVE' ? 'is-present' : 'is-absent'}`}>{record.attendanceStatus === 'ACTIVE' ? 'Active' : 'Inactive'}</span></td><td>{record.checkIn || '—'}</td><td>{record.closingDate && record.closingDate !== record.date ? `${record.closingDate} ` : ''}{record.checkOut || '—'}</td><td>{record.workedSeconds == null ? '—' : formatHours(record.workedSeconds)}</td><td>{record.attendanceMode === 'FIELD_SELFIE' ? 'Field selfie' : record.attendanceMode === 'OFFICE_GEOFENCE' ? 'Demonstrative employee geo-fence' : '—'}</td><td>{record.distance === null || record.distance === undefined ? '—' : `${record.distance} m`}</td><td>{record.photoUrl ? <Button variant="secondary" className="attendance-selfie-button" onClick={() => setSelectedRecord(record)}><Camera size={15} /> Opening selfie</Button> : record.hasSelfie ? <span className="attendance-selfie-unavailable"><ImageOff size={15} /> Link unavailable</span> : <span className="text-muted">No selfie</span>}{record.closingPhotoUrl && <Button variant="secondary" className="attendance-selfie-button" onClick={() => setSelectedRecord({ ...record, photoUrl: record.closingPhotoUrl, checkIn: record.checkOut, latitude: record.closingLatitude, longitude: record.closingLongitude, evidenceLabel: 'Closing' })}>Closing selfie</Button>}</td></tr>) : <tr><td colSpan="10" className="attendance-empty-cell">No attendance records in this period.</td></tr>}</tbody>
+                <thead><tr><th>Date</th><th>Employee</th><th>Location</th><th>Outlet</th><th>Presence</th><th>Status</th><th>Opening</th><th>Closing</th><th>Hours worked</th><th>Mode</th><th>Distance</th><th>Selfie</th></tr></thead>
+                <tbody>{report.attendance?.length ? report.attendance.map((record, index) => <tr key={`${record.outletId}-${record.empId}-${record.date}-${index}`}><td className="attendance-date-cell">{record.date}</td><td><strong>{record.employeeName}</strong><span className="attendance-role">{record.role || (record.workType === 'FIELD' ? 'Field work' : 'Demonstrative employee')}</span></td><td>{record.locationName}</td><td>{record.outletName} ({record.outletId})</td><td><span className={`attendance-status ${record.present ? 'is-present' : 'is-absent'}`}>{record.present ? 'Present' : 'Absent'}</span></td><td><span className={`attendance-status ${record.attendanceStatus === 'ACTIVE' ? 'is-present' : 'is-absent'}`}>{record.attendanceStatus === 'ACTIVE' ? 'Active' : 'Inactive'}</span></td><td>{record.checkIn || '—'}</td><td>{record.closingDate && record.closingDate !== record.date ? `${record.closingDate} ` : ''}{record.checkOut || '—'}</td><td>{record.workedSeconds == null ? '—' : formatHours(record.workedSeconds)}</td><td>{record.attendanceMode === 'FIELD_SELFIE' ? 'Field selfie' : record.attendanceMode === 'OFFICE_GEOFENCE' ? 'Demonstrative employee geo-fence' : '—'}</td><td>{record.distance === null || record.distance === undefined ? '—' : `${record.distance} m`}</td><td>{record.photoUrl ? <Button variant="secondary" className="attendance-selfie-button" onClick={() => setSelectedRecord(record)}><Camera size={15} /> Opening selfie</Button> : record.hasSelfie ? <span className="attendance-selfie-unavailable"><ImageOff size={15} /> Link unavailable</span> : <span className="text-muted">No selfie</span>}{record.closingPhotoUrl && <Button variant="secondary" className="attendance-selfie-button" onClick={() => setSelectedRecord({ ...record, photoUrl: record.closingPhotoUrl, checkIn: record.checkOut, latitude: record.closingLatitude, longitude: record.closingLongitude, evidenceLabel: 'Closing' })}>Closing selfie</Button>}</td></tr>) : <tr><td colSpan="12" className="attendance-empty-cell">No attendance records in this period.</td></tr>}</tbody>
               </table>
             </CardContent>
           </Card>
         </>
       )}
 
-      {selectedRecord && <div className="attendance-selfie-modal" role="dialog" aria-modal="true" onClick={() => setSelectedRecord(null)}><Card className="attendance-selfie-dialog" onClick={(event) => event.stopPropagation()}><CardHeader title={`${selectedRecord.evidenceLabel || 'Opening'} selfie — ${selectedRecord.employeeName}`} action={<Button variant="secondary" onClick={() => setSelectedRecord(null)}>Close</Button>} /><CardContent><img src={selectedRecord.photoUrl} alt={`Attendance selfie uploaded by ${selectedRecord.employeeName}`} /><div className="attendance-selfie-meta"><span>GPS: {selectedRecord.latitude || '—'}, {selectedRecord.longitude || '—'}</span><span><Clock3 size={15} /> {selectedRecord.date} {selectedRecord.checkIn || ''}</span><span><MapPin size={15} /> {selectedRecord.distance === null || selectedRecord.distance === undefined ? 'Field attendance' : `${selectedRecord.distance} metres from outlet`}</span></div></CardContent></Card></div>}
+      {selectedRecord && <div className="attendance-selfie-modal" role="dialog" aria-modal="true" onClick={() => setSelectedRecord(null)}><Card className="attendance-selfie-dialog" onClick={(event) => event.stopPropagation()}><CardHeader title={`${selectedRecord.evidenceLabel || 'Opening'} selfie — ${selectedRecord.employeeName}`} action={<Button variant="secondary" onClick={() => setSelectedRecord(null)}>Close</Button>} /><CardContent><img src={selectedRecord.photoUrl} alt={`Attendance selfie uploaded by ${selectedRecord.employeeName}`} /><div className="attendance-selfie-meta"><span>{selectedRecord.locationName} · {selectedRecord.outletName} ({selectedRecord.outletId})</span><span>GPS: {selectedRecord.latitude || '—'}, {selectedRecord.longitude || '—'}</span><span><Clock3 size={15} /> {selectedRecord.date} {selectedRecord.checkIn || ''}</span><span><MapPin size={15} /> {selectedRecord.distance === null || selectedRecord.distance === undefined ? 'Field attendance' : `${selectedRecord.distance} metres from outlet`}</span></div></CardContent></Card></div>}
     </div>
   );
 };

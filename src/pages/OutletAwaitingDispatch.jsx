@@ -1,7 +1,7 @@
+import OrderContentsColumn from '../components/OrderContentsColumn';
 import React,{useCallback,useContext,useEffect,useMemo,useState} from 'react';
 import {AuthContext} from '../context/AuthContext';
 import api from '../api/axios';
-import FactoryOrderProduct from '../components/FactoryOrderProduct';
 import {sortFactoryDispatchOrders} from '../utils/factoryDispatchDates';
 import {factoryProductName} from '../utils/saleProductName';
 import {Card,CardContent,CardHeader} from '../components/ui/Card';
@@ -11,7 +11,7 @@ import {Table} from '../components/ui/Table';
 import {LoadingState,ErrorState} from '../components/ui/StateContainers';
 
 const remaining=item=>Math.max(0,Number(item.orderedQty || 0)-Number(item.dispatchedQty || 0));
-const pendingItems=order=>(order.dispatchItems || order.items || []).filter(item=>remaining(item)>0);
+const pendingItems=order=>(order.dispatchItems || order.items || []).filter(item=>remaining(item)>0).map(item=>({...item,productName:factoryProductName(order,item),parentProductName:item.parentProductName || ((order.items || []).find(parent=>parent.product_id===item.parentProductId)?factoryProductName(order,(order.items || []).find(parent=>parent.product_id===item.parentProductId)):undefined)}));
 
 export default function OutletAwaitingDispatch(){
  const {outletId}=useContext(AuthContext);
@@ -31,7 +31,8 @@ export default function OutletAwaitingDispatch(){
  const columns=[
   {key:'displayId',label:'Order number',render:row=><><strong>{row.displayId || row.orderId}</strong>{row.stallId&&<small style={{display:'block'}}>From stall: {row.stallName || row.stallId}</small>}</>},
   {key:'customerName',label:'Customer',render:row=><><strong>{row.customerName || 'Not recorded'}</strong><div>{row.customerPhone}</div><div style={{whiteSpace:'normal'}}>{row.customerAddress}</div></>},
-  {key:'items',label:'Products awaiting dispatch',render:row=><div style={{display:'grid',gap:'1rem',minWidth:230}}>{pendingItems(row).map((item,index)=><div key={index}><FactoryOrderProduct order={row} item={item}/><div><strong>{remaining(item)} pending</strong> · Ordered {item.orderedQty} · Dispatched {item.dispatchedQty || 0}</div></div>)}{row.unresolvedComplimentary?.map((note,index)=><div key={`note-${index}`}>{note}<small style={{display:'block'}}>Complimentary quantity needs factory confirmation</small></div>)}</div>},
+  {key:'items',label:'Products awaiting dispatch',render:row=><OrderContentsColumn items={pendingItems(row).map(item=>({...item,remainingQty:remaining(item)}))}/>},
+  {key:'complimentary',label:'Complimentary awaiting dispatch',render:row=><div><OrderContentsColumn items={pendingItems(row).map(item=>({...item,remainingQty:remaining(item)}))} complimentary/>{row.unresolvedComplimentary?.map((note,index)=><p key={index}>{note} · Quantity needs confirmation</p>)}</div>},
   {key:'dispatchDate',label:'Planned dispatch date',render:row=>row.dispatchDate || 'Not recorded'},
   {key:'createdByName',label:'Sales person'},
   {key:'status',label:'Status',render:row=><strong>{row.status==='PARTIALLY_DISPATCHED'?'Partially dispatched':'Awaiting dispatch'}</strong>},
