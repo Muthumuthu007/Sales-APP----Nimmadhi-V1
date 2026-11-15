@@ -363,3 +363,5 @@
 }
 
 .load-plan-details-modal { max-width: 960px; }
+
+@media(max-width:900px){.load-plan-actions{min-width:0}.load-plan-toolbar-actions .input-group{min-width:0}.load-plans-by-outlet{padding:.75rem!important}.outlet-plan-group-header{flex-wrap:wrap}.load-plans-table td.creator-column{white-space:normal;overflow:visible}.load-plans-table .type-column{white-space:normal}}

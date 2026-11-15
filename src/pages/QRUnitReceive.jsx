@@ -140,7 +140,7 @@ export default function QRUnitReceive() {
         {result && (
           <section className="mt-6 rounded-xl border" style={{ padding: '1.25rem', borderColor: 'var(--border-color, #d1d5db)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '0.75rem' }}><CheckCircle2 size={22} color="#10b981" /><strong>Receipt confirmed</strong></div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0.9rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%,160px),1fr))', gap: '0.9rem' }}>
               <div><small className="text-muted">PRODUCT</small><div>{result.product_name || result.productName || '-'}</div></div>
               <div><small className="text-muted">UNIT ID</small><div style={{ wordBreak: 'break-all' }}>{result.unit_id || unitId}</div></div>
               <div><small className="text-muted">STATUS</small><div><PackageCheck size={16} style={{ display: 'inline', marginRight: 5 }} />{String(result.movement_status || result.status || 'RECEIVED').replaceAll('_', ' ')}</div></div>

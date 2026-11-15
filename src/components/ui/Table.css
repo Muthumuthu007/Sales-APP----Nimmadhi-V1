@@ -79,7 +79,7 @@
 .table .mrp-column .product-mrp { white-space: nowrap !important; font-variant-numeric: tabular-nums; }
 
 /* Phone records keep every field and action readable without a horizontal hunt. */
-@media screen and (max-width: 640px) {
+@media screen and (max-width: 900px) {
   .table-container { border: 0; background: none; backdrop-filter: none; overflow: visible; }
   .table.table { display: block; width: 100%; min-width: 0; table-layout: auto; }
   .table.table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
@@ -91,7 +91,17 @@
   .table.table td .btn { min-height: 44px; max-width: 100%; white-space: normal; }
   .table.table .product-mrp { white-space: normal !important; }
 }
-@media screen and (max-width: 640px) {
+@media screen and (max-width: 900px) {
   .table.table tbody > tr { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); }
   .table.table tbody > tr > td.table-cell--wide { grid-column: 1 / -1; }
+}
+
+/* Long descriptions occupy a full row; numeric fields can share space. */
+@media screen and (max-width: 900px) {
+ .table.table .table-cell--wide { grid-column: 1 / -1; }
+ .table.table td > * { max-width: 100%; min-width: 0; }
+ .table.table td .load-plan-actions { grid-template-columns: repeat(auto-fit,minmax(min(100%,9rem),1fr)); }
+}
+@media screen and (max-width: 380px) {
+ .table.table tbody > tr { grid-template-columns: minmax(0,1fr); }
 }

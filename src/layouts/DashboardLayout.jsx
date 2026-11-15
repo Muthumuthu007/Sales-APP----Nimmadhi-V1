@@ -8,7 +8,9 @@ import TopBar from '../components/ui/TopBar';
 import './DashboardLayout.css';
 
 const DashboardLayout = () => {
-  const {pathname}=useLocation();
+  const {pathname,search}=useLocation();
+  const contentRef=useRef(null);
+  useEffect(()=>{contentRef.current?.scrollTo({top:0,left:0});},[pathname,search]);
   const {adminAccess}=useContext(AuthContext);
   const viewOnly=isReadOnlyAdmin(adminAccess);
   const [menuMode,setMenuMode]=useState('');
@@ -57,7 +59,7 @@ const DashboardLayout = () => {
       <Sidebar isOpen={sidebarOpen} modal={menuPinned} onClose={closeMenu} onPointerEnter={cancelHoverClose} onPointerLeave={leaveHover} />
       <div className="layout-main" ref={mainRef}>
         <TopBar menuOpen={sidebarOpen} onMenuClick={toggleMenu} onMenuPointerEnter={openOnHover} onMenuPointerLeave={leaveHover} />
-        <main className="layout-content">
+        <main className="layout-content" ref={contentRef}>
           {viewOnly && <p role="status" style={{padding:'0.75rem 1rem',border:'1px solid var(--color-primary)',borderRadius:'0.75rem'}}>View-only access — you can view your selected modules and reports. Changes, approvals and dispatches are disabled.</p>}
           {pathname==='/admin-management' ? <Outlet /> : <LocationProvider><Outlet /></LocationProvider>}
         </main>

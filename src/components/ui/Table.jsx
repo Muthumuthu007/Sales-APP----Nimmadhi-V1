@@ -36,7 +36,7 @@ export const Table = ({ columns, data, onRowClick, emptyStateMessage = "No recor
               className={onRowClick ? 'clickable' : ''}
             >
               {displayColumns.map((col, colIndex) => (
-                <td key={colIndex} data-label={typeof col.label === 'string' ? col.label : col.key} className={`${col.align || 'left'} ${col.className || ''} ${colIndex === productColumn || /actions?/i.test(col.key) ? 'table-cell--wide' : ''}`}>
+                <td key={colIndex} data-label={typeof col.label === 'string' ? col.label : col.key} className={`${col.align || 'left'} ${col.className || ''} ${colIndex === productColumn || /actions?|complimentary|products|items|description/i.test(col.key) ? 'table-cell--wide' : ''}`}>
                   {col.render ? col.render(row, rowIndex) : row[col.key]}
                 </td>
               ))}

@@ -252,3 +252,19 @@ select {
  .approval-table .product-hierarchy-heading { display: block; border: 0; }
  .approval-table .product-hierarchy-heading th { display: block; width: 100%; }
 }
+
+/* Let content wrap instead of relying on the page's horizontal clipping. */
+.page-container, .page-stack, .page-toolbar > *, .page-header > *, fieldset { min-width: 0; }
+fieldset { max-width: 100%; }
+input, select, textarea { max-width: 100%; }
+@media screen and (max-width: 900px) {
+ .approval-table-wrapper { border: 0; overflow: visible; }
+ .approval-table { display: block; width: 100%; min-width: 0; }
+ .approval-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+ .approval-table tbody { display: grid; gap: 1rem; }
+ .approval-table tr { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); border: 1px solid var(--color-border); border-radius: 12px; }
+ .approval-table td { min-width: 0 !important; padding: .85rem; text-align: left !important; }
+ .approval-table td:first-child, .approval-table td:last-child { grid-column: 1 / -1; }
+ .approval-table td::before { content: attr(data-label); display: block; color: #fbbf24; font-size: .7rem; text-transform: uppercase; margin-bottom: .4rem; }
+ .approval-table .product-hierarchy-heading, .approval-table .product-hierarchy-heading th { display: block; width: 100%; border: 0; }
+}

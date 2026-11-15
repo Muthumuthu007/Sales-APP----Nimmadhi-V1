@@ -202,8 +202,8 @@ const Salary = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '0.5rem' }}>
         <h2 style={{ margin: 0 }}>Salary Generation</h2>
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-          <div style={{ minWidth: '220px' }}><Select label="Location" value={location} onChange={event=>{setLocation(event.target.value);setOutletId('');}} options={locationOptions(outlets)} disabled={!outletsReady || employeesLoading}/></div>
-          <div style={{ minWidth: '260px' }}>
+          <div style={{ minWidth: 'min(100%,220px)', maxWidth: '100%' }}><Select label="Location" value={location} onChange={event=>{setLocation(event.target.value);setOutletId('');}} options={locationOptions(outlets)} disabled={!outletsReady || employeesLoading}/></div>
+          <div style={{ minWidth: 'min(100%,260px)', maxWidth: '100%' }}>
             <Select
               label="Outlet"
               value={outletId}
@@ -237,7 +237,7 @@ const Salary = () => {
         <CardContent>
           {incentiveReport ? (
             <>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%,160px),1fr))', gap: '1rem' }}>
                 <div><div className="text-muted">Sales incentive pool</div><strong>₹{Number(incentiveReport.sales?.incentivePool || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></div>
                 <div><div className="text-muted">Eligible present days</div><strong>{incentiveReport.attendance?.eligiblePresentDays || 0}</strong></div>
                 <div><div className="text-muted">Matched product quantity</div><strong>{incentiveReport.sales?.matchedQuantity || 0}</strong></div>

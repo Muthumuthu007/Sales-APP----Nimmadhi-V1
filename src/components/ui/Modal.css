@@ -123,3 +123,9 @@
   .modal-body { padding: 1rem; }
   .close-btn { min-width: 44px; min-height: 44px; }
 }
+
+/* Every dialog keeps a scrollable body and reachable header on short screens. */
+.modal-content { min-width: 0; max-height: min(90vh,calc(100dvh - 2rem)); }
+.modal-body { min-width: 0; overflow-wrap: break-word; }
+.modal-body > *, .modal-body fieldset { min-width: 0; max-width: 100%; }
+@media (max-height: 500px) { .modal-content { max-height: calc(100dvh - 1rem); } .modal-overlay { padding: .5rem; } }

@@ -1645,7 +1645,7 @@ const OutletView = () => {
                     ) : (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                         <h3 style={{ margin: 0, paddingBottom: '0.5rem', borderBottom: '1px solid var(--color-border)', fontSize: '1.125rem' }}>Report Metrics Summary</h3>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%,200px),1fr))', gap: '1rem' }}>
                           <div style={{ backgroundColor: 'var(--color-secondary)', padding: '1.25rem', borderRadius: '10px', borderLeft: '4px solid var(--color-primary)', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
                             <p style={{ margin: '0 0 0.5rem 0', color: 'var(--color-text-muted)', fontSize: '0.875rem', fontWeight: '600', textTransform: 'uppercase' }}>{ownedShowroomSales ? 'Total invoices' : 'Total Sales / Transactions'}</p>
                             <p style={{ margin: 0, fontSize: '1.75rem', fontWeight: 'bold', color: 'var(--color-text)' }}>{ownedShowroomSales ? reportInvoices(reportData.sales || reportData.items || []).length : (reportData.totalSales ?? reportData.totalTransactions ?? reportData.totalOrders ?? 0)}</p>
@@ -1659,7 +1659,7 @@ const OutletView = () => {
                             <small>{reportData.paymentMethod === 'ALL' ? 'All payment methods' : reportData.paymentMethod}</small><p style={{ margin: 0, fontSize: '1.75rem', fontWeight: 'bold', color: 'var(--color-text)' }}>₹{(reportData.totalAmount || reportData.totalRevenue || reportData.revenue || 0).toLocaleString()}</p>
                           </div>
                         </div>
-                        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:'1rem'}}>
+                        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%,220px),1fr))',gap:'1rem'}}>
                           <div style={{padding:'1.25rem',border:'1px solid var(--color-green)',borderRadius:'10px'}}><h4 style={{margin:'0 0 .5rem'}}>Amount received</h4><strong style={{fontSize:'1.75rem'}}>{formatCurrency(Number(reportData.amountReceived || 0))}</strong><p>Money received against invoices in this report. Unpaid amounts excluded.</p><PaymentBreakdown amounts={reportData.receivedByMethod}/>{reportData.paymentMethod!=='ALL' && <small>Received total includes only the selected method. Invoice values and outstanding balances remain whole invoice amounts.</small>}</div>
                           <button type="button" onClick={()=>setShowReportPending(true)} style={{padding:'1.25rem',border:'1px solid var(--color-primary)',borderRadius:'10px',background:'var(--color-secondary)',color:'var(--color-text)',textAlign:'left',cursor:'pointer'}}><h4 style={{margin:'0 0 .5rem'}}>Pending to receive</h4><strong style={{fontSize:'1.75rem'}}>{formatCurrency(Number(reportData.pendingAmount || 0))}</strong><p>{reportData.pendingPayments?.length || 0} outstanding invoices · View pending payments</p></button>
                         </div>
@@ -1812,7 +1812,7 @@ const OutletView = () => {
                 <LoadingState message="Fetching currently registered coordinates..." />
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,15rem),1fr))', gap: '1rem' }}>
                     <div style={{ padding: '0.75rem', border: '1px solid var(--color-border)', borderRadius: '6px', backgroundColor: '#fafbfc' }}>
                       <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>Registered Latitude</span>
                       <strong style={{ fontSize: '1rem' }}>{locationCoords.latitude !== null ? locationCoords.latitude : 'Not Configured'}</strong>
@@ -1827,7 +1827,7 @@ const OutletView = () => {
 
                   <h4 style={{ margin: 0, fontSize: '1rem' }}>Update Outlet Coordinates</h4>
                   
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,15rem),1fr))', gap: '1rem' }}>
                     <Input 
                       label="Latitude" 
                       placeholder="e.g. 12.950416"

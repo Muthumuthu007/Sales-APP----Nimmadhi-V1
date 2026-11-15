@@ -4,3 +4,11 @@
 .asr-hsn-section,.asr-hsn-accessories{padding:.8rem;border:1px solid #ffffff25;border-radius:8px;display:grid;gap:.8rem;min-width:0}.asr-hsn-section legend{padding:0 .4rem;font-weight:700}.asr-hsn-section label,.asr-hsn-accessories label{display:grid;grid-template-columns:minmax(0,1fr) 130px;gap:1rem;align-items:center}.asr-hsn-section input,.asr-hsn-accessories input,.asr-hsn-search input{width:100%;min-width:0;font:inherit;background:var(--color-surface,#29243e);color:inherit;border:1px solid #ffffff35;border-radius:8px;padding:.7rem}.asr-hsn-search{display:grid;gap:.4rem;margin:.8rem 0}.asr-hsn-accessories label{padding-bottom:.8rem;border-bottom:1px solid #ffffff15}.asr-hsn-accessories label:last-of-type{border-bottom:0;padding-bottom:0}@media(max-width:420px){.asr-hsn-section label,.asr-hsn-accessories label{grid-template-columns:1fr;gap:.4rem}}
 
 .asr-hsn-row{display:grid;grid-template-columns:minmax(0,1fr) 110px 95px;gap:.7rem;align-items:center;padding:.5rem 0;border-bottom:1px solid #ffffff15}.asr-hsn-row:last-child{border-bottom:0}.asr-hsn-row strong{font-size:.9rem}.asr-hsn-row label{display:grid!important;grid-template-columns:1fr!important;border:0!important;padding:0!important;gap:.3rem!important;font-size:.8rem}@media(max-width:500px){.asr-hsn-row{grid-template-columns:1fr 1fr}.asr-hsn-row strong{grid-column:1/-1}}
+
+@media screen and (max-width:900px){
+ .asr-table{overflow:visible;border:0}.asr-table table{display:block;width:100%;min-width:0}.asr-table thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+ .asr-table tbody{display:grid;gap:1rem}.asr-table tr{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border:1px solid var(--color-border);border-radius:.75rem;min-width:0}
+ .asr-table td{display:block;min-width:0!important;width:100%;white-space:normal!important;text-align:left!important;overflow-wrap:break-word;padding:.75rem}
+ .asr-table td::before{content:attr(data-label);display:block;color:var(--color-primary);font-size:.7rem;margin-bottom:.3rem}
+ .asr-table td:nth-child(3),.asr-table td:nth-child(7){grid-column:1/-1}.asr-table .product-hierarchy-heading,.asr-table .product-hierarchy-heading th{display:block;width:100%;border:0}
+}
