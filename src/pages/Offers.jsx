@@ -30,6 +30,7 @@ const Offers = ({ ruleType = 'DISCOUNT' }) => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [productSearch,setProductSearch] = useState('');
+  const [groupSearch,setGroupSearch] = useState('');
   const [currentSearch,setCurrentSearch] = useState('');
   const [currentPage,setCurrentPage] = useState(1);
 
@@ -51,7 +52,7 @@ const Offers = ({ ruleType = 'DISCOUNT' }) => {
     finally { setLoading(false); }
   };
 
-  useEffect(() => { setOffer(defaultOffer(ruleType));setCatalog(null);setProductSearch('');if (outletId) loadCatalog(outletId); }, [outletId, ruleType]);
+  useEffect(() => { setOffer(defaultOffer(ruleType));setCatalog(null);setProductSearch('');setGroupSearch('');if (outletId) loadCatalog(outletId); }, [outletId, ruleType]);
 
   const products = useMemo(() => catalog?.products || [], [catalog]);
   const complimentaryProducts = useMemo(() => catalog?.complimentaryProducts || [], [catalog]);
@@ -66,6 +67,9 @@ const Offers = ({ ruleType = 'DISCOUNT' }) => {
 
     setOffer({...defaultOffer(ruleType),scope:'GROUP',groupId,excludedProductIds:[]});setProductSearch('');
   };
+  const matchingGroups = (catalog?.groups || []).filter(group => `${group.groupPath || ''} ${group.groupName || ''}`.toLowerCase().includes(groupSearch.trim().toLowerCase()));
+  const selectedGroup = (catalog?.groups || []).find(group => group.groupId === offer.groupId);
+  const visibleGroups = isComplimentary ? (selectedGroup && !matchingGroups.some(group => group.groupId === selectedGroup.groupId) ? [selectedGroup, ...matchingGroups] : matchingGroups) : (catalog?.groups || []);
   const groupProducts = products.filter(item => item.groupId === offer.groupId);
   const listedProducts = groupProducts.filter(item => item.productName?.toLowerCase().includes(productSearch.trim().toLowerCase()));
   const excluded = offer.excludedProductIds || [];
@@ -143,7 +147,7 @@ const Offers = ({ ruleType = 'DISCOUNT' }) => {
         {loading && !catalog ? <LoadingState /> : !outlets.length ? <EmptyState title="Create an outlet before configuring offers." /> : <form className="offers-form" onSubmit={submit}>
           <label>Outlet<select value={outletId} onChange={(event) => setOutletId(event.target.value)}>{outlets.map((outlet) => <option key={outlet.outletId} value={outlet.outletId}>{outlet.outletName || outlet.outletId} — {outlet.outletId}</option>)}</select></label>
           <fieldset><legend>{isComplimentary ? 'Qualifying purchase' : 'Apply discount to'}</legend><div className="offers-scope-grid">{(isComplimentary ? [['GROUP', 'One product group'], ['PRODUCT', 'One product']] : [['OUTLET', 'Entire outlet'], ['GROUP', 'One product group'], ['PRODUCT', 'One product']]).map(([scope, label]) => <button type="button" key={scope} className={offer.scope === scope ? 'selected' : ''} onClick={() => changeScope(scope)}>{scope === 'OUTLET' ? <Store size={18} /> : scope === 'GROUP' ? <Percent size={18} /> : <Gift size={18} />}<span>{label}</span></button>)}</div></fieldset>
-          {offer.scope === 'GROUP' && <label>Product group<select value={offer.groupId} onChange={(event) => changeGroup(event.target.value)}><option value="">Select group</option>{(catalog?.groups || []).map((group) => <option key={group.groupId} value={group.groupId}>{group.groupPath || group.groupName}</option>)}</select></label>}
+          {offer.scope === 'GROUP' && <>{isComplimentary && <Input label="Search product groups" type="search" placeholder="Search group or subgroup name" value={groupSearch} onChange={event=>setGroupSearch(event.target.value)} />}<label>Product group<select value={offer.groupId} onChange={(event) => changeGroup(event.target.value)}><option value="">Select group</option>{visibleGroups.map((group) => <option key={group.groupId} value={group.groupId}>{group.groupPath || group.groupName}</option>)}</select></label>{isComplimentary && groupSearch.trim() && <p className="offers-help" role="status">{matchingGroups.length ? `${matchingGroups.length} matching groups` : 'No groups match your search.'}{selectedGroup && !matchingGroups.some(group=>group.groupId===selectedGroup.groupId) ? ' Your selected group is kept in the list.' : ''}</p>}</>}
           {isComplimentary && offer.scope === 'GROUP' && offer.groupId && <fieldset className="offer-eligible-products" disabled={saving || loading}>
             <legend>Products receiving this complimentary offer</legend>
             <p className="offers-help">All products are checked by default for a new offer. Uncheck products you do not want. Existing complimentary items are kept unless you choose to replace them.</p>
