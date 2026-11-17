@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { complimentaryForProduct } from './orderComplimentary.js';
+import { complimentaryForProduct, defaultComplimentaryGroup } from './orderComplimentary.js';
 test('order summary shows only the selected product and group complimentary offers', () => {
   const offers = [
     {offerId:'product',scope:'PRODUCT',productId:'A',freeQuantity:2},
@@ -34,4 +34,15 @@ test('size-matched gifts resolve actual dimensions while retaining the editable 
  const base=complimentaryForProduct([rule],'bed',null,{productName:'72X36X6 BED'})[0];assert.equal(base.freeProductId,'P72');assert.equal(base.sizeRuleProductId,'@SIZE:PROTECTOR');
  const custom=complimentaryForProduct([rule],'bed',null,{productName:'72X36X6 BED',customSize:{length:75,width:36,unit:'inches'}})[0];assert.equal(custom.freeProductId,'P75');assert.equal(custom.freeQuantity,1);
  const unmapped=complimentaryForProduct([rule],'bed',null,{productName:'72X38X6 BED'})[0];assert.match(unmapped.mappingError,/72X38/);assert.notEqual(unmapped.freeProductId,'P72');
+});
+
+test('30 and 36 inch beds default to pillows without selecting a gift',()=>{
+ const accessories=[{groupId:'sheets',groupName:'BED SPREADS'},{groupId:'pillows',groupName:'PILLOWS'}];
+ for(const name of ['72X30X6 BED','72X36X6 BED','78x36x8 BED'])assert.equal(defaultComplimentaryGroup([{productName:name}],accessories),'pillows');
+ assert.equal(defaultComplimentaryGroup([{productName:'72X48X6 BED'}],accessories),'');
+ assert.equal(defaultComplimentaryGroup([{productName:'72X36 BED'},{productName:'72X48 BED'}],accessories),'');
+ assert.equal(defaultComplimentaryGroup([],accessories),'');
+ assert.equal(defaultComplimentaryGroup([{productName:'72X36 PROTECTOR',isAccessory:true}],accessories),'');
+ assert.equal(defaultComplimentaryGroup([{productName:'72X36 BED'}],[]),'');
+ assert.equal(defaultComplimentaryGroup([{productName:'72X48 BED',customSize:{width:36}}],accessories),'pillows');
 });

@@ -63,3 +63,13 @@ test('separate tab stores keep independent user sessions', () => {
   assert.equal(employeeTab.getItem('token'), 'employee-token');
   assert.equal(employeeTab.getItem('outletId'), 'OUT009');
 });
+
+test('employee login replaces the former outlet assignment and name', () => {
+  const storage=createStorage();
+  persistSession(storage,{token:'old-token',role:'EMPLOYEE',username:'employee',empId:'e1',outletId:'OUT001',outletName:'Former outlet'});
+  persistSession(storage,{token:'new-token',role:'EMPLOYEE',username:'employee',empId:'e1',outletId:'NIM002',outletName:'New outlet'});
+  assert.equal(storage.getItem('token'),'new-token');
+  assert.equal(storage.getItem('outletId'),'NIM002');
+  assert.equal(storage.getItem('outletName'),'New outlet');
+  assert.equal(storage.getItem('empId'),'e1');
+});
