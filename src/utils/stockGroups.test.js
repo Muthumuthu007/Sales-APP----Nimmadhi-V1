@@ -28,3 +28,9 @@ test('custom stock keeps server base hierarchy when the base is absent from the 
  const result=stockGroups([{productId:'CUSTOM#1',baseProductId:'BASE',mainGroupName:'Mattress',groupId:'100D',groupPath:'Mattress → 100D'}],[{value:'CUSTOM#1',mainGroupName:'Accessories',groupId:'OTHER',group:'Accessories → Other'}]);
  assert.equal(result[0].name,'Mattress');assert.equal(result[0].groups[0].options[0].groupId,'100D');
 });
+
+test('custom receipt authoritative base hierarchy overrides incomplete visible catalogue',()=>{
+ const row={productId:'CUSTOM#received',baseProductId:'BASE',mainGroupName:'Mattress',groupId:'100S',groupPath:'Mattress → 100S → NIM 100S',groupAncestors:[{id:'M',name:'Mattress'},{id:'100S',name:'100S'},{id:'NIM',name:'NIM 100S'}],closingQty:4};
+ const result=stockGroups([row],[{value:'BASE',mainGroupName:'Needs classification',groupId:'UNCLASSIFIED',group:'Unclassified products'}]);
+ assert.equal(result[0].name,'Mattress');assert.equal(result[0].groups[0].id,'100S');assert.equal(result[0].groups[0].options[0].stock.closingQty,4);
+});

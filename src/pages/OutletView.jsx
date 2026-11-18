@@ -1,3 +1,4 @@
+import {receiptSubmission} from '../utils/receiptQuantities';
 import {baseThickness,customOrderSize} from '../utils/customOrderSize';
 import OutletStockIn from '../components/OutletStockIn';
 import OrderContentsColumn,{OrderContentsColumns} from '../components/OrderContentsColumn';
@@ -977,24 +978,8 @@ const OutletView = () => {
 
   const submitManualReceipt = async () => {
     if (!receiptTarget) return;
-    const receivedItems = (receiptTarget.receiptItems || []).flatMap((item) => {
-      const rawQuantity = receiptQuantities[item.product_id];
-      if (rawQuantity === '' || rawQuantity === undefined || rawQuantity === null) return [];
-      const qty = Number(rawQuantity);
-      return Number.isInteger(qty) && qty > 0 ? [{ product_id: item.product_id, qty }] : [];
-    });
-    if (!receivedItems.length) {
-      setReceiptError('Enter a received quantity for at least one product. Leave products not received yet blank.');
-      return;
-    }
-    const invalidItem = receivedItems.find((received) => {
-      const expected = (receiptTarget.receiptItems || []).find((item) => item.product_id === received.product_id);
-      return received.qty > Number(expected?.remainingQty || 0);
-    });
-    if (invalidItem) {
-      setReceiptError('A received quantity cannot be more than the pending quantity.');
-      return;
-    }
+    const {receivedItems,error:validationError}=receiptSubmission(receiptTarget.receiptItems || [],receiptQuantities);
+    if(validationError){setReceiptError(validationError);return;}
     setReceivingStock(true);
     setReceiptError(null);
     try {
@@ -1314,13 +1299,13 @@ const OutletView = () => {
           title={`Receive stock — ${receiptTarget?.displayId || receiptTarget?.orderId || ''}`}
           className="order-receipt-modal"
         >
-          <p className="text-muted" style={{ marginTop: 0 }}>Enter quantities only for products that arrived now. Leave the other products blank.</p>
+          <p className="text-muted" style={{ marginTop: 0 }}>Confirm the quantity received for every product and complimentary item. Enter 0 for anything that has not arrived; it will remain pending.</p>
           {receiptError && <div className="order-builder-alert order-builder-alert-error">{receiptError}</div>}
           <div style={{ display: 'grid', gap: '0.85rem' }}>
             <OrderContentsColumns receipt items={receiptTarget?.receiptItems || []} renderItem={(item) => (
               <div key={item.product_id} className="receipt-product-row">
                 <div className="receipt-product-description"><strong>{item.productName || getProductName(item.product_id) || item.product_id}</strong><div className="text-muted" style={{ fontSize: '0.82rem', marginTop: '0.25rem' }}>Pending: {item.remainingQty} of {item.quantity}</div><DispatchSources sources={item.dispatchSources} /></div>
-                <Input label="Received now" aria-label={`Quantity received for ${item.productName || getProductName(item.product_id) || item.product_id}`} type="number" min="1" max={item.remainingQty} placeholder="Leave blank" value={receiptQuantities[item.product_id] ?? ''} onChange={(event) => setReceiptQuantities((current) => ({ ...current, [item.product_id]: event.target.value }))} disabled={receivingStock} />
+                <Input label="Received now" aria-label={`Quantity received for ${item.productName || getProductName(item.product_id) || item.product_id}`} type="number" min="0" max={item.remainingQty} placeholder="Enter quantity or 0" value={receiptQuantities[item.product_id] ?? ''} onChange={(event) => setReceiptQuantities((current) => ({ ...current, [item.product_id]: event.target.value }))} disabled={receivingStock} />
               </div>
             )}/>
           </div>
