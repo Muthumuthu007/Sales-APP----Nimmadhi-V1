@@ -5,7 +5,8 @@ export function stockGroups(rows, catalogue) {
  const products=new Map(catalogue.filter(p=>p.value).map(p=>[String(p.value),p]));
  const options=rows.map((row,index)=>{
   const id=row.productId || row.product_id || row.freeProductId || row.value;
-  const product=products.get(String(row.baseProductId || row.base_product_id || '')) || products.get(String(id));
+  const baseId=row.baseProductId || row.base_product_id;
+  const product=baseId ? products.get(String(baseId)) : products.get(String(id));
   return {...(product || {}),value:`stock-${index}`,stock:row,
    mainGroupName:product?.mainGroupName || row.mainGroupName || 'Needs classification',
    groupAncestors:product?.groupAncestors || row.groupAncestors,

@@ -23,3 +23,8 @@ test('custom stock and free items use product links without merging row quantiti
  const result=stockGroups(rows,[{value:'BASE',mainGroupName:'Mattress',groupId:'100D',group:'Mattress → 100D'},{value:'CUSTOM#1',mainGroupName:'Accessories',groupId:'OTHER',group:'Accessories → Other'}]);
  assert.equal(result[0].name,'Mattress');assert.equal(result[0].groups[0].options[0].groupId,'100D');
  });
+
+test('custom stock keeps server base hierarchy when the base is absent from the visible catalogue',()=>{
+ const result=stockGroups([{productId:'CUSTOM#1',baseProductId:'BASE',mainGroupName:'Mattress',groupId:'100D',groupPath:'Mattress → 100D'}],[{value:'CUSTOM#1',mainGroupName:'Accessories',groupId:'OTHER',group:'Accessories → Other'}]);
+ assert.equal(result[0].name,'Mattress');assert.equal(result[0].groups[0].options[0].groupId,'100D');
+});
