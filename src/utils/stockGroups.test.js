@@ -17,3 +17,9 @@ test('custom stock and free items use product links without merging row quantiti
  const result=stockGroups(rows,catalogue);
  assert.equal(result[0].name,'Mattress');assert.equal(result[0].groups[0].options.length,2);assert.equal(result[0].groups[0].options[0].stock,rows[0]);assert.equal(result[1].name,'Needs classification');
 });
+
+ test('custom stock prefers the base hierarchy over a conflicting custom catalogue entry',()=>{
+ const rows=[{productId:'CUSTOM#1',baseProductId:'BASE',closingQty:1}];
+ const result=stockGroups(rows,[{value:'BASE',mainGroupName:'Mattress',groupId:'100D',group:'Mattress → 100D'},{value:'CUSTOM#1',mainGroupName:'Accessories',groupId:'OTHER',group:'Accessories → Other'}]);
+ assert.equal(result[0].name,'Mattress');assert.equal(result[0].groups[0].options[0].groupId,'100D');
+ });

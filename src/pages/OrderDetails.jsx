@@ -373,6 +373,7 @@ const OrderDetails = () => {
 
                       <td data-label="Free Items">
                         <OrderFreeItems item={item} />
+                        {isEditable && item.complimentaryOffers?.length>0 && <p className="text-muted" style={{fontSize:'.8rem'}}>Saved complimentary items are included automatically for the quantity approved now. They will appear separately in dispatch and receipt.</p>}
                         {isEditable && item.freeItems.length > 0 && (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '0.5rem' }}>
                             {<ProductListBlocks items={item.freeItems} renderItem={(fItem, fIdx) => (
