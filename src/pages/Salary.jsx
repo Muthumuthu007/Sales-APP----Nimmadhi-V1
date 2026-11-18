@@ -1,3 +1,4 @@
+import './Salary.css';
 import {locationOptions} from '../utils/locationScope';
 import {employeeOutlets,employeeAtOutlet,mapEmployeeLocations,combineEmployeeIncentives,locationId} from '../utils/employeeLocations';
 import { bankSalaryReportXml } from '../utils/bankSalaryReport';
@@ -198,12 +199,12 @@ const Salary = () => {
   ];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '0.5rem' }}>
+    <div className="salary-workspace">
+      <section className="salary-toolbar" aria-label="Salary filters and reports">
         <h2 style={{ margin: 0 }}>Salary Generation</h2>
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-          <div style={{ minWidth: 'min(100%,220px)', maxWidth: '100%' }}><Select label="Location" value={location} onChange={event=>{setLocation(event.target.value);setOutletId('');}} options={locationOptions(outlets)} disabled={!outletsReady || employeesLoading}/></div>
-          <div style={{ minWidth: 'min(100%,260px)', maxWidth: '100%' }}>
+        <div className="salary-filter-grid">
+          <div><Select label="Location" value={location} onChange={event=>{setLocation(event.target.value);setOutletId('');}} options={locationOptions(outlets)} disabled={!outletsReady || employeesLoading}/></div>
+          <div>
             <Select
               label="Outlet"
               value={outletId}
@@ -212,18 +213,20 @@ const Salary = () => {
               disabled={!outlets.length || employeesLoading}
             />
           </div>
-          <div style={{ width: '160px' }}>
+          <div>
             <Input label="Salary month" type="month" disabled={employeesLoading} value={month} onChange={(e) => setMonth(e.target.value)} />
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', height: '100%', justifyContent: 'flex-end', paddingTop: '1.25rem' }}>
+          <div className="salary-generate">
             <Button onClick={() => loadEmployees(outletId)} disabled={employeesLoading || !outletsReady || !month}>
               {employeesLoading ? 'Loading...' : 'Generate'}
             </Button>
-            <Button variant="secondary" onClick={() => setBankReportOpen(!bankReportOpen)} disabled={employeesLoading || !salaryData.length}>Bank Payment Report</Button>
-            <Button variant="secondary" onClick={downloadReport} disabled={employeesLoading || Boolean(employeesError) || !salaryData.length}>Download Salary Report</Button>
           </div>
         </div>
-      </div>
+        <div className="salary-report-actions">
+            <Button variant="secondary" onClick={() => setBankReportOpen(!bankReportOpen)} disabled={employeesLoading || !salaryData.length}>Bank Payment Report</Button>
+            <Button variant="secondary" onClick={downloadReport} disabled={employeesLoading || Boolean(employeesError) || !salaryData.length}>Download Salary Report</Button>
+        </div>
+      </section>
 
       {employeesError && (
         <div style={{ padding: '0.75rem', backgroundColor: 'var(--color-red)', color: 'white', borderRadius: '4px', fontSize: '0.875rem' }}>

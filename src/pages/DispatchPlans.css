@@ -17,3 +17,21 @@
 .manual-dispatch-error { padding: .75rem; border-radius: 8px; color: #fecaca; background: rgba(220, 38, 38, .18); }
 .manual-dispatch-actions { display: flex; justify-content: flex-end; gap: .75rem; }
 @media (max-width: 640px) { .dispatch-plans-hero h2 { font-size: 1.55rem; } .dispatch-plan-filters .input-group { width: 100%; } }
+.dispatch-load-groups {display:grid;gap:1rem}
+.dispatch-load-group {border:1px solid var(--color-border);border-radius:12px;overflow:hidden;min-width:0}
+.dispatch-load-group > header {display:flex;justify-content:space-between;align-items:start;gap:1rem;padding:1rem;background:rgba(255,255,255,.035)}
+.dispatch-load-group h3 {font-size:1rem;overflow-wrap:anywhere}
+.dispatch-load-group header p {font-size:.78rem;color:var(--color-text-muted);margin:.3rem 0 0}
+.dispatch-load-group header > strong {font-size:.85rem;white-space:nowrap;color:var(--color-primary)}
+.dispatch-load-line {display:grid;grid-template-columns:minmax(0,2fr) minmax(130px,.7fr) minmax(0,1fr);gap:1rem;padding:1rem;border-top:1px solid var(--color-border);align-items:center;font-size:.85rem}
+.dispatch-load-line > div {min-width:0;overflow-wrap:anywhere}
+.dispatch-load-line small {display:block;color:var(--color-text-muted);font-size:.75rem;margin-top:.3rem}
+.dispatch-load-line button {min-height:44px}
+@media(max-width:700px){.dispatch-load-line {grid-template-columns:minmax(0,1fr)}.dispatch-load-group > header{flex-wrap:wrap}.dispatch-load-line > div:last-child > div{justify-content:flex-start!important;flex-wrap:wrap}}
+.dispatch-plans-hero {background:var(--color-surface);border:1px solid var(--color-border);padding:1.25rem}
+.dispatch-plans-hero p,.dispatch-plans-hero span {color:var(--color-text-muted)}
+.dispatch-plans-hero h2 {font-size:1.4rem}
+.dispatch-plan-filters {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));align-items:end}
+.dispatch-plan-filters .input-group {min-width:0;margin:0}
+.dispatch-plan-filters .input {min-height:44px;width:100%}
+.dispatch-plan-count {font-size:.85rem}

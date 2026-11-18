@@ -365,3 +365,11 @@
 .load-plan-details-modal { max-width: 960px; }
 
 @media(max-width:900px){.load-plan-actions{min-width:0}.load-plan-toolbar-actions .input-group{min-width:0}.load-plans-by-outlet{padding:.75rem!important}.outlet-plan-group-header{flex-wrap:wrap}.load-plans-table td.creator-column{white-space:normal;overflow:visible}.load-plans-table .type-column{white-space:normal}}
+.load-plan-summary-list .load-plan-actions {display:flex;flex-wrap:wrap;justify-content:flex-end;gap:.5rem;max-width:100%}
+.load-plan-summary-list .load-plan-actions button {min-height:44px;font-size:.8rem;white-space:normal}
+.load-plan-order-reference {font-size:.8rem;color:var(--color-text-muted);white-space:nowrap}
+@media(max-width:650px){.load-plan-summary-list .order-summary-heading{flex-direction:column;gap:.4rem}.load-plan-summary-list .load-plan-actions{justify-content:flex-start}.load-plan-summary-list .load-plan-actions > *{flex:1 1 120px}}
+.load-plan-summary-list .load-plan-actions {flex-direction:row;width:auto;flex:0 1 auto}
+.load-plan-summary-list .load-plan-actions button {width:auto;flex:0 0 auto}
+.load-plan-summary-list .order-summary-counts {flex:1 0 220px}
+@media(max-width:650px){.load-plan-summary-list .load-plan-actions button{flex:1 1 120px}.load-plan-summary-list .order-summary-counts{flex:auto}}

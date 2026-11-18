@@ -1,8 +1,8 @@
+import {orderContents} from '../utils/orderContents';
 import OrderContentsColumn from '../components/OrderContentsColumn';
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader } from '../components/ui/Card';
-import { Table } from '../components/ui/Table';
 import { Badge } from '../components/ui/Badge';
 import { Input } from '../components/ui/Input';
 import { LoadingState, ErrorState } from '../components/ui/StateContainers';
@@ -65,28 +65,6 @@ const Orders = () => {
     fetchOutlets().then((response) => setOutlets(response?.outlets || [])).catch(() => setOutlets([]));
   }, []);
 
-  const columns = [
-    { key: 'displayId', label: 'Order Ref', render: (row) => <span title={row.orderId}>{row.displayId || row.orderId}</span> },
-    { key: 'outletId', label: 'Outlet', render: (row) => outletLabel(row.outletId, outlets) },
-    { key: 'createdBy', label: 'Created by', render: (row) => row.createdByName || (row.createdBy ? 'Name unavailable' : 'Not recorded') },
-    { key: 'isCustomized', label: 'Order type', render: (row) => row.isCustomized ? <strong style={{ color: 'var(--color-primary)' }}>Customized</strong> : 'Standard' },
-    {key:'products',label:'Products ordered',render:row=><OrderContentsColumn items={row.items || []}/>},
-    {key:'complimentary',label:'Complimentary products',render:row=><OrderContentsColumn items={row.items || []} complimentary/>},
-    { key: 'createdAt', label: 'Created At' },
-    { key: 'status', label: 'Status', render: (row) => (
-      <Badge status={(row.status === 'PENDING' && activeTab === 'PARTIALLY_APPROVED') ? 'PARTIALLY_APPROVED' : row.status} />
-    )},
-    { key: 'actions', label: 'Actions', align: 'right', render: (row) => (
-      <Button 
-        variant="secondary" 
-        style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
-        onClick={() => navigate(`/orders/${row.orderId}`, { state: { order: row } })}
-      >
-        View / Approve
-      </Button>
-    )}
-  ];
-
   const filteredOrders = outletFilter 
     ? orders.filter((order) => outletLabel(order.outletId, outlets).toLowerCase().includes(outletFilter.toLowerCase()))
     : orders;
@@ -134,11 +112,24 @@ const Orders = () => {
           <ErrorState error={error} onRetry={() => setActiveTab(activeTab)} />
         ) : (
           <CardContent style={{ padding: 0 }}>
-            <Table 
-              columns={columns} 
-              data={filteredOrders}
-              emptyStateMessage={outletFilter ? `No orders found for outlet "${outletFilter}"` : `No orders found with status ${activeTab}.`}
-            />
+            <div className="order-summary-list">
+              {!filteredOrders.length && <p className="order-list-empty">No orders found for this selection.</p>}
+              {filteredOrders.map(row => {
+                const contents=orderContents(row.items || []);
+                return <article className="order-summary-card" key={row.orderId}>
+                  <div className="order-summary-heading">
+                    <div><strong className="order-summary-reference">{row.displayId || row.orderId}</strong><span className="order-summary-outlet">{outletLabel(row.outletId,outlets)}</span></div>
+                    <Badge status={row.status}/>
+                  </div>
+                  <div className="order-summary-meta"><span>Created by <strong>{row.createdByName || 'Not recorded'}</strong></span><span>{row.createdAt ? new Date(row.createdAt).toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'}) : 'Date not recorded'}</span><span>{row.isCustomized?'Customized':'Standard'} order</span></div>
+                  <div className="order-summary-bottom">
+                    <div className="order-summary-counts"><span><strong>{contents.productTotal}</strong> ordered · {contents.products.length} product types</span><span><strong>{contents.complimentaryTotal || contents.offerTotal}</strong> complimentary {contents.complimentaryTotal?'allocated':contents.offerTotal?'offered':'items'}{contents.complimentaryTotal>0 && contents.offerTotal>0 ? ` · ${contents.offerTotal} additionally offered` : ''}</span></div>
+                    <Button variant="secondary" onClick={()=>navigate(`/orders/${row.orderId}`,{state:{order:row}})}>View order / Approve</Button>
+                  </div>
+                  <details className="order-summary-details"><summary>View products and complimentary items</summary><div className="order-summary-contents"><section><h3>Products ordered</h3><OrderContentsColumn items={row.items || []}/></section><section><h3>Complimentary products</h3><OrderContentsColumn items={row.items || []} complimentary/></section></div></details>
+                </article>;
+              })}
+            </div>
           </CardContent>
         )}
       </Card>}

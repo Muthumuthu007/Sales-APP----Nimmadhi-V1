@@ -1,3 +1,5 @@
+import './Orders.css';
+import {orderContents} from '../utils/orderContents';
 import OrderContentsColumn,{OrderContentsColumns} from '../components/OrderContentsColumn';
 import {customProductName} from '../utils/saleProductName';
 import ProductListBlocks from '../components/ProductListBlocks';
@@ -7,7 +9,6 @@ import {splitAllocation, allocationPayload} from '../utils/loadPlanAllocations';
 import OrderProduct from '../components/OrderProduct';
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader } from '../components/ui/Card';
-import { Table } from '../components/ui/Table';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 import { Input, Select } from '../components/ui/Input';
@@ -205,17 +206,7 @@ const LoadPlans = () => {
     }
   };
 
-  const columns = [
-    { key: 'orderDisplayId', label: 'Order Ref', className: 'id-column', render: (row) => <span title={row.orderId}>{row.orderDisplayId || '—'}</span> },
-    { key: 'displayId', label: 'Plan Ref', className: 'id-column', render: (row) => <span title={row.loadPlanId}>{row.displayId || compactId(row.loadPlanId)}</span> },
-    { key: 'outletId', label: 'Outlet', className: 'outlet-column', render: (row) => outletLabel(row.outletId, outlets) },
-    { key: 'createdBy', label: 'Created by', className: 'creator-column', render: (row) => <span title={row.createdByName || (row.createdBy ? 'Name unavailable' : 'Not recorded')}>{row.createdByName || (row.createdBy ? 'Name unavailable' : 'Not recorded')}</span> },
-    { key: 'isCustomized', label: 'Order type', className: 'type-column', render: (row) => row.isCustomized ? <strong style={{ color: 'var(--color-primary)' }}>Customized</strong> : 'Standard' },
-    {key:'productName',label:'Products ordered',className:'product-column',render:row=><OrderContentsColumn items={row.items?.length?row.items:[row]}/>},
-    {key:'complimentary',label:'Complimentary products',render:row=><OrderContentsColumn items={row.items?.length?row.items:[row]} complimentary/>},
-    { key: 'quantity', label: 'Total pieces', className: 'quantity-column', align: 'center', render: row => row.items?.length?row.items.reduce((sum,item)=>sum+Number(item.quantity || 0),0):row.quantity ?? '—' },
-    { key: 'createdAt', label: 'Created', className: 'created-column', render: (row) => <span title={row.createdAt}>{formatDateTime(row.createdAt)}</span> },
-    { key: 'actions', label: 'Action', className: 'action-column', align: 'right', render: (row) => (
+  const planActions = row => (
       <div className="load-plan-actions">
         <Button
           variant="secondary"
@@ -236,8 +227,7 @@ const LoadPlans = () => {
           <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>-</span>
         )}
       </div>
-    )}
-  ];
+  );
 
   const outletOptions = [
     { value: 'ALL', label: 'All outlets' },
@@ -284,7 +274,7 @@ const LoadPlans = () => {
       )}
 
       <Card>
-        <CardHeader
+        <CardHeader title="Load plans"
           action={
             <div className="load-plan-tabs">
               <Button
@@ -309,14 +299,18 @@ const LoadPlans = () => {
           <ErrorState error={error} onRetry={() => setActiveTab(activeTab)} />
         ) : (
           <CardContent style={{ padding: 0 }}>
-            <Table
-              columns={columns}
-              data={visiblePlans}
-              className="load-plans-table"
-              emptyStateMessage={selectedOutletId === 'ALL'
-                ? `No load plans found for ${activeTab.toLowerCase()} status.`
-                : `No ${activeTab.toLowerCase()} load plans found for ${selectedOutletId}.`}
-            />
+            <div className="order-summary-list load-plan-summary-list">
+              {!visiblePlans.length && <p className="order-list-empty">No load plans found for this selection.</p>}
+              {visiblePlans.map(row => {
+                const items=row.items?.length?row.items:[row],contents=orderContents(items);
+                return <article className="order-summary-card" key={row.loadPlanId}>
+                  <div className="order-summary-heading"><div><strong className="order-summary-reference">{row.displayId || compactId(row.loadPlanId)}</strong><span className="order-summary-outlet">{outletLabel(row.outletId,outlets)}</span></div><span className="load-plan-order-reference">Order {row.orderDisplayId || '—'}</span></div>
+                  <div className="order-summary-meta"><span>Created by <strong>{row.createdByName || 'Not recorded'}</strong></span><span>{formatDateTime(row.createdAt)}</span><span>{row.isCustomized?'Customized':'Standard'} order</span></div>
+                  <div className="order-summary-bottom"><div className="order-summary-counts"><span><strong>{contents.productTotal}</strong> ordered</span><span><strong>{contents.complimentaryTotal || contents.offerTotal}</strong> complimentary {contents.complimentaryTotal?'allocated':contents.offerTotal?'offered':'items'}{contents.complimentaryTotal>0 && contents.offerTotal>0?` · ${contents.offerTotal} additionally offered`:''}</span></div>{planActions(row)}</div>
+                  <details className="order-summary-details"><summary>View products and complimentary items</summary><div className="order-summary-contents"><section><h3>Products ordered</h3><OrderContentsColumn items={items}/></section><section><h3>Complimentary products</h3><OrderContentsColumn items={items} complimentary/></section></div></details>
+                </article>;
+              })}
+            </div>
           </CardContent>
         )}
       </Card>

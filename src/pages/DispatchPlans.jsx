@@ -1,9 +1,10 @@
-import OrderContentsColumn from '../components/OrderContentsColumn';
+import {dispatchGroups,dispatchGroupLabel} from '../utils/dispatchGroups';
+import ProductMrp from '../components/ProductMrp';
 import VehicleLoads from '../components/VehicleLoads';
 import {customProductName} from '../utils/saleProductName';
 import api from '../api/axios';
 import React, { useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, Factory, MapPin, RefreshCw, Truck, Warehouse } from 'lucide-react';
+import { CheckCircle2, MapPin, RefreshCw, Truck } from 'lucide-react';
 import { fetchDispatchPlans, fetchGodowns, fetchOutlets, manuallyDispatchFulfillment } from '../api/manager';
 import { outletLabel } from '../utils/outlets';
 import { Button } from '../components/ui/Button';
@@ -11,7 +12,6 @@ import { Card, CardContent, CardHeader } from '../components/ui/Card';
 import { Modal } from '../components/ui/Modal';
 import { Input, Select } from '../components/ui/Input';
 import { ErrorState, LoadingState } from '../components/ui/StateContainers';
-import { Table } from '../components/ui/Table';
 import './DispatchPlans.css';
 import UndoPlanButton from '../components/UndoPlanButton';
 
@@ -54,24 +54,13 @@ export default function DispatchPlans({ pendingOnly = false, outletFilter = '', 
   const sourceOptions = useMemo(() => [{ value: 'ALL', label: 'All sources' }, { value: 'FACTORY', label: 'Factory' }, { value: 'GODOWN', label: 'Godown' }], []);
   const godownOptions = useMemo(() => [{ value: 'ALL', label: 'All godowns' }, ...godowns.map((godown) => ({ value: godown.godownId, label: `${godown.godownName || godown.godownId} (${godown.godownId})` }))], [godowns]);
   const visibleLines = lines.filter((line) => !outletFilter || outletLabel(line.destinationOutletId, outlets).toLowerCase().includes(outletFilter.toLowerCase()));
-  const columns = [
-    { key: 'orderId', label: 'Order Ref', render: (line) => line.orderDisplayId || line.orderId },
-    { key: 'loadPlanId', label: 'Plan', render: (line) => <span title={line.loadPlanId}>{line.loadPlanId?.slice(0, 8) || '—'}</span> },
-    { key: 'createdBy', label: 'Created by', render: (row) => row.createdByName || (row.createdBy ? 'Name unavailable' : 'Not recorded') },
-    { key: 'isCustomized', label: 'Order type', render: (row) => row.isCustomized ? <strong style={{ color: 'var(--color-primary)' }}>Customized</strong> : 'Standard' },
-    { key: 'source', label: 'Dispatch from', render: (line) => <span className={`dispatch-source dispatch-source--${line.sourceType?.toLowerCase()}`}>{line.sourceType === 'FACTORY' ? <Factory size={15} /> : <Warehouse size={15} />}{sourceLabel(line, godowns)}</span> },
-    { key: 'destinationOutletId', label: 'Destination outlet', render: (line) => line.destinationOutletName || outletLabel(line.destinationOutletId, outlets) },
-    {key:'productName',label:'Products ordered',render:line=><OrderContentsColumn items={[line]}/>},
-    {key:'complimentary',label:'Complimentary products',render:line=><OrderContentsColumn items={[line]} complimentary/>},
-    { key: 'quantity', label: 'Progress', align: 'center', render: (line) => `${line.dispatchedQty || 0} / ${line.quantity || 0}` },
-    { key: 'dispatchPendingQty', label: 'Dispatch Pending', align: 'center', render: (line) => Number(line.quantity || 0) - Number(line.dispatchedQty || 0) },
-    { key: 'action', label: 'Action', align: 'right', render: (line) => <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+  const groupedLines = dispatchGroups(visibleLines);
+  const lineActions = line => (<div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
       {!godownMode && line.sourceType === 'FACTORY' && !line.vehicleLoadId && !Number(line.dispatchedQty || 0) && !pendingOnly && <span>Add this plan in Create Load</span>}
       {!godownMode && line.sourceType === 'GODOWN' && <span>Assigned to godown</span>}
       {(godownMode || (!line.vehicleLoadId && line.sourceType==='FACTORY' && (pendingOnly || lines.some(other=>other.orderId===line.orderId && other.loadPlanId===line.loadPlanId && Number(other.dispatchedQty || 0)>0)))) && Number(line.dispatchedQty || 0) < Number(line.quantity || 0) && <Button writeAction variant="primary" onClick={() => { setDispatchError(''); setDispatchQuantity(String(Number(line.quantity || 0) - Number(line.dispatchedQty || 0))); setSelectedLine(line); }}><Truck size={17} /> Mark dispatched</Button>}
       {!godownMode && !line.vehicleLoadId && line.sourceType === 'FACTORY' && Number(line.dispatchedQty || 0) > 0 && <UndoPlanButton plan={line} action="dispatch" onUndone={load} />}
-    </div> },
-  ];
+    </div>);
 
   const confirmDispatch = async () => {
     if (!selectedLine) return;
@@ -104,7 +93,17 @@ export default function DispatchPlans({ pendingOnly = false, outletFilter = '', 
           {sourceType === 'GODOWN' && <Select label="Godown" value={godownId} onChange={(event) => setGodownId(event.target.value)} options={godownOptions} />}
           <div className="dispatch-plan-count"><MapPin size={18} /><strong>{visibleLines.length}</strong> pending product line{visibleLines.length === 1 ? '' : 's'}</div>
         </div>
-        {loading ? <LoadingState message="Loading assigned dispatch plans..." /> : error ? <ErrorState error={error} onRetry={load} /> : <Table columns={columns} data={visibleLines} emptyStateMessage="No assigned product lines are awaiting dispatch for this filter." />}
+        {loading ? <LoadingState message="Loading assigned dispatch plans..." /> : error ? <ErrorState error={error} onRetry={load} /> : <div className="dispatch-load-groups">
+          {!groupedLines.length && <p>No assigned product lines are awaiting dispatch for this filter.</p>}
+          {groupedLines.map(group=><section className="dispatch-load-group" key={group.key}>
+            <header><div><h3>{dispatchGroupLabel(group.rows[0])}</h3><p>{group.rows[0].vehicleLoadId?'Assigned vehicle load':group.rows[0].sourceType==='FACTORY'?'Awaiting vehicle load assignment':'Godown dispatch assignment'} · Order {group.rows[0].orderDisplayId || group.rows[0].orderId}</p></div><strong>{group.rows.reduce((sum,line)=>sum+Math.max(0,Number(line.quantity || 0)-Number(line.dispatchedQty || 0)),0)} pending</strong></header>
+            {group.rows.map(line=><div className="dispatch-load-line" key={line.lineId || line.productId}>
+              <div><strong>{customProductName(line.productName || line.productId,line.customSize)}</strong><ProductMrp item={line}/>{line.isFree && <small>Complimentary product</small>}<small>Order {line.orderDisplayId || line.orderId} · {line.planDisplayId || line.loadPlanId?.slice(0,8)} · {sourceLabel(line,godowns)} → {line.destinationOutletName || outletLabel(line.destinationOutletId,outlets)}</small></div>
+              <span>{line.dispatchedQty || 0} / {line.quantity || 0} dispatched</span>
+              <div>{lineActions(line)}</div>
+            </div>)}
+          </section>)}
+        </div>}
       </CardContent>
     </Card>
     <Modal isOpen={Boolean(selectedLine)} onClose={() => !dispatching && setSelectedLine(null)} title={`Mark dispatched — ${customProductName(selectedLine?.productName || 'Product',selectedLine?.customSize)}`}>

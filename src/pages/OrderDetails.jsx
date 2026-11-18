@@ -1,9 +1,8 @@
 import {orderContents} from '../utils/orderContents';
 import {AuthContext} from '../context/AuthContext';
 import {isReadOnlyAdmin} from '../auth/adminAccess';
-import ProductListBlocks from '../components/ProductListBlocks';
 import ProductMrp from '../components/ProductMrp';
-import OrderFreeItems from '../components/OrderFreeItems';
+import './OrderDetails.css';
 import GroupedProductPicker from '../components/GroupedProductPicker';
 import {productionOption} from '../utils/productHierarchy';
 import OrderProduct from '../components/OrderProduct';
@@ -137,6 +136,8 @@ const OrderDetails = () => {
           approvedQty: approved,
           maxProduce: Number(item.maxProduce || 0),
           complimentaryOffers: item.complimentaryOffers,
+          baseProductId: item.baseProductId,
+          groupPath: item.groupPath,
           customSize: item.customSize,
           isCustomized: item.isCustomized,
           approveDelta: '', // Let user type explicitly
@@ -258,7 +259,7 @@ const OrderDetails = () => {
   const isEditable = !viewOnly && (order.status === 'PENDING' || order.status === 'PARTIALLY_APPROVED' || order.status === 'PARTIAL');
 
   return (
-    <div className="page-stack">
+    <div className="page-stack order-approval-page">
       <div className="page-header" style={{ justifyContent: 'flex-start' }}>
         <button aria-label="Back to orders" onClick={() => navigate('/orders')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)' }}>
           <ArrowLeft size={24} />
@@ -322,12 +323,12 @@ const OrderDetails = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  <ProductListBlocks tableColumns={isEditable?5:4} items={approvalItems} renderItem={(item, idx) => (
+                  {approvalItems.map((item, idx) => (
                     <tr key={idx}>
                       <td data-label="Product">
                         <OrderProduct hideMrp item={{...item,freeItems:[],complimentaryOffers:[]}} />
                         {item.isCustomized && <small style={{ color: 'var(--color-primary)' }}>Customized size</small>}
-                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>ID: {item.product_id}</div>
+                        <details className="approval-product-id"><summary>Product reference</summary>{item.product_id}</details>
                         <div role="status" style={{ display: 'inline-block', marginTop: '0.35rem', padding: '0.25rem 0.5rem', borderRadius: '4px', background: 'var(--color-secondary)', fontSize: '0.8rem' }}>
                           {stockLoading ? 'Loading outlet stock…' : stockError ? <span>{stockError}</span> : outletStock[item.product_id] ? <>
                             Outlet stock: <strong>{outletStock[item.product_id].quantity} unit(s)</strong>
@@ -342,8 +343,8 @@ const OrderDetails = () => {
                       
                       <td data-label="MRP"><ProductMrp item={item} label={false}/></td>
                       <td data-label="Ordered / Pending" style={{ textAlign: 'center' }}>
-                        <div><strong>{item.orderedQty}</strong> initially</div>
-                        <div style={{ color: 'var(--color-red)' }}><strong>{item.pendingQty}</strong> pending</div>
+                        <div className="approval-count"><span>Ordered</span><strong>{item.orderedQty}</strong></div>
+                        <div className="approval-count approval-pending"><span>Pending</span><strong>{item.pendingQty}</strong></div>
                         {item.approvedQty > 0 && <div style={{ fontSize: '0.75rem', color: 'var(--color-green)' }}>({item.approvedQty} previously approved)</div>}
                       </td>
 
@@ -371,12 +372,16 @@ const OrderDetails = () => {
                         </td>
                       )}
 
-                      <td data-label="Free Items">
-                        <OrderFreeItems item={item} />
-                        {isEditable && item.complimentaryOffers?.length>0 && <p className="text-muted" style={{fontSize:'.8rem'}}>Saved complimentary items are included automatically for the quantity approved now. They will appear separately in dispatch and receipt.</p>}
+                      <td data-label="Complimentary products">
+                        {(!isEditable || !item.freeItems.length || item.complimentaryOffers?.length) && <div className="approval-gifts">
+                          {orderContents([{...item,freeItems:isEditable?[]:item.freeItems}]).complimentary.length ? orderContents([{...item,freeItems:isEditable?[]:item.freeItems}]).complimentary.map((gift, giftIndex) => <div className="approval-gift" key={`${gift.productId || gift.product_id}-${giftIndex}`}>
+                            <div><strong>{gift.productName || gift.freeProductName || gift.productId || gift.product_id}</strong><small>{gift.isOfferEstimate ? 'Saved offer · included when approved' : 'Allocated complimentary item'}</small></div>
+                            <span className="approval-gift-quantity">× {gift.quantity ?? gift.orderedQty ?? '—'}</span>
+                          </div>) : <span className="text-muted">No complimentary items</span>}
+                        </div>}
                         {isEditable && item.freeItems.length > 0 && (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                            {<ProductListBlocks items={item.freeItems} renderItem={(fItem, fIdx) => (
+                            {item.freeItems.map((fItem, fIdx) => (
                               <div key={fIdx} className="complimentary-item-editor">
                                 <GroupedProductPicker label="Complimentary accessory"
                                   options={productOptions}
@@ -384,7 +389,7 @@ const OrderDetails = () => {
                                   onChange={(value) => updateFreeItem(idx, fIdx, 'product_id', value)}
                                   disabled={isSubmitting || !isEditable}
                                 />
-                                <Input 
+                                <Input label="Complimentary quantity"
                                   type="number" 
                                   min="1" 
                                   value={fItem.quantity}
@@ -392,6 +397,7 @@ const OrderDetails = () => {
                                   disabled={isSubmitting || !isEditable}
                                 />
                                 <button 
+                                  aria-label="Remove complimentary item"
                                   onClick={() => removeFreeItem(idx, fIdx)}
                                   // Minimalize visual clutter
                                   style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-red)' }}
@@ -400,7 +406,7 @@ const OrderDetails = () => {
                                   <X size={16} />
                                 </button>
                               </div>
-                            )}/>}
+                            ))}
                           </div>
                         )}
                         {isEditable && (
@@ -415,7 +421,7 @@ const OrderDetails = () => {
                         )}
                       </td>
                     </tr>
-                  )}/>
+                  ))}
                   {approvalItems.length === 0 && (
                     <tr>
                       <td colSpan={isEditable ? "5" : "4"} style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>

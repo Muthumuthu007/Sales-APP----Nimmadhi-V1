@@ -1,0 +1,13 @@
+.salary-workspace {display:flex;flex-direction:column;gap:1.25rem;min-width:0}
+.salary-toolbar {padding:1.25rem;border:1px solid var(--color-border);border-radius:var(--radius-lg);background:var(--color-surface);min-width:0}
+.salary-toolbar h2 {font-size:1.25rem;margin-bottom:1.25rem!important}
+.salary-filter-grid {display:grid;grid-template-columns:minmax(160px,1fr) minmax(220px,2fr) minmax(160px,1fr) auto;gap:1rem;align-items:end}
+.salary-filter-grid > div {min-width:0}
+.salary-toolbar .input-group {margin:0;width:100%}
+.salary-toolbar .input {display:block;width:100%;height:46px;min-width:0;max-width:100%;padding:.65rem .85rem;background:var(--color-bg);color:var(--color-text-main);border:1px solid var(--color-border);border-radius:8px;font:inherit;font-size:.875rem;color-scheme:dark}
+.salary-toolbar .input-label {font-size:.72rem;letter-spacing:.04em;margin-bottom:.5rem;display:block}
+.salary-toolbar button {min-height:46px;font-size:.85rem;white-space:normal}
+.salary-report-actions {display:flex;flex-wrap:wrap;gap:.75rem;margin-top:1rem;padding-top:1rem;border-top:1px solid var(--color-border)}
+.salary-workspace > .card p {font-size:.875rem;line-height:1.65}
+@media(max-width:1000px) {.salary-filter-grid {grid-template-columns:repeat(2,minmax(0,1fr))}.salary-generate button {width:100%}}
+@media(max-width:560px) {.salary-toolbar {padding:1rem}.salary-filter-grid {grid-template-columns:minmax(0,1fr)}.salary-report-actions {flex-direction:column}.salary-report-actions button {width:100%}}

@@ -1,8 +1,10 @@
+import {dispatchGroups,dispatchGroupLabel} from '../utils/dispatchGroups';
+import './Orders.css';
+import {orderContents} from '../utils/orderContents';
 import OrderContentsColumn,{OrderContentsColumns} from '../components/OrderContentsColumn';
 import VehicleLoads from '../components/VehicleLoads';
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '../components/ui/Card';
-import { Table } from '../components/ui/Table';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
@@ -54,61 +56,11 @@ const Dispatch = () => {
     return () => { isMounted = false; };
   }, []);
 
-  const columns = [
-    {
-      key: 'displayId',
-      label: 'Order Ref',
-      render: (row) => <span title={row.orderId}>{row.orderDisplayId || '—'}</span>,
-    },
-    { key: 'createdBy', label: 'Created by', render: (row) => row.createdByName || (row.createdBy ? 'Name unavailable' : 'Not recorded') },
-    { key: 'isCustomized', label: 'Order type', render: (row) => row.isCustomized ? <strong style={{ color: 'var(--color-primary)' }}>Customized</strong> : 'Standard' },
-    {key:'products',label:'Products ordered',render:row=><OrderContentsColumn items={row.items || []}/>},
-    {key:'complimentary',label:'Complimentary products',render:row=><OrderContentsColumn items={row.items || []} complimentary/>},
-    { key: 'outletId', label: 'Destination Outlet', render: (row) => outletLabel(row.outletId, outlets) },
-    {
-      key: 'createdAt',
-      label: 'Registered Date',
-      render: (row) => row.createdAt ? new Date(row.createdAt).toLocaleString() : '—',
-    },
-    { key: 'dispatchedAt', label: 'Dispatch Timestamp', render: (row) => row.dispatchedAt ? new Date(row.dispatchedAt).toLocaleString() : '—' },
-    { key: 'status', label: 'Transit Status', render: (row) => <Badge status={row.status || 'DISPATCHED'} /> },
-    {
-      key: 'actions',
-      label: 'Actions',
-      align: 'right',
-      className: 'dispatch-action-column',
-      render: (row) => (
-        <Button variant="secondary" className="dispatch-view-button" onClick={() => setDetailsPlan(row)}>
-          View products
-        </Button>
-      ),
-    },
-    {
-      key: 'undo', label: 'Undo',
-      render: (row) => <UndoPlanButton plan={row} action="dispatch" onUndone={loadDispatchedHistory} />,
-    },
-  ];
-
   const batchReference = row => `DSP-${row.dispatchId?.slice(0, 8).toUpperCase() || '—'}`;
   const showBatchDetails = row => setDetailsPlan({ ...row, isBatch: true,
     displayId: row.planDisplayId || row.loadPlanId,
     items: [{ ...row, productName: row.productName, product_id: row.productId, quantity: row.quantity }],
   });
-  const batchColumns = [
-    { key: 'dispatchId', label: 'Dispatch ID', render: row => <span title={row.dispatchId}>{batchReference(row)}</span> },
-    { key: 'orderDisplayId', label: 'Order Ref', render: row => row.orderDisplayId || row.orderId },
-    { key: 'loadPlanId', label: 'Load plan', render: row => <span title={row.loadPlanId}>{row.planDisplayId || row.loadPlanId?.slice(0, 8) || '—'}</span> },
-    { key: 'outletId', label: 'Destination outlet', render: row => outletLabel(row.outletId, outlets) },
-    {key:'productName',label:'Products ordered',render:row=><OrderContentsColumn items={[row]}/>},
-    {key:'complimentary',label:'Complimentary products',render:row=><OrderContentsColumn items={[row]} complimentary/>},
-    { key: 'quantity', label: 'Batch quantity', align: 'center' },
-    { key: 'sourceType', label: 'Dispatch source', render: row => row.sourceType === 'FACTORY' ? 'Factory' : `Godown · ${row.sourceLocationId}` },
-    { key: 'dispatchOrigin', label: 'Dispatch type', render: row => <span className={`dispatch-batch-tag ${row.dispatchOrigin === 'PENDING' ? 'dispatch-batch-tag--pending' : ''}`}>{row.dispatchOrigin === 'PENDING' ? 'From Dispatch Pending' : 'Original dispatch'}</span> },
-    { key: 'dispatchedAt', label: 'Dispatched at', render: row => new Date(row.dispatchedAt).toLocaleString() },
-    { key: 'dispatchedBy', label: 'Dispatched by' },
-    { key: 'actions', label: 'Details', render: row => <Button variant="secondary" onClick={() => showBatchDetails(row)}>View dispatch</Button> },
-  ];
-
   const outletOptions = [
     { value: 'ALL', label: 'All outlets' },
     ...outlets.map((outlet) => ({ value: outlet.outletId, label: `${outlet.outletId}${outlet.outletName || outlet.username ? ` — ${outlet.outletName || outlet.username}` : ''}` })),
@@ -120,6 +72,7 @@ const Dispatch = () => {
   const outletBatches = batches.filter(row => selectedOutletId === 'ALL' || row.outletId === selectedOutletId);
   const pendingBatches = outletBatches.filter(row => row.dispatchOrigin === 'PENDING');
   const visibleBatches = historyTab === 'PENDING' ? pendingBatches : outletBatches;
+  const historyGroups=dispatchGroups(historyTab==='PLANS'?visibleOrders:visibleBatches);
 
   const handleOutletChange = (event) => {
     const outletId = event.target.value;
@@ -149,7 +102,6 @@ const Dispatch = () => {
 
   return (
     <>
-    <VehicleLoads onChanged={loadDispatchedHistory}/>
     <VehicleLoads history/>
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       <div className="dispatch-toolbar">
@@ -170,7 +122,7 @@ const Dispatch = () => {
           <button key={value} type="button" className={historyTab === value ? 'active' : ''} aria-pressed={historyTab === value} onClick={() => setHistoryTab(value)}>{label}<span>{count}</span></button>
         )}
       </div>
-      {historyTab !== 'PLANS' && <p className="dispatch-history-note">Each row shows only the quantity sent in that dispatch. Earlier shipments remain available in Load plan totals; individual batches are recorded from this update onward.</p>}
+      {historyTab !== 'PLANS' && <p className="dispatch-history-note">Dispatch batches are grouped by vehicle load or their original load plan. Open a batch to review the quantities sent.</p>}
       <Card>
         <CardHeader title={historyTab === 'PLANS' ? 'Completed load plans' : historyTab === 'PENDING' ? 'Shipments completed from Dispatch Pending' : 'Individual dispatch batches'} />
         
@@ -180,13 +132,21 @@ const Dispatch = () => {
           <ErrorState error={error} onRetry={loadDispatchedHistory} />
         ) : (
           <CardContent style={{ padding: 0 }}>
-            <Table
-              columns={historyTab === 'PLANS' ? columns : batchColumns}
-              data={historyTab === 'PLANS' ? visibleOrders : visibleBatches}
-              emptyStateMessage={historyTab !== 'PLANS' ? 'No dispatch batches recorded for this filter.' : selectedOutletId === 'ALL'
-                ? 'No dispatched factory shipments historical records found.'
-                : `No dispatched orders found for ${selectedOutletId}.`}
-            />
+            <div className="order-summary-list dispatch-history-groups">
+              {!historyGroups.length && <p className="order-list-empty">No dispatch records found for this selection.</p>}
+              {historyGroups.map(group=><section className="dispatch-history-load" key={group.key}>
+                <h3>{dispatchGroupLabel(group.rows[0])}</h3>
+                {group.rows.map((row,index)=>{
+                  const items=historyTab==='PLANS'?(row.items || []):[{...row,product_id:row.productId}],contents=orderContents(items);
+                  return <article className="order-summary-card" key={row.dispatchId || `${row.loadPlanId}-${index}`}>
+                    <div className="order-summary-heading"><div><strong className="order-summary-reference">{historyTab==='PLANS'?(row.orderDisplayId || '—'):batchReference(row)}</strong><span className="order-summary-outlet">{outletLabel(row.outletId,outlets)}</span></div><Badge status="DISPATCHED"/></div>
+                    <div className="order-summary-meta"><span>Order {row.orderDisplayId || row.orderId}</span><span>{row.dispatchedAt?new Date(row.dispatchedAt).toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'}):'Dispatch date not recorded'}</span><span>Dispatched by {row.dispatchedBy || 'Not recorded'}</span>{historyTab!=='PLANS'&&<span>{row.sourceType==='FACTORY'?'Factory':`Godown · ${row.sourceLocationId || '—'}`} · {row.dispatchOrigin==='PENDING'?'From Dispatch Pending':'Original dispatch'}</span>}</div>
+                    <div className="order-summary-bottom"><div className="order-summary-counts"><span><strong>{contents.productTotal}</strong> ordered products sent</span><span><strong>{contents.complimentaryTotal}</strong> complimentary sent</span></div><div className="dispatch-history-actions"><Button variant="secondary" onClick={()=>historyTab==='PLANS'?setDetailsPlan(row):showBatchDetails(row)}>View details</Button>{historyTab==='PLANS'&&<UndoPlanButton plan={row} action="dispatch" onUndone={loadDispatchedHistory}/>}</div></div>
+                    <details className="order-summary-details"><summary>View products and complimentary items</summary><div className="order-summary-contents"><section><h3>Products ordered</h3><OrderContentsColumn items={items}/></section><section><h3>Complimentary products</h3><OrderContentsColumn items={items} complimentary/></section></div></details>
+                  </article>;
+                })}
+              </section>)}
+            </div>
           </CardContent>
         )}
       </Card>

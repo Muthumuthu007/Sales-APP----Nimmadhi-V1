@@ -1,0 +1,43 @@
+/* Approval workspace: product context stays beside its approval and gifts. */
+.order-approval-page .order-details-layout {grid-template-columns:minmax(0,1fr);gap:1rem}
+.order-approval-page .order-details-layout > :first-child > :last-child {display:grid!important;grid-template-columns:2fr 1fr 1.5fr;gap:1rem!important}
+.order-approval-page .approval-table {table-layout:fixed;min-width:0}
+.order-approval-page .approval-table th {font-size:.72rem;letter-spacing:.035em;padding:.85rem 1rem;line-height:1.5}
+.order-approval-page .approval-table td {padding:1rem;min-width:0!important;font-size:.875rem;line-height:1.5}
+.order-approval-page .approval-table th:first-child {width:31%}
+.order-approval-page .approval-table th:nth-child(2) {width:11%}
+.order-approval-page .approval-table th:nth-child(3) {width:14%}
+.order-approval-page .approval-table th:nth-child(4) {width:12%}
+.order-approval-page .approval-table th:last-child {width:32%}
+.order-approval-page .approval-table td input[type=number] {width:100%!important;max-width:110px;min-height:44px;padding:.65rem!important;background:var(--color-bg);color:var(--color-text-main);border-radius:8px!important;font-size:1rem}
+.approval-count {display:flex;justify-content:space-between;gap:.5rem;white-space:nowrap;font-size:.8rem}
+.approval-count strong {font-size:.95rem;font-variant-numeric:tabular-nums}
+.approval-pending {color:var(--color-primary);margin-top:.4rem}
+.approval-product-id {color:var(--color-text-muted);font-size:.7rem;margin-top:.45rem;overflow-wrap:anywhere}
+.approval-product-id summary {cursor:pointer;list-style:revert}
+.approval-gifts {display:grid;gap:.6rem}
+.approval-gift {display:flex;align-items:flex-start;justify-content:space-between;gap:.75rem;padding:.75rem;background:rgba(255,255,255,.035);border:1px solid var(--color-border);border-radius:8px}
+.approval-gift > div {min-width:0}
+.approval-gift strong {display:block;font-size:.85rem;overflow-wrap:anywhere}
+.approval-gift small {display:block;font-size:.72rem;color:var(--color-text-muted);margin-top:.25rem}
+.approval-gift-quantity {white-space:nowrap;font-weight:600;font-variant-numeric:tabular-nums;color:var(--color-primary)}
+.order-approval-page .approval-quantity-summary {font-size:.85rem;gap:1.5rem;padding:1rem}
+.order-approval-page .order-approval-actions {gap:1rem;flex-wrap:wrap}
+@media (max-width:1100px) {
+ .order-approval-page .approval-table,.order-approval-page .approval-table tbody {display:block}
+ .order-approval-page .approval-table thead {position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+ .order-approval-page .approval-table tbody {display:grid;gap:1rem}
+ .order-approval-page .approval-table tr {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:1px solid var(--color-border);border-radius:10px;overflow:hidden}
+ .order-approval-page .approval-table td {min-width:0;width:auto;padding:.85rem;text-align:left!important}
+ .order-approval-page .approval-table td:first-child,.order-approval-page .approval-table td:last-child {grid-column:1/-1}
+ .order-approval-page .approval-table td::before {content:attr(data-label);display:block;font-size:.68rem;letter-spacing:.04em;text-transform:uppercase;color:var(--color-text-muted);margin-bottom:.5rem}
+ .order-approval-page .approval-table-wrapper {border:0;overflow:visible;padding:.75rem}
+}
+@media (max-width:600px) {
+ .order-approval-page .order-details-layout > :first-child > :last-child {grid-template-columns:1fr!important;gap:.75rem!important}
+ .order-approval-page .approval-table tr {grid-template-columns:repeat(2,minmax(0,1fr))}
+ .order-approval-page .approval-table td:nth-child(4) {grid-column:1/-1}
+ .order-approval-page .approval-count {white-space:normal}
+ .order-approval-page .order-approval-actions {flex-direction:column-reverse;align-items:stretch!important}
+ .order-approval-page .order-approval-actions button {width:100%}
+}

@@ -99,3 +99,8 @@
 .dispatch-batch-tag { display: inline-flex; border-radius: 6px; padding: 5px 8px; background: rgba(148,163,184,.1); color: #cbd5e1; font-size: 11px; }
 .dispatch-batch-tag--pending { background: rgba(251,191,36,.1); color: #fcd34d; }
 .dispatch-batch-product { min-width: 200px; max-width: 270px; white-space: normal !important; }
+.dispatch-history-load {min-width:0;border:1px solid var(--color-border);padding:1rem;border-radius:12px}
+.dispatch-history-load > h3 {font-size:1rem;margin-bottom:1rem;overflow-wrap:anywhere}
+.dispatch-history-load .order-summary-card + .order-summary-card {margin-top:.75rem}
+.dispatch-history-actions {display:flex;flex-wrap:wrap;gap:.5rem}
+@media(max-width:650px){.dispatch-history-load{padding:.65rem}.dispatch-history-actions>*{flex:1}}
