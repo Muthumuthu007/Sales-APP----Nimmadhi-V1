@@ -1,0 +1,26 @@
+.modal-content.vehicle-qr-dialog {max-width:850px}
+.vehicle-load-qr {display:grid;gap:1rem;min-width:0}
+.vehicle-load-qr > p {font-size:.85rem;color:var(--color-text-muted);margin:0;line-height:1.6}
+.vehicle-qr-progress {display:flex;justify-content:space-between;gap:1rem;padding:1rem;border:1px solid var(--color-border);border-radius:8px;background:rgba(255,255,255,.03)}
+.vehicle-qr-progress span {color:var(--color-text-muted);font-size:.85rem}
+.vehicle-qr-entry {display:flex;align-items:end;gap:.65rem;flex-wrap:wrap}
+.vehicle-qr-entry > div {flex:1 1 250px;min-width:0}
+.vehicle-qr-entry .input-group {margin:0}
+.vehicle-qr-entry button {min-height:44px}
+.vehicle-qr-lines {display:grid;border:1px solid var(--color-border);border-radius:8px;overflow:hidden}
+.vehicle-qr-lines > div {display:flex;justify-content:space-between;gap:1rem;padding:.85rem;border-bottom:1px solid var(--color-border);align-items:start}
+.vehicle-qr-lines > div:last-child {border-bottom:0}
+.vehicle-qr-lines strong {display:block;font-size:.85rem;overflow-wrap:anywhere}
+.vehicle-qr-lines small {display:block;color:var(--color-text-muted);font-size:.75rem;margin-top:.3rem}
+.vehicle-qr-lines span {white-space:nowrap;font-weight:600}
+.vehicle-qr-complete {color:var(--color-green)}
+.vehicle-qr-error {background:rgba(239,68,68,.1);color:#fca5a5;border:1px solid rgba(239,68,68,.3);padding:.85rem;border-radius:8px;font-size:.85rem}
+.vehicle-qr-units {list-style:none;padding:0;display:grid;gap:.5rem;margin-top:.75rem}
+.vehicle-qr-units li {display:flex;align-items:center;justify-content:space-between;gap:.75rem;font-size:.75rem}
+.vehicle-qr-units span {overflow-wrap:anywhere;min-width:0}
+.vehicle-qr-footer {display:flex;justify-content:space-between;gap:.75rem;flex-wrap:wrap;padding-top:1rem;border-top:1px solid var(--color-border)}
+#vehicle-load-camera {width:100%;min-width:0;overflow:hidden}
+@media(max-width:600px){.vehicle-qr-footer{flex-direction:column}.vehicle-qr-entry button{flex:1}.vehicle-qr-progress{flex-wrap:wrap}.vehicle-load-qr button{min-height:44px}}
+
+.vehicle-load-dispatch-options {display:flex;flex-wrap:wrap;gap:.65rem}
+.vehicle-load-dispatch-options button {min-height:44px}

@@ -1,3 +1,4 @@
+import VehicleLoadQR from './VehicleLoadQR';
 import {OrderContentsColumns} from './OrderContentsColumn';
 import React,{useCallback,useEffect,useRef,useState} from 'react';
 import api from '../api/axios';
@@ -9,6 +10,7 @@ import './VehicleLoads.css';
 
 export default function VehicleLoads({creating=false,history=false,onChanged}){
  const [data,setData]=useState({plans:[],loads:[]}),[selected,setSelected]=useState([]),[vehicle,setVehicle]=useState(''),[driver,setDriver]=useState(''),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState(''),[confirmation,setConfirmation]=useState(null);
+ const [qrLoad,setQrLoad]=useState(null),[qrBusy,setQrBusy]=useState(false);
  const requestId=useRef(null);
  const load=useCallback(async()=>{setLoading(true);try{const result=await api.get('/vehicle-loads',{timeout:120000});setData(result);setSelected(current=>current.filter(id=>(result.plans || []).some(plan=>identity(plan)===id)));setError('');}catch(err){setError(err.response?.data?.error || err.message || 'Unable to load vehicle loads.');}finally{setLoading(false);}},[]);
  useEffect(()=>{load();},[load]);
@@ -22,7 +24,7 @@ export default function VehicleLoads({creating=false,history=false,onChanged}){
  };
  const act=async()=>{if(!confirmation)return;setBusy(true);setError('');try{const {load:row,action}=confirmation;const result=await api.post(`/vehicle-loads/${row.loadId}/${action}`,{},{timeout:120000});setMessage(result.message);setConfirmation(null);await load();onChanged?.();}catch(err){setError(err.response?.data?.error || 'Unable to confirm this action. Refresh and retry.');}finally{setBusy(false);}};
  const details=row=><div className="vehicle-load-plans">{row.plans.map(plan=><details key={identity(plan)} open><summary>Order {plan.orderNumber || plan.orderId} · Plan {plan.planNumber || plan.loadPlanId} · {plan.outletId}</summary><OrderContentsColumns items={plan.items}/></details>)}</div>;
- const loads=data.loads.filter(row=>history?row.status==='DISPATCHED':row.status==='READY');
+ const loads=data.loads.filter(row=>history?row.status==='DISPATCHED':row.status==='READY'||row.qrSyncPending);
  return <section className="vehicle-loads">
  <Card><CardHeader title={creating?'Create Load':history?'Dispatched vehicle loads':'Vehicle loads awaiting dispatch'} action={<Button variant="secondary" onClick={load} disabled={loading||busy}>Refresh</Button>}/><CardContent>
  <p>{creating?'Select whole factory-assigned plans travelling in the same vehicle. The admin decides vehicle capacity. Godown assignments stay separate.':history?'Each load retains its orders, products and dispatch history.':'Review the included orders, then dispatch the entire vehicle load in one action.'}</p>
@@ -34,9 +36,10 @@ export default function VehicleLoads({creating=false,history=false,onChanged}){
  <div className="vehicle-load-total"><strong>{chosen.length} plans selected · {total} pieces</strong><Button writeAction disabled={busy||!chosen.length} onClick={create}>{busy?'Saving…':'Create load'}</Button></div>
  <h3>Loads ready for dispatch</h3></>}
  {!loads.length&&<p>No {history?'dispatched':'ready'} vehicle loads.</p>}
- <div className="vehicle-load-cards">{loads.map(row=><article className="vehicle-load-card" key={row.loadId}><header><div><h3>{row.loadNumber}</h3><span>{row.plans.length} plans · {row.quantity} pieces · {row.status}</span><p>{row.vehicleNumber || 'Vehicle not recorded'}{row.driverName&&` · ${row.driverName}`}</p>{row.dispatchedAt&&<small>Dispatched {new Date(row.dispatchedAt).toLocaleString('en-IN')} by {row.dispatchedBy}</small>}</div><div>{!creating&&!history&&<Button writeAction onClick={()=>setConfirmation({load:row,action:'dispatch'})} disabled={busy}>Dispatch entire load</Button>}{creating&&<Button writeAction variant="secondary" onClick={()=>setConfirmation({load:row,action:'cancel'})} disabled={busy}>Cancel load</Button>}</div></header>{details(row)}</article>)}</div>
+ <div className="vehicle-load-cards">{loads.map(row=><article className="vehicle-load-card" key={row.loadId}><header><div><h3>{row.loadNumber}</h3><span>{row.plans.length} plans · {row.quantity} pieces · {row.status}</span><p>{row.vehicleNumber || 'Vehicle not recorded'}{row.driverName&&` · ${row.driverName}`}</p>{row.dispatchedAt&&<small>Dispatched {new Date(row.dispatchedAt).toLocaleString('en-IN')} by {row.dispatchedBy}</small>}</div><div className="vehicle-load-dispatch-options">{!creating&&!history&&<><Button writeAction variant="secondary" onClick={()=>setConfirmation({load:row,action:row.status==='CANCELLED'?'cancel':'dispatch'})} disabled={busy}>{row.qrSyncPending?'Finish QR synchronization':'Dispatch manually'}</Button>{row.status==='READY'&&<Button writeAction onClick={()=>setQrLoad(row)} disabled={busy}>Scan QR · {row.qrScannedCount || 0}/{row.quantity}</Button>}</>}{creating&&<Button writeAction variant="secondary" onClick={()=>setConfirmation({load:row,action:'cancel'})} disabled={busy}>Cancel load</Button>}</div></header>{details(row)}</article>)}</div>
  </>}
  </CardContent></Card>
+ <Modal className="vehicle-qr-dialog" isOpen={Boolean(qrLoad)} onClose={()=>{if(!qrBusy){setQrLoad(null);load();}}} title={qrLoad?`Scan QR — ${qrLoad.loadNumber}`:''}>{qrLoad&&<VehicleLoadQR load={qrLoad} onBusyChange={setQrBusy} onDone={()=>{setQrLoad(null);load();onChanged?.();}}/>}</Modal>
  <Modal isOpen={Boolean(confirmation)} onClose={()=>!busy&&setConfirmation(null)} title={confirmation?`${confirmation.action==='dispatch'?'Dispatch':'Cancel'} ${confirmation.load.loadNumber}`:''}>
  {confirmation&&<><p>{confirmation.action==='dispatch'?`Dispatch all ${confirmation.load.quantity} pieces across ${confirmation.load.plans.length} plans? Every included factory assignment will be marked dispatched together.`:'Cancel this load and release its plans so the admin can create a different load?'} </p>{details(confirmation.load)}{error&&<p role="alert">{error}</p>}<div className="vehicle-load-total"><Button variant="secondary" disabled={busy} onClick={()=>setConfirmation(null)}>Back</Button><Button writeAction disabled={busy} onClick={act}>{busy?'Saving…':confirmation.action==='dispatch'?'Confirm entire load dispatch':'Confirm cancellation'}</Button></div></>}
  </Modal>
