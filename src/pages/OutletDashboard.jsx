@@ -1,5 +1,6 @@
+import {ProductMrpContext} from '../context/ProductMrpContext';
 import ProductListBlocks from '../components/ProductListBlocks';
-import React,{useEffect,useState} from 'react';
+import React,{useEffect,useState,useContext} from 'react';
 import {Link} from 'react-router-dom';
 import api from '../api/axios';
 import {businessDate} from '../utils/businessDate';
@@ -10,14 +11,13 @@ import {Button} from '../components/ui/Button';
 import {Table} from '../components/ui/Table';
 import GroupedStockTable from '../components/GroupedStockTable';
 import InvoiceSalesReport from '../components/InvoiceSalesReport';
-import {productionOption} from '../utils/productHierarchy';
 import './OutletDashboard.css';
 const money=value=>new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(Number(value || 0));
 export default function OutletDashboard(){
  const {location}=useManagerLocation();
- const [outlets,setOutlets]=useState([]),[outlet,setOutlet]=useState(''),[date,setDate]=useState(businessDate()),[data,setData]=useState(null),[loading,setLoading]=useState(false),[error,setError]=useState(''),[reload,setReload]=useState(0),[tab,setTab]=useState('STOCK'),[catalogue,setCatalogue]=useState([]);
+ const [outlets,setOutlets]=useState([]),[outlet,setOutlet]=useState(''),[date,setDate]=useState(businessDate()),[data,setData]=useState(null),[loading,setLoading]=useState(false),[error,setError]=useState(''),[reload,setReload]=useState(0),[tab,setTab]=useState('STOCK');
  useEffect(()=>{let active=true;api.get('/outlets').then(response=>{if(!active)return;const list=(response.outlets || []).filter(row=>row.locationType!=='GODOWN');setOutlets(list);setOutlet(current=>list.some(row=>row.outletId===current)?current:list[0]?.outletId || '');}).catch(()=>{if(active)setError('Unable to load your permitted outlets.');});return()=>{active=false;};},[location]);
- useEffect(()=>{api.get('/products').then(response=>setCatalogue((response.products || []).map(productionOption))).catch(()=>setCatalogue([]));},[]);
+ const {catalogue}=useContext(ProductMrpContext);
  useEffect(()=>{if(!outlet)return;let active=true;async function load(){setLoading(true);setData(null);setError('');try{const response=await api.get(`/manager/outlets/${encodeURIComponent(outlet)}/overview`,{params:{date}});if(active)setData(response);}catch(err){if(active)setError(err.response?.data?.error || 'Unable to load outlet overview.');}finally{if(active)setLoading(false);}}load();return()=>{active=false;};},[outlet,date,reload,location]);
  const metrics=data?.summary;
  const cards=metrics?[['Stock balance',metrics.stockUnits,'Units physically at this outlet'],['Available stock',metrics.availableUnits,`${metrics.reservedUnits} units reserved`],['Stock products',metrics.stockProducts,'Products with positive stock'],['Stock received',metrics.receivedUnits,'Units received on selected date'],['Invoices',metrics.invoices,'Sales invoices on selected date'],['Units sold',metrics.unitsSold,'Includes outlet and factory delivery'],['Billed sales',money(metrics.revenue),'Includes unpaid invoice balances'],['Amount received',money(metrics.amountReceived),'Latest payments on selected-date invoices'],['Pending to receive',money(metrics.pendingAmount),'Balance on selected-date invoices'],['Orders created',metrics.ordersCreated,'Orders placed on selected date']]:[];

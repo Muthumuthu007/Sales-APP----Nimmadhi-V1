@@ -55,7 +55,7 @@ const RootRedirect = () => {
 function App() {
   return (
     <AuthProvider>
-      <ProductMrpProvider><BrowserRouter>
+      <BrowserRouter><ProductMrpProvider>
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/employee/login" element={<Navigate to="/login" replace />} />
@@ -156,7 +156,7 @@ function App() {
             <Route path="*" element={<RootRedirect />} />
           </Route>
         </Routes>
-      </BrowserRouter></ProductMrpProvider>
+      </ProductMrpProvider></BrowserRouter>
     </AuthProvider>
   );
 }

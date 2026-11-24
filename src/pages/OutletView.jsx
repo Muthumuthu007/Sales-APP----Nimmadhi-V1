@@ -1,3 +1,5 @@
+import {ProductMrpContext} from '../context/ProductMrpContext';
+import {refreshOptionPrices} from '../utils/catalogueRefresh';
 import {receiptSubmission} from '../utils/receiptQuantities';
 import {baseThickness,customOrderSize} from '../utils/customOrderSize';
 import OutletStockIn from '../components/OutletStockIn';
@@ -43,7 +45,7 @@ import {productionOption} from '../utils/productHierarchy';
 import { missingSaleFields,salesIssueMessage } from '../utils/salesValidation';
 import SalesValidationNotice from '../components/SalesValidationNotice';
 import { complimentaryForProduct } from '../utils/orderComplimentary';
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useContext } from 'react';
 import api from '../api/axios';
 import { Calendar, FileText, MapPin, PackageSearch, Plus, ShoppingBag, Trash2 } from 'lucide-react';
 import { Card, CardHeader, CardContent } from '../components/ui/Card';
@@ -109,38 +111,11 @@ const OutletView = () => {
   useEffect(()=>{if(!canUseCombos && activeTab==='COMBOS')setActiveTab(isStall?'STOCK_IN':'ATTENDANCE');},[canUseCombos,activeTab,isStall]);
 
   // --- Create Order State ---
-  const [productOptions, setProductOptions] = useState([{ label: 'Loading products...', value: '' }]);
-
-  useEffect(() => {
-    async function fetchProducts() {
-      try {
-        const response = await api.get('/products');
-        const list = response?.products || [];
-        const options = [
-          { label: 'Select a product...', value: '' },
-          ...list.map(p => {
-            if (typeof p === 'object' && p !== null) {
-              const id = p.id || p.product_id || p._id || p.uuid;
-              const name = p.name || p.product_name || p.productName || p.title || p.description;
-              return {
-                ...productionOption(p),
-                label: name || id || 'Unknown Product',
-                value: id || name,
-                groupId: p.group_id || p.groupId,
-                group: p.groupPath || p.group_name || p.groupName || 'Ungrouped'
-              };
-            }
-            return { label: String(p), value: String(p) };
-          })
-        ];
-        setProductOptions(options);
-      } catch (err) {
-        console.error('Failed to fetch products:', err);
-        setProductOptions([{ label: 'Error loading products', value: '' }]);
-      }
-    }
-    fetchProducts();
-  }, []);
+  const {catalogue:currentCatalogue,loading:catalogueLoading,error:catalogueError}=useContext(ProductMrpContext);
+  const productOptions=useMemo(()=>[
+    {label:catalogueLoading?'Loading products...':catalogueError?'Unable to load product prices. Please refresh.':'Select a product...',value:''},
+    ...currentCatalogue
+  ],[currentCatalogue,catalogueLoading,catalogueError]);
 
   const [outletProductNames, setOutletProductNames] = useState([]);
 
@@ -210,7 +185,8 @@ const OutletView = () => {
   const [comboPickerOpen,setComboPickerOpen]=useState(false);
   const [selectedCombo,setSelectedCombo]=useState(null);
   const [salesCatalogueStatus,setSalesCatalogueStatus]=useState('loading');
-  const [salesProductOptions, setSalesProductOptions] = useState([{ label: 'Loading products...', value: '' }]);
+  const [savedSalesProductOptions, setSalesProductOptions] = useState([{ label: 'Loading products...', value: '' }]);
+  const salesProductOptions=useMemo(()=>refreshOptionPrices(savedSalesProductOptions,currentCatalogue),[savedSalesProductOptions,currentCatalogue]);
   const [ownedShowroomSales, setOwnedShowroomSales] = useState(() => String(outletId || '').toUpperCase().startsWith('NIM'));
   const [salesItems, setSalesItems] = useState(draft.salesItems ?? []);
   const [editingSalesIndex,setEditingSalesIndex]=useState(draft.editingSalesIndex ?? null);
@@ -1416,6 +1392,7 @@ const OutletView = () => {
                   <GroupedProductPicker disabled={Boolean(salesItems[editingSalesIndex]?.comboId)} searchAll searchFirst={false} label="Sale product" options={salesProductOptions.map(option=>option.value ? {...option,label:`${option.label} — ${isStall?(salesFulfillmentMode==='LINKED_OUTLET_STOCK'?'Linked outlet stock':'Stall stock'):'Outlet stock'}: ${availableStockLabel(option.value)}`} : option)} value={salesProduct} onChange={val => { setSalesProduct(val); setShowroomItem(current => showroomItemForProduct(current, salesProductOptions.find(option => option.value === val))); setSalesValidationErrors([]);if(val)requestAnimationFrame(()=>document.getElementById(ownedShowroomSales?'sale-delivery-source':'sale-quantity')?.focus()); }} placeholder={isStall?'Search products and stock…':'Search products and outlet stock…'} />
                   {salesProduct && <div role="status" className="sales-product-mrp" style={{padding:'0.75rem 1rem',marginBottom:'1rem',border:'1px solid var(--color-primary)',borderRadius:'0.75rem'}}><strong>Product MRP</strong><ProductMrp item={salesProductOptions.find(option=>option.value===salesProduct) || {productId:salesProduct}} label={false}/></div>}
                   {ownedShowroomSales && salesProduct && <Select id="sale-delivery-source" error={salesFieldError('sale-delivery-source')} required label="Delivery source for this product" value={salesFulfillmentMode} onChange={e => setSalesFulfillmentMode(e.target.value)} options={[{value:'',label:'Choose delivery option'},{value:'LOCAL_STOCK',label:isStall?'Move from stall stock':'Needed immediately — deliver from outlet stock'},...(isStall?[{value:'LINKED_OUTLET_STOCK',label:'Move from linked outlet stock'}]:[]),{value:'FACTORY_DELIVERY',label:'Factory dispatch directly to customer'}]} />}
+                  {ownedShowroomSales && salesProduct && !salesItems[editingSalesIndex]?.comboId && salesProductOptions.find(option=>option.value===salesProduct)?.mrpSticker != null && Number(showroomItem.mrpSticker)!==Number(salesProductOptions.find(option=>option.value===salesProduct)?.mrpSticker) && <p role="status">Current catalogue MRP is {formatCurrency(Number(salesProductOptions.find(option=>option.value===salesProduct)?.mrpSticker))}. Your entered price has been kept. <Button variant="secondary" onClick={()=>setShowroomItem(current=>({...current,mrpSticker:String(salesProductOptions.find(option=>option.value===salesProduct)?.mrpSticker)}))}>Use current MRP</Button></p>}
                   {ownedShowroomSales && salesProduct && <ShowroomSaleFields lockedPrice={Boolean(salesItems[editingSalesIndex]?.comboId)} fieldError={salesFieldError} isAccessory={Boolean(salesProductOptions.find(option=>option.value===salesProduct)?.isAccessory)} item={showroomItem} onChange={setShowroomItem} quantity={Number(salesQuantity)} />}
                   {salesProduct && <p role="status"><strong>{isStall && salesFulfillmentMode==='FACTORY_DELIVERY'?'Factory delivery — stall and linked outlet stock stay unchanged.':<>{isStall?(salesFulfillmentMode==='LINKED_OUTLET_STOCK'?'Available at linked outlet':'Available at stall'):'Available in this outlet'}: {availableStockLabel(salesProduct)}</>}</strong></p>}
                   {salesStockStatus==='error' && <Button variant="secondary" onClick={()=>setSalesStockRefresh(value=>value+1)}>Refresh outlet stock</Button>}

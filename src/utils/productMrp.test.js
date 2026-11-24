@@ -10,3 +10,7 @@ test('missing and invalid prices are explicit, and sale snapshots remain intact'
  const item={productId:'A',mrpSticker:'45000'};assert.equal(mappedMrp(item,{A:'50020'}),50020);assert.equal(item.mrpSticker,'45000');
  assert.equal(mrpText(null),'Not mapped');assert.ok(mrpText(50020).includes('50,020'));
 });
+test('clearing current catalogue MRP does not revive an older cached price',()=>{
+ assert.equal(mappedMrp({productId:'A',mrpSticker:100},{A:null}),null);
+ assert.equal(mappedMrp({productId:'A',mrpSticker:100},{}),100);
+});
